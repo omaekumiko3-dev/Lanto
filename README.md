@@ -78,6 +78,7 @@ Core tests cover configuration, sessions, real TLS, pairing invalidation, author
 - [Client Architecture and Boundaries](docs/architecture.md): Electron process separation, IPC, state management, first-version capabilities, and future interfaces.
 - [Responsibilities of the Two Sides and Implementation Order](docs/roles.md): responsibility constraints for the controller, Host, shared protocol, and media engine.
 - [Host Usage](docs/host.md): initialization, pairing, authorization revocation, and Linux background operation.
+- [Windows → Mac Deployment Record](docs/mac-windows-deployment.md): physical machine installation, startup after login, dual pairing, and desktop permission acceptance status.
 - [First-Version Verification Record](docs/verification.md): local checks that have passed and real-machine capabilities not yet verified.
 - [Repository Metadata Snapshot](research/repositories.json): upstream addresses, push times, archive status, and item-by-item assessments checked on 2026-10-16.
 - [Key Project Version Snapshot](research/source-pins.json): commit and release records from the research period. A release record may refer to a prerelease and does not necessarily indicate a recommended version to install.

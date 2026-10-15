@@ -57,7 +57,7 @@ journalctl --user -u lanto-host.service
 
 This is a user service started by the user’s session. A responsive Host does not prove that the desktop session or Sunshine is ready, so it cannot be claimed to control the login screen or unlock at startup. Sunshine still needs to be connected to the correct graphics session according to its platform instructions. The systemd file was checked as text on this machine; actual installation and session lifecycle have not been accepted on a real Linux machine.[systemd service syntax](https://github.com/systemd/systemd/blob/main/man/systemd.service.xml)。
 
-Windows and macOS can currently run Host manually through the same CLI, but system service/launchd installers are not yet available, and desktop permissions have not been verified on site. macOS Screen Recording and keyboard/mouse permissions are requested by the actual media engine; a windowless Host does not mean system authorization can be skipped.
+Windows and macOS can run the Host using the same CLI; a system service/launchd automatic installer is not yet available. A launchd user service was installed manually on Mac, and pairing with the Windows control app was completed. Details are in [Windows → Mac Deployment Record](mac-windows-deployment.md)macOS screen recording and keyboard and mouse permissions are requested by the actual media engine; Host having no window does not mean system permissions can be bypassed.
 
 ## Media Path Boundaries
 
