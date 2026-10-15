@@ -10,6 +10,78 @@
   --line: #282d32;
   --accent: #a9e8d0;
 }
+.heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.discovery-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.discovery-heading small {
+  display: block;
+  color: #82939a;
+  font-size: 10px;
+  margin-top: 8px;
+  line-height: 1.6;
+}
+.discovered-hosts {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.discovered-hosts li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #35433d;
+  background: #1d2b24;
+  border-radius: 6px;
+}
+.discovered-hosts strong {
+  display: block;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.discovered-hosts small {
+  display: block;
+  font-size: 10px;
+  color: #8da597;
+  margin-top: 5px;
+}
+.discovered-hosts li > span {
+  margin-left: auto;
+  font-size: 10px;
+  color: #9dbaaa;
+  white-space: nowrap;
+}
+textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 110px;
+  max-height: 230px;
+  border: 1px solid #3b474e;
+  background: #13191d;
+  color: #d4dfe0;
+  border-radius: 5px;
+  padding: 12px;
+  font:
+    11px/1.6 Consolas,
+    monospace;
+  overflow-wrap: anywhere;
+}
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
 * {
   box-sizing: border-box;
 }

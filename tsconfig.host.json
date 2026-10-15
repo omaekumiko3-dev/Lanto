@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rewriteRelativeImportExtensions": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": "src",
+    "outDir": "out/host",
+    "lib": ["ES2023"],
+    "types": ["node"]
+  },
+  "include": ["src/host", "src/protocol", "src/common"]
+}

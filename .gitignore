@@ -9,6 +9,9 @@ work/
 *.pem
 *.p12
 *.pfx
+host.json
+controllers.json
+trusted-hosts.json
 
 # Captures and measurements can contain private desktop content
 captures/

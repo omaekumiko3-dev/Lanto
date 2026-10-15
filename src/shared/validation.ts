@@ -27,7 +27,8 @@ export const deviceInputSchema = z
         'Address must be an IP address or hostname; do not include a protocol, port, or command-line arguments'
       ),
     platform: z.enum(['linux', 'macos', 'windows']),
-    appName: cleanText(120).refine((value) => !value.startsWith('-'), 'App name must not start with a hyphen')
+    appName: cleanText(120).refine((value) => !value.startsWith('-'), 'App name must not start with a hyphen'),
+    hostId: z.uuid().optional()
   })
   .strict()
 

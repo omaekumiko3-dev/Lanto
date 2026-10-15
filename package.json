@@ -18,16 +18,20 @@
   "scripts": {
     "dev": "electron-vite dev",
     "start": "electron-vite preview",
+    "host": "node src/host/cli.ts",
+    "host:build": "tsc -p tsconfig.host.json",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write src tests scripts electron.vite.config.ts tsconfig.json package.json .prettierrc.json",
-    "format:check": "prettier --check src tests scripts electron.vite.config.ts tsconfig.json package.json .prettierrc.json",
+    "format": "prettier --write src tests scripts electron.vite.config.ts tsconfig*.json package.json .prettierrc.json",
+    "format:check": "prettier --check src tests scripts electron.vite.config.ts tsconfig*.json package.json .prettierrc.json",
     "test": "node --test tests/*.test.ts",
     "test:smoke": "npm run build && node scripts/smoke.mjs",
     "build": "npm run typecheck && electron-vite build"
   },
   "dependencies": {
+    "bonjour-service": "1.4.4",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "selfsigned": "5.5.0",
     "zod": "4.6.7"
   },
   "devDependencies": {

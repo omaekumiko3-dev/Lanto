@@ -5,6 +5,8 @@ import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { _electron as electron } from 'playwright'
 import electronExecutable from 'electron'
+import { initializeHost } from '../src/host/config.ts'
+import { startHost } from '../src/host/service.ts'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const testData = await mkdtemp(join(tmpdir(), 'lanto-ui-'))
@@ -14,6 +16,7 @@ delete environment.ELECTRON_RUN_AS_NODE
 await mkdir(artifacts, { recursive: true })
 let application
 const errors = []
+let hostService
 
 async function launch() {
   application = await electron.launch({
@@ -121,12 +124,67 @@ try {
   assert.equal((await page.evaluate(() => window.lanto.getState())).config.devices.length, 2)
   const disk = JSON.parse(await readFile(join(testData, 'config.json'), 'utf8'))
   assert.equal(disk.devices.length, 2)
+
+  const hostConfig = await initializeHost(join(testData, 'host'), {
+    name: 'Smoke Host',
+    listen: '127.0.0.1',
+    address: '127.0.0.1',
+    port: 0
+  })
+  hostService = await startHost(hostConfig, join(testData, 'host'), { discovery: false })
+  await page.getByRole('button', { name: 'Connect to Host', exact: true }).click()
+  await page.getByLabel('Host Pairing Credentials').fill(hostService.createTicket())
+  await page.getByRole('button', { name: 'Pair and Add', exact: true }).click()
+  await Promise.race([
+    page.getByRole('dialog').waitFor({ state: 'hidden' }),
+    page
+      .getByRole('alert')
+      .waitFor()
+      .then(async () => {
+        throw new Error(`Host pairing failed: ${await page.getByRole('alert').innerText()}`)
+      })
+  ])
+  const paired = await page.evaluate(() => window.lanto.getState())
+  assert.equal(paired.trustedHosts.length, 1)
+  assert.equal(paired.trustedHosts[0].status.identity.name, 'Smoke Host')
+  assert.equal('token' in paired.trustedHosts[0], false)
+  assert.equal('encryptedToken' in paired.trustedHosts[0], false)
+  assert.equal('certificate' in paired.trustedHosts[0], false)
+  const trustOnDisk = JSON.parse(await readFile(join(testData, 'trusted-hosts.json'), 'utf8'))
+  const encrypted = trustOnDisk.hosts[0].encryptedToken
+  assert.ok(typeof encrypted === 'string' && encrypted.length > 0)
+  assert.equal(
+    await application.evaluate(({ safeStorage }, value) => {
+      const plain = safeStorage.decryptString(Buffer.from(value, 'base64'))
+      return /^[a-zA-Z0-9_-]{43}$/.test(plain) && plain !== value
+    }, encrypted),
+    true
+  )
+  await page.screenshot({ path: join(artifacts, 'host-paired.png'), fullPage: true })
+  await application.close()
+  application = null
+  page = await launch()
+  const pairedAfterRestart = await page.evaluate(() => window.lanto.getState())
+  const hostDevice = pairedAfterRestart.config.devices.find(
+    (entry) => entry.hostId === hostConfig.identity.id
+  )
+  await page.evaluate((id) => window.lanto.probe(id), hostDevice.id)
+  assert.equal(
+    (await page.evaluate(() => window.lanto.getState())).trustedHosts[0].status.identity.id,
+    hostConfig.identity.id
+  )
+  await page.getByRole('button', { name: 'Edit Smoke Host', exact: true }).click()
+  await page.getByRole('button', { name: 'Remove Device', exact: true }).click()
+  await page.getByRole('button', { name: 'Confirm Device Removal', exact: true }).click()
+  await page.getByRole('dialog').waitFor({ state: 'hidden' })
+  assert.deepEqual((await page.evaluate(() => window.lanto.getState())).trustedHosts, [])
   assert.deepEqual(errors, [])
   console.log(
-    'Electron smoke passed: isolated preload, device CRUD, validation, settings, restart persistence; screenshot: test-results/workbench.png'
+    'Electron smoke passed: device CRUD, validation, persistence, real Host TLS pairing, OS-encrypted credentials, restart and unpair; screenshots: test-results/'
   )
 } finally {
   await application?.close()
+  await hostService?.close()
   assert.equal(dirname(resolve(testData)), resolve(tmpdir()))
   assert.ok(basename(testData).startsWith('lanto-ui-'))
   await rm(testData, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })

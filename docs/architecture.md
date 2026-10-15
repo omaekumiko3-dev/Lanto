@@ -1,19 +1,23 @@
 # Lanto Client Architecture
 
-Selection date: 2026-10-16. The client uses Electron + React + TypeScript, and the build uses electron-vite. The current goal is to establish a Windows operations entry point, connect a real desktop on a single Linux1, then expand to multi-machine switching. The Linux1 agent, NAS, and Mac execution hosts continue to follow[Device Responsibilities](design.md)deployment.
+Selection date: 2026-10-16. The controller uses Electron + React + TypeScript, and the Host uses headless Node.js + TypeScript. See the responsibility contract in[Responsibilities of the Two Sides](roles.md)。Pairing, authorization, and status for the local loopback Host are connected. Next is connecting a real desktop on a single Linux1. The Linux1 agent, NAS, and Mac execution endpoints still follow[Device Responsibilities](design.md)deployment.
 
 ## Module Boundaries
 
 ```text
 src/
+  common/       atomic JSON, queue, TCP probe
+  protocol/     Host message validation, TLS requests, discovery, and pairing credentials
+  host/         CLI, configuration, pairing authorization, HTTPS service, and lifecycle
+  controller/   Host client, trusted device storage
   shared/       device, settings, and session types; fixed IPC names; main process input validation
-  main/         Electron lifecycle, IPC, global shortcut keys
+  main/         Electron lifecycle, windows, IPC, shortcuts, and workbench orchestration
     config-store.ts      local configuration read/write
     session-manager.ts   session state and process switching order
     moonlight.ts         client discovery, argument construction, process startup and cleanup
     probe.ts             default Sunshine TCP port probe
   preload/      limited capabilities exposed through contextBridge
-  renderer/     React interface and styles
+  renderer/     App composition, state hooks, connection/device/dialog components and styles
 tests/          core state, persistence, arguments, and process cleanup tests
 scripts/        Electron UI smoke tests
 ```
@@ -24,7 +28,8 @@ The renderer only displays state and issues typed requests; it has no Node.js ca
 flowchart LR
     UI[React device and settings interface] -->|limited API| P[isolated preload]
     P -->|validated IPC| M[Electron main process]
-    M --> C[local configuration JSON]
+    M --> C[local configuration and encrypted authorization]
+    M <-->|fixed-certificate HTTPS| B[headless Lanto Host]
     M --> S[session manager]
     S --> A[Moonlight adapter]
     A --> Q[separate Moonlight window]
@@ -35,9 +40,9 @@ flowchart LR
 
 ## Configuration and Device Identity
 
-Local JSON includes `schemaVersion: 1`. Each device uses a separate UUID; its address may be left blank temporarily. The saved fields are name, operating system, host address, and Sunshine application name. Automatic scanning is not included; the host address also does not replace Moonlight’s certificate and pairing mechanism.
+Local JSON includes `schemaVersion: 1`. Devices use separate UUIDs. The address can be temporarily left blank. The name, operating system, host address, and Sunshine application name are saved. Optional `hostId` associates a paired Host; old configuration requires no migration. Host identity is established through pairing, and editing a manual device cannot forge an association. LAN discovery is user-initiated and reads announcements through mDNS; neither a host address nor a discovery result is treated as authorization.
 
-Configuration and session changes are queued for execution to prevent concurrent saves from overwriting each other. Configuration is validated first, then written to a temporary file in the same directory and replaced; corrupted configuration displays the original path and stops startup without overwriting the original file. Credentials, pairing certificates, PINs, and SSH keys are not written to configuration or activity logs. Activity records exist only in memory.
+Configuration and session changes are queued to prevent concurrent saves from overwriting each other. Configuration is validated first, written to a temporary file in the same directory, then replaced. A corrupted configuration displays its original path and prevents startup; the original file is not overwritten.`config.json` does not store tokens;`trusted-hosts.json` stores the Host public certificate and a token encrypted by system secure storage. The renderer and activity logs do not receive these secrets; activity records exist only in memory. The Host’s local identity file holds its own private key and management credentials and is stored separately in the user runtime directory.
 
 ## Current Session Behavior
 
@@ -59,8 +64,8 @@ Console redraw does not provide an input lease. Full ownership switching, per-ke
 
 ## Probe and Verification Boundaries
 
-The TCP probe connects only to port 47989 on the host specified by the user, with a fixed two-second timeout. It does not read web pages or collect authentication information. A response from the port only indicates reachability; it does not prove the other party is a trusted Sunshine instance. Custom server ports, UUID addresses, automatic discovery, and Wake-on-LAN have not yet been added.
+The TCP probe for a manual device only connects to port 47989 on the user-specified host, with a fixed two-second timeout. A paired Host uses certificate-pinned HTTPS to return its identity and local Sunshine port status. Reachable status does not prove streaming has completed. Custom Sunshine ports, Moonlight UUID addresses, and remote wake-up have not yet been added.
 
-Automated checks cover local configuration, IPC, React operations, and process state; they do not start a real remote desktop. Smoke tests use an independent temporary directory and offscreen Electron rendering; everyday operation still uses a normal native window. Platforms other than Windows have not been tested on site.
+Automated checks cover local configuration, IPC, React operations, process status, real loopback TLS, and pairing/revocation; they do not start a real remote desktop. Smoke tests use a separate temporary directory and offscreen Electron rendering; normal operation still uses a standard native window. The Host has a separate source entry point and TypeScript build, and does not depend on Electron at runtime. Platforms other than Windows have not been tested on site.
 
 The next stage requires the user to provide Linux1’s address and desktop environment, along with the Windows/Linux GPU information. First verify pairing, 2K 30fps, Chinese input, return to this machine, and continued agent task operation; then decide on multi machine warm up and the embedded media approach. The performance target follows[the validation table in the design document](design.md#Performance-Records-and-Initial-Acceptance-Targets), with no real machine benchmark results yet.

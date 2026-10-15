@@ -1,3 +1,4 @@
+import type { DiscoveredHost, TrustedHostView } from '../protocol/host.ts'
 export type Platform = 'linux' | 'macos' | 'windows'
 
 export interface Device {
@@ -6,6 +7,7 @@ export interface Device {
   host: string
   platform: Platform
   appName: string
+  hostId?: string
 }
 
 export type DeviceInput = Omit<Device, 'id'> & { id?: string }
@@ -51,6 +53,7 @@ export interface AppState {
     configDirectory: string
   }
   activity: Activity[]
+  trustedHosts: TrustedHostView[]
 }
 
 export interface ProbeResult {
@@ -70,6 +73,8 @@ export interface LantoAPI {
   connect(id: string): Promise<void>
   returnLocal(): Promise<void>
   probe(id: string): Promise<ProbeResult>
+  discoverHosts(): Promise<DiscoveredHost[]>
+  pairHost(ticket: string): Promise<AppState>
   openHelp(topic: 'moonlight' | 'sunshine'): Promise<void>
   onState(callback: (state: AppState) => void): () => void
 }
@@ -85,6 +90,8 @@ export const channels = {
   connect: 'lanto:connect',
   returnLocal: 'lanto:return-local',
   probe: 'lanto:probe',
+  discoverHosts: 'lanto:discover-hosts',
+  pairHost: 'lanto:pair-host',
   openHelp: 'lanto:open-help'
 } as const
 
