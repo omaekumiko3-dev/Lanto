@@ -1,0 +1,26 @@
+# Local credentials and runtime state
+.env
+.env.*
+!.env.example
+secrets/
+data/
+work/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Captures and measurements can contain private desktop content
+captures/
+recordings/
+benchmarks/raw/
+*.pcap
+*.pcapng
+
+# Future implementation outputs
+node_modules/
+target/
+dist/
+build/
+.DS_Store
+Thumbs.db

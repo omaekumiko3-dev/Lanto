@@ -1,0 +1,86 @@
+[
+  {
+    "repo": "moonlight-stream/moonlight-common-c",
+    "file": "src/Connection.c",
+    "url": "https://github.com/moonlight-stream/moonlight-common-c/blob/master/src/Connection.c",
+    "blob_sha": "bac9a6e787a806b53e6e5b1f538058d0e58ad3d5",
+    "bytes": 20058
+  },
+  {
+    "repo": "moonlight-stream/moonlight-qt",
+    "file": "app/cli/commandlineparser.cpp",
+    "url": "https://github.com/moonlight-stream/moonlight-qt/blob/master/app/cli/commandlineparser.cpp",
+    "blob_sha": "2acac458a51e51d953f1d3aef5574feddcc04dea",
+    "bytes": 20923
+  },
+  {
+    "repo": "moonlight-stream/moonlight-qt",
+    "file": "app/main.cpp",
+    "url": "https://github.com/moonlight-stream/moonlight-qt/blob/master/app/main.cpp",
+    "blob_sha": "2b701d71f6203cda10d2fc39b054fa78701ef971",
+    "bytes": 41879
+  },
+  {
+    "repo": "moonlight-stream/moonlight-qt",
+    "file": "app/streaming/session.cpp",
+    "url": "https://github.com/moonlight-stream/moonlight-qt/blob/master/app/streaming/session.cpp",
+    "blob_sha": "40c1e59c8c06b5a4c87079b2275943491b28c7c7",
+    "bytes": 104699
+  },
+  {
+    "repo": "LizardByte/Sunshine",
+    "file": "docs/api.md",
+    "url": "https://github.com/LizardByte/Sunshine/blob/master/docs/api.md",
+    "blob_sha": "9ba23241589c0c78bd5c4fbfc7d06a21689d9701",
+    "bytes": 2661
+  },
+  {
+    "repo": "LizardByte/Sunshine",
+    "file": "docs/configuration.md",
+    "url": "https://github.com/LizardByte/Sunshine/blob/master/docs/configuration.md",
+    "blob_sha": "e19ddd1544dc898e2b8d37f3940ca8e56ca3100f",
+    "bytes": 97502
+  },
+  {
+    "repo": "novnc/noVNC",
+    "file": "LICENSE.txt",
+    "url": "https://github.com/novnc/noVNC/blob/master/LICENSE.txt",
+    "blob_sha": "0581c11ed02ed57c82335a4691fd805621edd5b6",
+    "bytes": 2163
+  },
+  {
+    "repo": "modelcontextprotocol/rust-sdk",
+    "file": "LICENSE",
+    "url": "https://github.com/modelcontextprotocol/rust-sdk/blob/main/LICENSE",
+    "blob_sha": "4a93985763241755401a10678395303de4e720ba",
+    "bytes": 12227
+  },
+  {
+    "repo": "H-M-H/Weylus",
+    "file": "LICENSE",
+    "url": "https://github.com/H-M-H/Weylus/blob/master/LICENSE",
+    "blob_sha": "b0146de9042ea99bd282879a9cb3f7307d216561",
+    "bytes": 34738
+  },
+  {
+    "repo": "trycua/cua",
+    "file": "LICENSE.md",
+    "url": "https://github.com/trycua/cua/blob/main/LICENSE.md",
+    "blob_sha": "b8b198ce3ebaa22c9f59588a80f9f1875d85b34a",
+    "bytes": 1069
+  },
+  {
+    "repo": "input-leap/input-leap",
+    "file": "LICENSE",
+    "url": "https://github.com/input-leap/input-leap/blob/master/LICENSE",
+    "blob_sha": "2dd37100c3d2fca361e626bc7b561654092a4da3",
+    "bytes": 18431
+  },
+  {
+    "repo": "debauchee/barrier",
+    "file": "LICENSE",
+    "url": "https://github.com/debauchee/barrier/blob/master/LICENSE",
+    "blob_sha": "42498a453612bcf1a2a82033987e08ccc778b497",
+    "bytes": 18382
+  }
+]

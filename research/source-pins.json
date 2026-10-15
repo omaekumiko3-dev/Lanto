@@ -1,0 +1,96 @@
+[
+  {
+    "repository": "LizardByte/Sunshine",
+    "commit": "178a0467da1dde750b182be4ae10ff8f8245ad01",
+    "commit_date": "2026-10-15T17:47:36Z",
+    "latest_release": {
+      "tag": "v2026.1015.174736",
+      "published_at": "2026-10-15T19:25:38Z",
+      "prerelease": true,
+      "url": "https://github.com/LizardByte/Sunshine/releases/tag/v2026.1015.174736"
+    }
+  },
+  {
+    "repository": "moonlight-stream/moonlight-qt",
+    "commit": "b0af84ead19e711a55db46f8900182d2e0fa3716",
+    "commit_date": "2026-10-14T07:01:01Z",
+    "latest_release": {
+      "tag": "v6.2.0",
+      "published_at": "2026-10-04T00:44:48Z",
+      "prerelease": false,
+      "url": "https://github.com/moonlight-stream/moonlight-qt/releases/tag/v6.2.0"
+    }
+  },
+  {
+    "repository": "moonlight-stream/moonlight-common-c",
+    "commit": "aeba988e0a302145eff2e70fa3e11cd98ec01f5d",
+    "commit_date": "2026-10-14T22:11:45Z",
+    "latest_release": null
+  },
+  {
+    "repository": "selkies-project/selkies",
+    "commit": "8bca081797733114f0740154349e1e63401ed7b8",
+    "commit_date": "2026-10-15T15:39:12Z",
+    "latest_release": {
+      "tag": "2.0.0",
+      "published_at": "2026-09-23T17:10:20Z",
+      "prerelease": false,
+      "url": "https://github.com/selkies-project/selkies/releases/tag/2.0.0"
+    }
+  },
+  {
+    "repository": "rustdesk/rustdesk",
+    "commit": "e400bb75546cebf4f72a5ef3cf6e4a3efa2c3aa7",
+    "commit_date": "2026-10-15T14:39:27Z",
+    "latest_release": {
+      "tag": "1.5.0",
+      "published_at": "2026-09-30T16:11:03Z",
+      "prerelease": false,
+      "url": "https://github.com/rustdesk/rustdesk/releases/tag/1.5.0"
+    }
+  },
+  {
+    "repository": "ClassicOldSong/Apollo",
+    "commit": "adc5c5a0bd80831ce495434bb16aee2cd4175fb8",
+    "commit_date": "2026-05-21T10:31:13Z",
+    "latest_release": {
+      "tag": "v0.4.7-alpha.1",
+      "published_at": "2025-08-12T09:22:56Z",
+      "prerelease": true,
+      "url": "https://github.com/ClassicOldSong/Apollo/releases/tag/v0.4.7-alpha.1"
+    }
+  },
+  {
+    "repository": "openclaw/Peekaboo",
+    "commit": "8ce5a4052df63dcafb918fb2501ade3fd13ffead",
+    "commit_date": "2026-10-15T20:15:46Z",
+    "latest_release": {
+      "tag": "v4.9.3",
+      "published_at": "2026-10-14T10:34:24Z",
+      "prerelease": false,
+      "url": "https://github.com/openclaw/Peekaboo/releases/tag/v4.9.3"
+    }
+  },
+  {
+    "repository": "Devolutions/IronRDP",
+    "commit": "7b976a6965c96c76ff949313e174ea55dada8c44",
+    "commit_date": "2026-10-13T15:08:22Z",
+    "latest_release": {
+      "tag": "ironrdp-viewer-v0.1.0",
+      "published_at": "2026-07-10T16:22:49Z",
+      "prerelease": false,
+      "url": "https://github.com/Devolutions/IronRDP/releases/tag/ironrdp-viewer-v0.1.0"
+    }
+  },
+  {
+    "repository": "trycua/cua",
+    "commit": "dd6e146792951ba41ac7169d5531860595d06742",
+    "commit_date": "2026-10-15T20:24:41Z",
+    "latest_release": {
+      "tag": "cua-spaces-v0.9.2",
+      "published_at": "2026-10-15T07:54:49Z",
+      "prerelease": false,
+      "url": "https://github.com/trycua/cua/releases/tag/cua-spaces-v0.9.2"
+    }
+  }
+]
