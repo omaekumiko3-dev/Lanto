@@ -1,6 +1,6 @@
 # Lanto Product and Technical Design
 
-Design date: 2026-10-16. Status: preliminary proposal awaiting device validation.
+Design date: 2026-10-16. Status: Electron client skeleton established; streaming and multi-machine switching await device validation.
 
 Lanto brings Windows local gaming, Linux1 everyday development, and Mac native application use into one keyboard and mouse entry point. The user views the remote desktop on Windows, an agent stays resident on Linux1, and the N100 handles only routing and storage. Media transport and tool execution are managed separately so background development tasks continue while switching interfaces.
 
@@ -48,11 +48,11 @@ Arrows indicate logical communication and do not mean media is transcoded throug
 
 ## Client and Media Adapter
 
-First evaluate Tauri with Rust for the console and TypeScript for the interface. Electron is the alternative; existing orchard-relay also uses Electron. The media adapter manages an independent process, reusing Moonlight Qt first, with RDP or other protocols added later based on measurements.
+The console has selected Electron + React + TypeScript, with electron-vite for builds and Node.js for local configuration, IPC, and process orchestration. Rust or a corresponding helper program can be introduced when platform-native capabilities are needed. The media adapter manages an independent process, reusing Moonlight Qt first and adding RDP or other protocols later based on measurements. See[Client Architecture](architecture.md)。
 
 The first release’s media view uses a separate native window; the console handles activation, display mode, and returning to the local machine. WebView does not decode native Moonlight video. Forcing an external window to embed may cause DPI, focus, rendering, and lifecycle issues, so this requires a separate experiment before a decision.
 
-Each adapter provides a unified capability description and lifecycle operations:
+The following describes target capabilities and lifecycle operations for future adapters; the current implementation covers single-process startup, exit, and port detection. Pairing is performed in an external Moonlight window, and full input leases and media telemetry are not yet supported:
 
 | Action | Meaning |
 | --- | --- |
@@ -77,7 +77,7 @@ The switching order is fixed:
 3. Activate the new target window and confirm focus; if this fails, return to the local Windows machine.
 4. Grant input rights to the new session. Discard queued events with the old session ID.
 
-Keep an emergency return shortcut handled by the Windows console; the remote host must not consume it. The device-switching key combination can be configured to handle conflicts with games, input methods, and system shortcuts. Windowed or borderless games are the first test mode; exiting exclusive fullscreen, display modes, and pause behavior will be tested separately. Instant exit is not promised for every game.
+Keep an emergency return shortcut handled by the Windows console so the user can always return to the local machine. The current default is `Control+Alt+F12`, and registration failure prevents startup; streaming is temporarily set to `--capture-system-keys never`. The first release closes the local media process and displays Lanto when returning locally; it does not preserve the connection for a hot switch. System hooks, exclusive full-screen mode, and game permissions still need testing. A device switching key combination will be added later; windowed or borderless games are the first test mode, while switching out of exclusive full-screen, display modes, and pause behavior will be tested separately.
 
 When streaming already sends keyboard and mouse input back, Deskflow/Lan Mouse is not injected again along the same path. A future custom input backend will still use the same lease management.
 

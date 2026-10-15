@@ -22,5 +22,10 @@ node_modules/
 target/
 dist/
 build/
+out/
+release/
+test-results/
+playwright-report/
+*.tsbuildinfo
 .DS_Store
 Thumbs.db
