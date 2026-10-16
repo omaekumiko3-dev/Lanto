@@ -7,6 +7,7 @@ import { ConfigStore } from '../src/main/config-store.ts'
 import { defaultConfig } from '../src/shared/model.ts'
 import { configSchema, deviceInputSchema } from '../src/shared/validation.ts'
 import { removeTestDirectory } from './temp.ts'
+import { deviceFixture } from './fixtures.ts'
 
 test('configuration persists a NAS-independent local profile across restarts', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'lanto-config-'))
@@ -14,7 +15,8 @@ test('configuration persists a NAS-independent local profile across restarts', a
     const store = new ConfigStore(directory)
     const original = await store.load()
     assert.deepEqual(original, defaultConfig())
-    original.devices[0]!.host = 'linux1.local'
+    assert.equal(original.devices.length, 0)
+    original.devices.push(deviceFixture())
     original.settings.bitrateMbps = 35
     await store.save(original)
     assert.deepEqual(await new ConfigStore(directory).load(), original)
@@ -71,6 +73,7 @@ test('device input accepts LAN addresses and rejects CLI flags, URLs and shell t
 
 test('duplicate device identities and unsupported config versions fail validation', () => {
   const config = defaultConfig()
+  config.devices.push(deviceFixture())
   config.devices.push({ ...config.devices[0]! })
   assert.equal(configSchema.safeParse(config).success, false)
   assert.equal(configSchema.safeParse({ ...defaultConfig(), schemaVersion: 2 }).success, false)

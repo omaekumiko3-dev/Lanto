@@ -8,10 +8,11 @@ import { defaultConfig } from '../src/shared/model.ts'
 import { launchMedia, streamArguments } from '../src/main/moonlight.ts'
 import { probeSunshine } from '../src/main/probe.ts'
 import { removeTestDirectory } from './temp.ts'
+import { deviceFixture } from './fixtures.ts'
 
 test('Moonlight uses discrete arguments and leaves the remote app running after disconnect', () => {
   const config = defaultConfig()
-  const device = { ...config.devices[0]!, host: 'linux1.local', appName: 'Desktop with spaces' }
+  const device = deviceFixture({ appName: 'Desktop with spaces' })
   const args = streamArguments(device, config.settings)
   assert.deepEqual(args.slice(0, 3), ['stream', 'linux1.local', 'Desktop with spaces'])
   assert.equal(args[args.indexOf('--bitrate') + 1], '20000')

@@ -4,10 +4,11 @@ import { SessionManager } from '../src/main/session-manager.ts'
 import type { MediaAdapter, MediaExit, MediaHandle } from '../src/main/session-manager.ts'
 import { defaultConfig } from '../src/shared/model.ts'
 import type { Device, SessionState } from '../src/shared/model.ts'
+import { deviceFixture } from './fixtures.ts'
 
 const defaults = defaultConfig()
-const first: Device = { ...defaults.devices[0]!, host: 'linux1.local' }
-const second: Device = { ...defaults.devices[1]!, host: 'mac.local' }
+const first: Device = deviceFixture()
+const second: Device = deviceFixture({ name: 'Test Mac', host: 'mac.local', platform: 'macos' })
 
 function handle(
   pid: number

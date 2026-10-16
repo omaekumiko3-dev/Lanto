@@ -105,22 +105,7 @@ export const channels = {
 export function defaultConfig(): Config {
   return {
     schemaVersion: 1,
-    devices: [
-      {
-        id: 'ce95a76a-e2d8-40fe-bf61-1a01b779216f',
-        name: 'Linux1',
-        host: '',
-        platform: 'linux',
-        appName: 'Desktop'
-      },
-      {
-        id: '9e0b728a-b610-4d94-b026-a9f8a85338da',
-        name: 'Mac',
-        host: '',
-        platform: 'macos',
-        appName: 'Desktop'
-      }
-    ],
+    devices: [],
     settings: {
       moonlightPath: '',
       returnShortcut: 'Control+Alt+F12',

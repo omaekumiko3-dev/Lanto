@@ -35,7 +35,7 @@ Performance Statistics can show Moonlight’s diagnostic overlay and save that c
 
 Windows can use the experimental Shared Device and Texture graphics pipeline. A short local comparison measured average rendering time dropping from the default 0.19–0.21ms to 0.07–0.08ms; decoding has not yet shown a consistent win. The default remains Automatic. Some drivers and VRR still need separate testing. Evidence, rewrite boundaries, and retest tools are in[Performance Investigation](docs/performance-investigation.md)。
 
-Device addresses are blank by default; the interface does not pretend that a device is online. Paired Hosts use an authenticated endpoint to check identity and Sunshine status; manual devices only check whether TCP 47989 is reachable. Neither means that video is connected. Custom Sunshine ports are not yet supported.
+The device list is empty on first launch; no sample device is added automatically. Paired Hosts use the authentication interface to check identity and Sunshine status. Manually added devices only check whether TCP port 47989 is reachable. Neither check means video is connected. Custom Sunshine ports are not yet supported.
 
 This version manages one streaming process at a time. Switching to another device first closes the current client, then starts the next one; multi-device prewarming and embedded displays are not yet implemented. Returning to the local machine attempts to close the window normally, then terminates the client process created by Lanto if it times out. It does not send the remote application termination `quit` command. Moonlight’s own `Ctrl + Alt + Shift + Q`can be used as an emergency backup exit shortcut; it still needs verification in actual systems and games.
 

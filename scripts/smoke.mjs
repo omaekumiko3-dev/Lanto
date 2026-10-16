@@ -69,6 +69,9 @@ try {
     return { outer: window.getBounds(), inner: window.getContentBounds() }
   })
   assert.equal(windowBounds.outer.height, windowBounds.inner.height)
+  assert.deepEqual((await page.evaluate(() => window.lanto.getState())).config.devices, [])
+  assert.equal(await page.locator('.device-card').count(), 0)
+  await page.getByRole('button', { name: 'Add First Device', exact: true }).waitFor()
   assert.equal(
     await page.getByRole('button', { name: 'Open Remote Desktop', exact: true }).isDisabled(),
     true
@@ -94,7 +97,8 @@ try {
     BrowserWindow.getAllWindows()[0].setSize(900, 620)
   )
 
-  await page.getByRole('button', { name: 'Edit Linux1', exact: true }).click()
+  await page.getByRole('main').getByRole('button', { name: 'Add Device', exact: true }).click()
+  await page.getByLabel('Device name').fill('Test Linux')
   await page.getByLabel('IP or Hostname').fill('linux1.local')
   await page.getByRole('button', { name: 'Save Device', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
@@ -109,7 +113,7 @@ try {
   await page.getByLabel('IP or Hostname').fill('192.0.2.10')
   await page.getByRole('button', { name: 'Save Device', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
-  assert.equal((await page.evaluate(() => window.lanto.getState())).config.devices.length, 3)
+  assert.equal((await page.evaluate(() => window.lanto.getState())).config.devices.length, 2)
 
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByLabel('Shortcut to return to this machine').fill('Control+Alt+Shift+F11')
@@ -174,9 +178,9 @@ try {
   await page.getByRole('button', { name: 'Remove Device', exact: true }).click()
   await page.getByRole('button', { name: 'Confirm Device Removal', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
-  assert.equal((await page.evaluate(() => window.lanto.getState())).config.devices.length, 2)
+  assert.equal((await page.evaluate(() => window.lanto.getState())).config.devices.length, 1)
   const disk = JSON.parse(await readFile(join(testData, 'config.json'), 'utf8'))
-  assert.equal(disk.devices.length, 2)
+  assert.equal(disk.devices.length, 1)
 
   const hostConfig = await initializeHost(join(testData, 'host'), {
     name: 'Smoke Host',
