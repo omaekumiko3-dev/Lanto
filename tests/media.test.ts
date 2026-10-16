@@ -19,6 +19,7 @@ test('Moonlight uses discrete arguments and leaves the remote app running after 
   assert.equal(args[args.indexOf('--fps') + 1], '30')
   assert.ok(args.includes('--no-quit-after'))
   assert.ok(args.includes('--no-background-gamepad'))
+  assert.ok(args.includes('--no-mute-on-focus-loss'))
   assert.equal(args[args.indexOf('--capture-system-keys') + 1], 'never')
 })
 

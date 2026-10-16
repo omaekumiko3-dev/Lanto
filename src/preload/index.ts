@@ -12,6 +12,7 @@ const api: LantoAPI = {
   controlWindow: (action) => invoke(channels.controlWindow, action),
   getState: () => invoke(channels.getState),
   saveDevice: (input) => invoke(channels.saveDevice, input),
+  setDeviceAudio: (input) => invoke(channels.setDeviceAudio, input),
   removeDevice: (id) => invoke(channels.removeDevice, id),
   saveSettings: (input) => invoke(channels.saveSettings, input),
   chooseMoonlight: () => invoke(channels.chooseMoonlight),

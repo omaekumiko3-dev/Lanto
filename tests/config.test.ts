@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ConfigStore } from '../src/main/config-store.ts'
 import { defaultConfig } from '../src/shared/model.ts'
-import { configSchema, deviceInputSchema } from '../src/shared/validation.ts'
+import { configSchema, deviceInputSchema, deviceAudioSchema } from '../src/shared/validation.ts'
 import { removeTestDirectory } from './temp.ts'
 import { deviceFixture } from './fixtures.ts'
 
@@ -38,6 +38,19 @@ test('corrupt configuration is preserved and never silently overwritten', async 
   } finally {
     await removeTestDirectory(directory, 'lanto-corrupt-')
   }
+})
+
+test('existing devices migrate to full volume and audio values are strictly bounded', () => {
+  const { volume, muted, ...legacy } = deviceFixture()
+  const migrated = configSchema.parse({ ...defaultConfig(), devices: [legacy] }).devices[0]!
+  assert.equal(migrated.volume, 100)
+  assert.equal(migrated.muted, false)
+  for (const invalid of [-1, 101, 20.5, NaN, Infinity, '30'])
+    assert.equal(
+      deviceAudioSchema.safeParse({ id: legacy.id, volume: invalid, muted: false }).success,
+      false
+    )
+  assert.equal(deviceAudioSchema.safeParse({ id: legacy.id, volume: 0, muted: true }).success, true)
 })
 
 test('device input accepts LAN addresses and rejects CLI flags, URLs and shell text', () => {

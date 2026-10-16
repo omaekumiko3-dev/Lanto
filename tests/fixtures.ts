@@ -8,6 +8,8 @@ export function deviceFixture(overrides: Partial<Device> = {}): Device {
     host: 'linux1.local',
     platform: 'linux',
     appName: 'Desktop',
+    volume: 100,
+    muted: false,
     ...overrides
   }
 }

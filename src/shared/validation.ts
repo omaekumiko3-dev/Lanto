@@ -28,7 +28,9 @@ export const deviceInputSchema = z
       ),
     platform: z.enum(['linux', 'macos', 'windows']),
     appName: cleanText(120).refine((value) => !value.startsWith('-'), 'App name must not start with a hyphen'),
-    hostId: z.uuid().optional()
+    hostId: z.uuid().optional(),
+    volume: z.number().int().min(0).max(100).default(100),
+    muted: z.boolean().default(false)
   })
   .strict()
 
@@ -66,6 +68,14 @@ export const configSchema = z
   .strict()
 
 export const deviceIdSchema = z.uuid()
+
+export const deviceAudioSchema = z
+  .object({
+    id: deviceIdSchema,
+    volume: z.number().int().min(0).max(100),
+    muted: z.boolean()
+  })
+  .strict()
 
 export function readableError(error: unknown): string {
   if (error instanceof z.ZodError) {

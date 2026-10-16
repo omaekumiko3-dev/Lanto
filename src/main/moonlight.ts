@@ -3,7 +3,8 @@ import { mkdir, open, stat } from 'node:fs/promises'
 import { delimiter, extname, isAbsolute, join } from 'node:path'
 import type { Device, Settings } from '../shared/model.ts'
 import type { MediaAdapter, MediaExit, MediaHandle } from './session-manager.ts'
-import { nativeEnvironment } from './native-profile.ts'
+import { hasMediaFeature, nativeEnvironment } from './native-profile.ts'
+import { createAudioControl } from './audio-control.ts'
 
 export function streamArguments(device: Device, settings: Settings): string[] {
   const args = [
@@ -20,7 +21,7 @@ export function streamArguments(device: Device, settings: Settings): string[] {
     settings.windowMode,
     '--absolute-mouse',
     '--no-quit-after',
-    '--mute-on-focus-loss',
+    '--no-mute-on-focus-loss',
     '--no-background-gamepad',
     '--capture-system-keys',
     'never'
@@ -95,7 +96,28 @@ export class MoonlightAdapter implements MediaAdapter {
       logFile = join(this.logDirectory, `moonlight-${Date.now()}.log`)
     }
     const environmentOverrides = await nativeEnvironment(executable, settings, device.platform)
-    return launchMedia(executable, streamArguments(device, settings), logFile, environmentOverrides)
+    const audioSupported = await hasMediaFeature(executable, 'audioVolumeProtocol')
+    if (!audioSupported && (device.volume !== 100 || device.muted))
+      throw new Error('Device volume settings require a newer Lanto player. Select the companion app in Settings')
+    const control = audioSupported
+      ? await createAudioControl(join(this.logDirectory, '..', 'media-controls'), device)
+      : undefined
+    try {
+      const handle = await launchMedia(executable, streamArguments(device, settings), logFile, {
+        ...environmentOverrides,
+        LANTO_VOLUME_FILE: '',
+        LANTO_VOLUME: '100',
+        ...control?.environment
+      })
+      if (control) {
+        handle.setAudio = (audio) => control.setAudio(audio)
+        void handle.closed.then(() => control.close())
+      }
+      return handle
+    } catch (error) {
+      await control?.close()
+      throw error
+    }
   }
 
   async open(settings: Settings): Promise<void> {

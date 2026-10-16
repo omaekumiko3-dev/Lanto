@@ -1,0 +1,9 @@
+QT += core
+QT -= gui
+CONFIG += console c++17
+CONFIG -= app_bundle debug_and_release
+TEMPLATE = app
+TARGET = LantoAudioTests
+INCLUDEPATH += ../moonlight
+SOURCES += audio-volume-test.cpp ../moonlight/audio-volume.cpp
+HEADERS += ../moonlight/audio-volume.h

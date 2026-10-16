@@ -1,7 +1,12 @@
 import type { DiscoveredHost, TrustedHostView } from '../protocol/host.ts'
 export type Platform = 'linux' | 'macos' | 'windows'
 
-export interface Device {
+export interface DeviceAudio {
+  volume: number
+  muted: boolean
+}
+
+export interface Device extends DeviceAudio {
   id: string
   name: string
   host: string
@@ -10,7 +15,8 @@ export interface Device {
   hostId?: string
 }
 
-export type DeviceInput = Omit<Device, 'id'> & { id?: string }
+export type DeviceInput = Omit<Device, 'id' | keyof DeviceAudio> &
+  Partial<DeviceAudio> & { id?: string }
 
 export interface Settings {
   moonlightPath: string
@@ -72,6 +78,7 @@ export interface LantoAPI {
   controlWindow(action: WindowAction): Promise<void>
   getState(): Promise<AppState>
   saveDevice(input: DeviceInput): Promise<AppState>
+  setDeviceAudio(input: DeviceAudio & { id: string }): Promise<AppState>
   removeDevice(id: string): Promise<AppState>
   saveSettings(input: Settings): Promise<AppState>
   chooseMoonlight(): Promise<string | null>
@@ -90,6 +97,7 @@ export const channels = {
   state: 'lanto:state',
   getState: 'lanto:get-state',
   saveDevice: 'lanto:save-device',
+  setDeviceAudio: 'lanto:set-device-audio',
   removeDevice: 'lanto:remove-device',
   saveSettings: 'lanto:save-settings',
   chooseMoonlight: 'lanto:choose-moonlight',

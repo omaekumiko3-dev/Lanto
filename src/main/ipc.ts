@@ -38,6 +38,7 @@ export function registerIPC(window: () => BrowserWindow | null, workbench: Workb
       })
   })
   handle(channels.saveDevice, (input) => workbench.saveDevice(input))
+  handle(channels.setDeviceAudio, (input) => workbench.setDeviceAudio(input))
   handle(channels.removeDevice, (input) => workbench.removeDevice(input))
   handle(channels.saveSettings, (input) => workbench.saveSettings(input))
   handle(channels.openMoonlight, () => workbench.openMoonlight())

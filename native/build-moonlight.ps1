@@ -25,6 +25,8 @@ $lantoVs = & $lantoVswhere -latest -products '*' -requires Microsoft.VisualStudi
 if (-not $lantoVs) { throw 'Visual Studio C++ build tools are required' }
 $lantoBuild = Join-Path $lantoSource 'build-lanto'
 if (-not $lantoHttpSource.Contains('lantocursor')) { throw 'Apply moonlight-cursor-shape.patch before building' }
+$lantoAudioSource = Get-Content -LiteralPath (Join-Path $lantoSource 'app/streaming/audio/audio.cpp') -Raw
+if (-not $lantoAudioSource.Contains('m_LantoAudioVolume.apply')) { throw 'Apply moonlight-audio-volume.patch before building' }
 $lantoCursorSource = Join-Path $lantoSource 'app/streaming/lanto'
 New-Item -ItemType Directory -Path $lantoCursorSource -Force | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'moonlight') -File | Copy-Item -Destination $lantoCursorSource
@@ -58,6 +60,7 @@ $lantoQtVersion = & (Join-Path $lantoQtBin 'qmake.exe') -query QT_VERSION
   localCursorProtocol = 1
   cursorShapeProtocol = 1
   h264SpsPreservationProtocol = 1
+  audioVolumeProtocol = 1
   brand = 'lanto'
   moonlightCommit = 'de2467e433821664cdd2224aad8c89a625be1ad9'
   qtVersion = $lantoQtVersion.Trim()

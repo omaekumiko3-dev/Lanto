@@ -352,6 +352,65 @@ h1 span {
 .device-tools .icon-button {
   color: #8b9a9a;
 }
+.device-volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 19px;
+  padding: 9px 0 12px;
+  border-top: 1px solid #ffffff0a;
+}
+.device-volume .volume-button {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  color: #a1b6af;
+}
+.volume-slider {
+  flex: 1;
+  appearance: none;
+  height: 22px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+.volume-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(to right, #9de7cf var(--volume), #394745 var(--volume));
+}
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: #c5f4e5;
+  box-shadow: 0 0 0 2px #1a2422;
+}
+.volume-slider:hover::-webkit-slider-thumb {
+  background: #e5fff6;
+}
+.volume-slider:disabled {
+  cursor: default;
+  opacity: 0.38;
+}
+.is-muted .volume-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, #6c817a var(--volume), #394745 var(--volume));
+}
+.is-muted .volume-slider::-webkit-slider-thumb {
+  background: #8fa39c;
+}
+.volume-value {
+  width: 36px;
+  color: #9aaea7;
+  text-align: right;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
 .probe-detail {
   font-size: 11px;
   line-height: 1.6;
@@ -649,6 +708,9 @@ textarea {
   .device-card-footer {
     padding-left: 15px;
     gap: 9px;
+  }
+  .device-volume {
+    margin-inline: 14px;
   }
   .device-identity strong {
     font-size: 14px;

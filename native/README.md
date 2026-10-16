@@ -11,6 +11,7 @@ Current acceptance result: the H.264 SPS rewriting issue exposed in this run has
 | `src/main/native-profile.ts` | Maps settings to environment parameters for the current media subprocess; checks the client capability manifest before enabling the local cursor |
 | `moonlight/cursor-frame.*` | Validates the cursor protocol, image dimensions, and hotspot, and decodes transparent PNG images |
 | `moonlight/cursor-sync.*` | Retrieves shapes on a separate thread; the SDL thread creates, scales, and releases the local cursor |
+| `moonlight/audio-volume.*` | Reads session volume on a separate thread and applies PCM gain to all channels after decoding |
 | `sunshine/lanto_cursor.*` | Reads the system cursor and hotspot on the AppKit main thread and generates shape responses |
 | Moonlight／Sunshine patches | Connects session, capability negotiation, and pairing HTTPS; ScreenCaptureKit excludes the cursor from video |
 | Upstream PR #5817 | ScreenCaptureKit capture, native asynchronous VideoToolbox encoding |
@@ -38,7 +39,7 @@ Both upstream repositories use GPL; patches are used under their respective upst
 
 Prepare MSVC x64, Windows SDK, and the MSVC version of the Qt SDK. Upstream recommends Qt 6.11 or later; this run first used the existing local Qt 5.15.2 to compile and perform actual TLS／D3D11 streaming verification, and this is also a variable that needs to be fixed for subsequent performance comparisons.
 
-Check out the Moonlight commit listed above, initialize all its submodules, and extract the verified v19 x64 package to `libs/windows`, then apply, in order, `patches/moonlight-local-cursor.patch`、`patches/moonlight-h264-sps.patch` and `patches/moonlight-cursor-shape.patch`, and then run:
+Check out the Moonlight commit listed above, initialize all its submodules, and extract the verified v19 x64 package to `libs/windows`, then apply, in order, `patches/moonlight-local-cursor.patch`、`patches/moonlight-h264-sps.patch`、`patches/moonlight-cursor-shape.patch` and `patches/moonlight-audio-volume.patch`, and then run:
 
 ```powershell
 pwsh -File native/build-moonlight.ps1 -Source C:/build/moonlight-qt -QtBin C:/Qt/msvc_64/bin -Output C:/build/Moonlight-Lanto
@@ -46,7 +47,15 @@ pwsh -File native/build-moonlight.ps1 -Source C:/build/moonlight-qt -QtBin C:/Qt
 
 The output directory must be a new directory. The script copies the `native/moonlight/` source files into the upstream `app/streaming/lanto/`, compiles, deploys dependencies, and writes the `lanto-media.json` capability manifest; this file only describes features and is not a security signature. In Lanto, select the output `Moonlight.exe`for «Moonlight executable». The capability manifest is not required when the local cursor is disabled by default; the original version can still be used.
 
-The build entry point copies the repository’s `assets/lanto-stream.svg` and `.ico` Copy the icon assets to the upstream working copy, then bundle them into the window, taskbar, and executable. These branded assets share a source with the mint green console icon and use purple to distinguish the remote screen; they do not change the app pairing identity. This machine currently uses `Moonlight-Lanto-native-4`。
+The build entry point copies the repository’s `assets/lanto-stream.svg` and `.ico` Copy the icon assets to the upstream working copy, then bundle them into the window, taskbar, and executable. These branded assets share a source with the mint green console icon and use purple to distinguish the remote screen; they do not change the app pairing identity. This machine currently uses `Moonlight-Lanto-native-5`。
+
+## Per-device stream volume
+
+The native client manifest declares the capability through `audioVolumeProtocol=1` . For each stream, the controller creates an independent, randomly named local control file and passes it to its owned subprocess through `LANTO_VOLUME_FILE` ;`LANTO_VOLUME` also passes the initial gain so a muted device remains muted from the first frame. The file contains only integers from 0 to 100 and is written by atomic replacement; it is cleaned up after the process ends. Volume and mute preferences remain saved separately in each device’s configuration.
+
+After audio initialization, the client starts a separate thread that reads the control file every 50ms; the audio thread reads only an atomic integer and performs no disk access. Float32 or Int16 PCM after Opus decoding is scaled by percentage; muted output contains zero samples and decoding continues, while 100% leaves the signal unchanged. This logic is common to all host platforms and does not modify remote system volume. Mute on loss of focus is disabled in Lanto startup parameters, allowing volume adjustment after switching back to the card. Existing local cursor, encoder, and frame queue behavior retains its original configuration.
+
+The native test entry point is `native/tests/audio-volume-test.pro`, covering both PCM formats, mute, full amplitude, invalid input, live file updates, and thread exit. Windows machine verification used a short test tone from Linux and read back the Windows audio session peak; see[acceptance record](../docs/verification.md#device-volume-control)。
 
 ## Mac build and deployment
 

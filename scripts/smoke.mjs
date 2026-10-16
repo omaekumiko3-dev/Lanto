@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, rename, rm, rmdir, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, rename, rm, rmdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -114,6 +114,31 @@ try {
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
   assert.equal((await page.evaluate(() => window.lanto.getState())).config.devices.length, 2)
 
+  async function savedAudio(name, volume, muted) {
+    await page.waitForFunction(
+      async ({ name, volume, muted }) => {
+        const state = await window.lanto.getState()
+        const device = state.config.devices.find((entry) => entry.name === name)
+        return device?.volume === volume && device?.muted === muted
+      },
+      { name, volume, muted }
+    )
+  }
+  await page.getByRole('slider', { name: 'Test Linux Volume', exact: true }).fill('37')
+  await savedAudio('Test Linux', 37, false)
+  await page.getByRole('button', { name: 'Mute Test Linux', exact: true }).click()
+  await savedAudio('Test Linux', 37, true)
+  await page.getByRole('slider', { name: 'Test Windows Volume', exact: true }).fill('82')
+  await savedAudio('Test Windows', 82, false)
+  await application.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0].setSize(680, 480)
+  )
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false)
+  await page.screenshot({ path: join(artifacts, 'volume-compact.png') })
+  await application.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0].setSize(900, 620)
+  )
+
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByLabel('Disconnect Hotkey').fill('Control+Alt+Shift+F11')
   await page.getByLabel('Bitrate (Mbps)').fill('35')
@@ -171,11 +196,22 @@ try {
   await writeFile(
     join(testData, 'stream'),
     `const fs = require('node:fs');
-fs.appendFileSync('media-starts.jsonl', JSON.stringify({ pid: process.pid, args: process.argv.slice(2) }) + '\\n');
+fs.appendFileSync('media-starts.jsonl', JSON.stringify({ pid: process.pid, args: process.argv.slice(2), initialVolume: process.env.LANTO_VOLUME }) + '\\n');
+setInterval(() => {
+  try { fs.writeFileSync('volume-' + process.pid + '.json', fs.readFileSync(process.env.LANTO_VOLUME_FILE)); } catch {}
+}, 30);
 setInterval(() => {}, 1000);
 `
   )
   const mediaSettings = (await page.evaluate(() => window.lanto.getState())).config.settings
+  const mediaDirectory = join(testData, 'media')
+  await mkdir(mediaDirectory)
+  const fakeMedia = join(mediaDirectory, basename(process.execPath))
+  await copyFile(process.execPath, fakeMedia)
+  await writeFile(
+    join(mediaDirectory, 'lanto-media.json'),
+    JSON.stringify({ audioVolumeProtocol: 1 })
+  )
   await page.evaluate(
     (moonlightPath) =>
       window.lanto.getState().then(({ config }) =>
@@ -186,7 +222,7 @@ setInterval(() => {}, 1000);
           windowsPipeline: 'auto'
         })
       ),
-    process.execPath
+    fakeMedia
   )
   async function waitPhase(phase, deviceName) {
     let matched = false
@@ -229,13 +265,60 @@ setInterval(() => {}, 1000);
     }
     throw new Error(`Expected ${count} media launches, got ${records.length}`)
   }
+  async function appliedVolume(pid, expected) {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const value = await readFile(join(testData, `volume-${pid}.json`), 'utf8')
+        .then((text) => JSON.parse(text))
+        .catch(() => null)
+      if (value === expected) return
+      await new Promise((resolve) => setTimeout(resolve, 30))
+    }
+    throw new Error(`Audio gain did not reach ${expected}`)
+  }
   const linuxSwitch = page.getByRole('switch', { name: 'Connect to Test Linux', exact: true })
   assert.equal(await linuxSwitch.isChecked(), false)
   await linuxSwitch.click()
   await waitPhase('running', 'Test Linux')
   assert.equal(await linuxSwitch.isChecked(), true)
   const running = (await page.evaluate(() => window.lanto.getState())).session
-  await launches(1)
+  assert.equal((await launches(1))[0].initialVolume, '0')
+  await appliedVolume(running.pid, 0)
+  await page.getByRole('button', { name: 'Unmute Test Linux', exact: true }).click()
+  await savedAudio('Test Linux', 37, false)
+  await appliedVolume(running.pid, 37)
+  const volumeSlider = page.getByRole('slider', { name: 'Test Linux Volume', exact: true })
+  await volumeSlider.fill('10')
+  await volumeSlider.fill('22')
+  await volumeSlider.fill('47')
+  await volumeSlider.press('ArrowRight')
+  await savedAudio('Test Linux', 48, false)
+  await appliedVolume(running.pid, 48)
+  const audioConfigFile = join(testData, 'config.json')
+  await rename(audioConfigFile, `${audioConfigFile}.held`)
+  await mkdir(audioConfigFile)
+  try {
+    assert.equal(
+      await page.evaluate(async (id) => {
+        try {
+          await window.lanto.setDeviceAudio({ id, volume: 66, muted: false })
+          return false
+        } catch {
+          return true
+        }
+      }, running.deviceId),
+      true
+    )
+    await appliedVolume(running.pid, 48)
+  } finally {
+    await rmdir(audioConfigFile)
+    await rename(`${audioConfigFile}.held`, audioConfigFile)
+  }
+  await page.getByRole('slider', { name: 'Test Windows Volume', exact: true }).fill('81')
+  await savedAudio('Test Windows', 81, false)
+  await appliedVolume(running.pid, 48)
+  await page.getByRole('button', { name: 'Mute Test Linux', exact: true }).click()
+  await savedAudio('Test Linux', 48, true)
+  await appliedVolume(running.pid, 0)
   await page.getByRole('button', { name: 'Edit Test Linux', exact: true }).click()
   assert.equal(await page.getByRole('button', { name: 'Remove Device', exact: true }).isDisabled(), true)
   await page.getByLabel('Device name').fill('Build Linux')
@@ -274,6 +357,7 @@ setInterval(() => {}, 1000);
     false
   )
   await launches(2)
+  assert.equal((await launches(2))[1].initialVolume, '81')
   await windowsSwitch.focus()
   await windowsSwitch.press('Space')
   await waitPhase('idle')
@@ -287,6 +371,7 @@ setInterval(() => {}, 1000);
   assert.equal(records[0].args[0], 'linux1.local')
   assert.equal(records[2].args[0], '192.0.2.21')
   assert.equal(records[2].args[records[2].args.indexOf('--bitrate') + 1], '36000')
+  assert.equal(records[2].initialVolume, '0')
   process.kill(records[2].pid)
   await waitPhase('failed')
   assert.equal(await page.getByRole('switch', { checked: true }).count(), 0)
@@ -304,6 +389,8 @@ setInterval(() => {}, 1000);
   const persisted = await page.evaluate(() => window.lanto.getState())
   assert.equal(persisted.config.devices[0].host, '192.0.2.21')
   assert.equal(persisted.config.devices[0].name, 'Build Linux')
+  assert.equal(persisted.config.devices[0].volume, 48)
+  assert.equal(persisted.config.devices[0].muted, true)
   assert.equal(persisted.config.settings.bitrateMbps, 35)
   assert.equal(persisted.session.phase, 'idle')
   await page.getByRole('button', { name: 'Edit Test Windows', exact: true }).click()
@@ -422,7 +509,7 @@ setInterval(() => {}, 1000);
   await closed
   application = null
   console.log(
-    'Electron smoke passed: editable paired IP, credential preservation, save rollback/recovery, next-launch address, connection switches, real Host TLS pairing, restart and unpair; screenshots: test-results/'
+    'Electron smoke passed: per-device live volume/mute, audio rollback and persistence, editable paired IP, connection switches, Host TLS pairing and unpair; screenshots: test-results/'
   )
 } finally {
   await application?.close()

@@ -134,3 +134,45 @@ test('an unclosed process blocks replacement rather than allowing two input owne
   await manager.disconnect()
   assert.equal(manager.state.pid, null)
 })
+
+test('volume only targets the current device and unsupported clients report failure', async () => {
+  const applied: number[] = []
+  const client = {
+    ...handle(105),
+    async setAudio(audio: { volume: number }) {
+      applied.push(audio.volume)
+    }
+  }
+  const manager = new SessionManager(
+    {
+      async start() {
+        return client
+      }
+    },
+    () => {},
+    () => {}
+  )
+  await manager.setAudio(first.id, { volume: 10, muted: false })
+  await manager.connect(first, defaults.settings)
+  await manager.setAudio(second.id, { volume: 20, muted: true })
+  await manager.setAudio(first.id, { volume: 35, muted: false })
+  assert.deepEqual(applied, [35])
+  await manager.disconnect()
+  await manager.setAudio(first.id, { volume: 70, muted: false })
+  assert.deepEqual(applied, [35])
+  const unsupported = new SessionManager(
+    {
+      async start() {
+        return handle(106)
+      }
+    },
+    () => {},
+    () => {}
+  )
+  await unsupported.connect(first, defaults.settings)
+  await assert.rejects(
+    unsupported.setAudio(first.id, { volume: 40, muted: false }),
+    /volume control is not supported/
+  )
+  await unsupported.disconnect()
+})

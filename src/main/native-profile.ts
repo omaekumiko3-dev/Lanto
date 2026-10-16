@@ -19,14 +19,17 @@ export async function nativeEnvironment(
     environment.D3D11VA_FORCE_BIND = '1'
   }
   if (localCursor) {
-    const supported = await hasLocalCursor(executable)
+    const supported = await hasMediaFeature(executable, 'localCursorProtocol')
     if (!supported)
       throw new Error('Local cursor requires the Lanto native version of Moonlight. Select the companion app or turn off the local cursor in Settings')
   }
   return environment
 }
 
-async function hasLocalCursor(executable: string): Promise<boolean> {
+export async function hasMediaFeature(
+  executable: string,
+  feature: 'localCursorProtocol' | 'audioVolumeProtocol'
+): Promise<boolean> {
   try {
     const path = join(dirname(executable), 'lanto-media.json')
     const info = await stat(path)
@@ -35,8 +38,8 @@ async function hasLocalCursor(executable: string): Promise<boolean> {
     return (
       typeof value === 'object' &&
       value !== null &&
-      'localCursorProtocol' in value &&
-      value.localCursorProtocol === 1
+      feature in value &&
+      (value as Record<string, unknown>)[feature] === 1
     )
   } catch {
     return false

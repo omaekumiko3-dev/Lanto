@@ -1,4 +1,4 @@
-import type { Device, SessionState, Settings } from '../shared/model.ts'
+import type { Device, DeviceAudio, SessionState, Settings } from '../shared/model.ts'
 
 export interface MediaExit {
   code: number | null
@@ -9,6 +9,7 @@ export interface MediaHandle {
   pid: number
   closed: Promise<MediaExit>
   stop(): Promise<void>
+  setAudio?(audio: DeviceAudio): Promise<void>
 }
 
 export interface MediaAdapter {
@@ -95,6 +96,15 @@ export class SessionManager {
     return this.enqueue(async () => {
       await this.stopActive()
       this.set(idle())
+    })
+  }
+
+  setAudio(id: string, audio: DeviceAudio): Promise<void> {
+    return this.enqueue(async () => {
+      if (!this.active || this.active.device.id !== id || this.active.stopping) return
+      if (!this.active.handle.setAudio)
+        throw new Error('The current player does not support volume control. Select a newer Lanto player in Settings, then reconnect')
+      await this.active.handle.setAudio(audio)
     })
   }
 

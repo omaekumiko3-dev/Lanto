@@ -1,6 +1,7 @@
 import type { WorkbenchView } from '../hooks/useWorkbench.ts'
 import { Icon } from '../Icon.tsx'
 import { platformNames, phaseNames } from '../format.ts'
+import { DeviceVolume } from './DeviceVolume.tsx'
 
 export function DeviceCards({ model }: { model: WorkbenchView }) {
   const { state, active, busy, newDevice, run, api, setEditing, probes, setProbes } = model
@@ -92,6 +93,12 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
                 </button>
               </div>
             </div>
+            <DeviceVolume
+              device={device}
+              api={api}
+              disabled={Boolean(busy) || waiting}
+              onError={model.setNotice}
+            />
             {detail && <p className="probe-detail">{detail}</p>}
           </article>
         )

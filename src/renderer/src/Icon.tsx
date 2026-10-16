@@ -4,6 +4,8 @@ const paths = {
   minimize: 'M5 12h14',
   maximize: 'M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2',
   refresh: 'M20 7v5h-5 M4 17v-5h5 M6 6a8 8 0 0 1 13 3l1 3 M4 12l1 3a8 8 0 0 0 13 3',
+  volume: 'M11 4L6 8H3v8h3l5 4z M15 8a6 6 0 0 1 0 8 M18 5a10 10 0 0 1 0 14',
+  volumeOff: 'M11 4L6 8H3v8h3l5 4z M16 9l6 6 M22 9l-6 6',
   plus: 'M12 5v14 M5 12h14',
   arrow: 'M5 12h14 M13 6l6 6-6 6',
   settings:

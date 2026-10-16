@@ -90,3 +90,21 @@ Isolated Electron tests cover the editable address, field-by-field preservation 
 Installed the official stable Sunshine and standalone Node.js Host on Ubuntu 26.04.1／RTX 3080; both user services were actually enabled. Completed two pairings from Windows. HEVC 2K60, the first audio packet, clicking, dragging, and keyboard input all passed; within the same GNOME Wayland session, the GTK text field received “Chinese input test” via remote Pinyin input. After one full-system reboot, automatic login, Host, Sunshine, and existing pairings all recovered; audio and video were received again, and Chinese input was verified. See [Linux Deployment Record](linux-windows-deployment.md)。
 
 The controller limits the local cursor protocol by device platform; Linux／Windows automatically use the remote cursor, while the Mac preference is preserved. All 20 tests, type checking, production build, format checking, and isolated Electron smoke test passed; native environment tests confirmed that Linux／Windows do not reject ordinary clients because of the Mac local cursor preference. The runtime directory packaging script and Linux user service installer added for this deployment were used in this deployment; the runtime package contains no Electron, full repository, or identity data.
+
+## Device Volume Control
+
+On 2026-10-17, independent 0–100% volume and mute controls were added to device cards; existing devices default to 100% volume and unmuted. Muting preserves the original volume. Settings made before connecting take effect on the first audio frame, and changes made during a connection update the native PCM gain through a control file unique to each session. Audio continues playing when returning to the device list.
+
+23 tests, type checking, production build, and Electron smoke test passed. Coverage includes migration from old configuration, rejection of out-of-range values, isolation across devices, continuous sliding and keyboard adjustment, mute recovery, initial mute on connection, retaining settings after renaming / reconnecting / restarting the app, and falling back to the current gain when saving to disk fails. Interface screenshots at 680×480 and 900×620 were manually inspected. Qt native tests verify Int16 and Float32 PCM, unchanged output at 100%, silence for zero samples, invalid control data, real-time atomic replacement, and thread exit.
+
+The local machine was updated to native client v5, retaining the existing streaming pairing. A real Linux session used HEVC 2560×1440, 60fps, and the existing D3D11VA pipeline; the first audio packet arrived after about 400ms. Low-amplitude test audio was played in a Linux desktop session through PipeWire, and the peak of that Moonlight process’s audio session was read on Windows. The measurement was:
+
+| Card settings | Windows audio session average peak |
+| --- | ---: |
+| 100% | 0.0250318 |
+| 50% | 0.0125154 |
+| 25% | 0.0062579 |
+| Mute | 0 |
+| Unmute and restore to 25% | 0.0062580 |
+
+This result verifies that the actual output gain changes with the card; it does not mean perceived loudness is linear. The test tone has stopped; everyday volume and diagnostic settings have been restored, and the remote system volume and service were not changed.

@@ -9,6 +9,7 @@ import { defaultConfig } from '../shared/model.ts'
 import type { Activity, AppState, Config, Device, ProbeResult } from '../shared/model.ts'
 import {
   deviceIdSchema,
+  deviceAudioSchema,
   deviceInputSchema,
   readableError,
   settingsSchema
@@ -124,7 +125,12 @@ export class Workbench {
       if (previous?.hostId && previous.platform !== value.platform)
         throw new Error('The Host identity manages the system for a paired device. Pair again after changing the system')
       if (previous?.hostId && !value.host) throw new Error('Enter an IP address or hostname for the paired device')
-      const device = { ...value, id: value.id || randomUUID() }
+      const device = {
+        ...value,
+        id: value.id || randomUUID(),
+        volume: previous?.volume ?? value.volume,
+        muted: previous?.muted ?? value.muted
+      }
       const devices = previous
         ? this.config.devices.map((entry) => (entry.id === device.id ? device : entry))
         : [...this.config.devices, device]
@@ -152,6 +158,27 @@ export class Workbench {
         devices: this.config.devices.filter((entry) => entry.id !== device.id)
       })
       this.log(`Removed ${device.name}${device.hostId ? ' and revoked Host authorization' : ''}`)
+      return this.snapshot()
+    })
+  }
+
+  setDeviceAudio(input: unknown): Promise<AppState> {
+    return this.queue.run(async () => {
+      const audio = deviceAudioSchema.parse(input)
+      const device = this.device(audio.id)
+      if (device.volume === audio.volume && device.muted === audio.muted) return this.snapshot()
+      await this.session.setAudio(device.id, audio)
+      try {
+        await this.persist({
+          ...this.config,
+          devices: this.config.devices.map((entry) =>
+            entry.id === device.id ? { ...entry, volume: audio.volume, muted: audio.muted } : entry
+          )
+        })
+      } catch (error) {
+        await this.session.setAudio(device.id, device)
+        throw error
+      }
       return this.snapshot()
     })
   }
@@ -235,7 +262,9 @@ export class Workbench {
         name: existing?.name || host.name.slice(0, 50),
         platform: host.platform,
         host: host.address,
-        appName: existing?.appName || 'Desktop'
+        appName: existing?.appName || 'Desktop',
+        volume: existing?.volume ?? 100,
+        muted: existing?.muted ?? false
       }
       const devices = existing
         ? this.config.devices.map((entry) => (entry.id === device.id ? device : entry))

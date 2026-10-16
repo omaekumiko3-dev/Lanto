@@ -1,0 +1,54 @@
+--- a/app/app.pro
++++ b/app/app.pro
+@@ -192,6 +192,7 @@ SOURCES += \
+     streaming/input/mouse.cpp \
+     streaming/lanto/cursor-frame.cpp \
+     streaming/lanto/cursor-sync.cpp \
++    streaming/lanto/audio-volume.cpp \
+     streaming/input/reltouch.cpp \
+     streaming/session.cpp \
+     streaming/audio/audio.cpp \
+--- a/app/streaming/session.h
++++ b/app/streaming/session.h
+@@ -9,6 +9,7 @@
+ #include "input/input.h"
+ #include "video/decoder.h"
+ #include "audio/renderers/renderer.h"
++#include "lanto/audio-volume.h"
+ #include "video/overlaymanager.h"
+ 
+ class SupportedVideoFormatList : public QList<int>
+@@ -256,6 +257,7 @@ private:
+     SDL_mutex* m_DecoderLock;
+     bool m_AudioDisabled;
+     bool m_AudioMuted;
++    LantoAudioVolume m_LantoAudioVolume;
+     Uint32 m_FullScreenFlag;
+     QQuickWindow* m_QtWindow;
+     bool m_UnexpectedTermination;
+--- a/app/streaming/audio/audio.cpp
++++ b/app/streaming/audio/audio.cpp
+@@ -135,11 +135,13 @@ int Session::arInit(int /* audioConfiguration */,
+ {
+     SDL_memcpy(&s_ActiveSession->m_OriginalAudioConfig, opusConfig, sizeof(*opusConfig));
+     s_ActiveSession->initializeAudioRenderer();
++    s_ActiveSession->m_LantoAudioVolume.startControl();
+     return 0;
+ }
+ 
+ void Session::arCleanup()
+ {
++    s_ActiveSession->m_LantoAudioVolume.stopControl();
+     delete s_ActiveSession->m_AudioRenderer;
+     s_ActiveSession->m_AudioRenderer = nullptr;
+ 
+@@ -217,6 +219,9 @@ void Session::arDecodeAndPlaySample(char* sampleData, int sampleLength)
+         if (samplesDecoded > 0) {
+             SDL_assert(desiredBufferSize >= frameSize * samplesDecoded);
+             desiredBufferSize = frameSize * samplesDecoded;
++            s_ActiveSession->m_LantoAudioVolume.apply(
++                buffer, samplesDecoded * s_ActiveSession->m_ActiveAudioConfig.channelCount,
++                s_ActiveSession->m_AudioRenderer->getAudioBufferFormat() == IAudioRenderer::AudioFormat::Float32NE);
+         }
+         else {
+             desiredBufferSize = 0;
