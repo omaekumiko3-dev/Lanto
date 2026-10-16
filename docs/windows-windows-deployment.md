@@ -1,19 +1,19 @@
-# Windows control machine → Windows host deployment record
+# Windows Controller → Windows Host Deployment Record
 
-2026-10-17 through the KRU project `Kumiko_win` Deployment. The device has been added to Lanto, named `KumikoWindows`, the address is `192.168.100.120`. This work completed Host and media pairing, displayed a real HEVC desktop, transferred audio, and configured startup. The user is playing a full screen game on this machine and chose to complete background checks first, so clicking, dragging, Chinese input, and dynamic scenes at sustained 60fps have not been accepted.
+Deployed on 2026-10-17 through KRU project `Kumiko_win`. Lanto contains device `KumikoWindows` at `192.168.100.120`. Completed checks include dual Host/media pairing, 2K60 HEVC desktop, actual audio, clicks/drags, English/Chinese input, reconnection, and startup configuration. Full reboot and long-term stability were not tested.
 
 ## Host and pinned versions
 
-| Projects | Actual configuration |
+| Item | Actual configuration |
 | --- | --- |
-| system | Windows 11 Pro，build 26300，x64 |
-| Graphics card | NVIDIA RTX 3080, driver 591.86 |
-| Currently displayed | 2560×1440, 60Hz, existing console session |
-| Sunshine | Official stable release `2026.914.233613`，AMD64 MSI |
-| Host | Lanto `8b04e91` Build artifacts, Node.js `24.22.0` |
-| Controller | Lanto native Moonlight v5, D3D11VA, shared devices and textures |
+| System | Windows 11 Pro, build 26300, x64 |
+| GPU | NVIDIA RTX 3080, driver 591.86 |
+| Current display | 2560×1440 at 60Hz, existing console session |
+| Sunshine | Official stable `2026.914.233613`, AMD64 MSI |
+| Host | Compiled Lanto `8b04e91`, Node.js `24.22.0` |
+| Controller | Lanto native Moonlight v5, D3D11VA, shared device and textures |
 
-Download sources: [Official Sunshine release](https://github.com/LizardByte/Sunshine/releases/tag/v2026.914.233613) and [Official Node.js checksum list](https://nodejs.org/dist/v24.22.0/SHASUMS256.txt). Both downloaded files passed SHA-256 verification, and the Sunshine MSI and the extracted `node.exe` Authenticode status of is `Valid`。
+Downloads came from the [official Sunshine release](https://github.com/LizardByte/Sunshine/releases/tag/v2026.914.233613) and [official Node.js checksum list](https://nodejs.org/dist/v24.22.0/SHASUMS256.txt). Both downloads passed SHA-256 verification. Authenticode status was `Valid` for the Sunshine MSI and extracted `node.exe`.
 
 ```text
 Sunshine-Windows-AMD64-installer.msi
@@ -25,11 +25,11 @@ f9683a19877e12a9b167305c8db71040d812876359de21f0d2e97c3f321f80c3
 
 ## Installation and operation
 
-Sunshine was installed silently using the official MSI,`/qn /norestart`, and the installer returned code 0. The configuration is located at `C:\Program Files\Sunshine\config`, uses NVENC encoding; the administration web page allows local access only, UPnP is disabled, and the log level is info. The administration password was generated randomly on the target machine and was not returned in plaintext; only SYSTEM and Administrators can access the configuration directory.
+Sunshine's official MSI was installed silently with `/qn /norestart`, returning code 0. Configuration is in `C:\Program Files\Sunshine\config`, with NVENC encoding, management web access limited to the local machine, UPnP disabled, and info logging. A random management password was generated locally on the target without returning plaintext. Only SYSTEM and Administrators can access its configuration directory.
 
-`SunshineService` is an official service, running as LocalSystem with startup type Automatic. Recovery is configured to restart after 5 seconds, 15 seconds, and 60 seconds. Existing system accounts, language, time zone, and power plan were retained; automatic sleep on AC power was already disabled.
+The official `SunshineService` runs as LocalSystem with Automatic startup. Recovery restarts occur after 5, 15, and 60 seconds. Existing accounts, language, timezone, and power plan were preserved; AC automatic sleep was already disabled.
 
-Fixed operating location for Lanto Host:
+Permanent Host runtime locations:
 
 ```text
 C:\Program Files\Lanto Host\host-8b04e91\
@@ -43,27 +43,27 @@ C:\ProgramData\Lanto\Host\
   controllers.json
 ```
 
-Generate a new runtime directory on the development machine:
+Generate a fresh runtime on the development machine:
 
 ```powershell
 npm run host:build
 node scripts/package-host.mjs out/host-runtime
 ```
 
-Copy the entire runtime directory to a fixed subdirectory under `Program Files` on the controlled machine, then place the files from the official Node.js Windows ZIP in that directory’s `node` subdirectory. Run the following in an administrator PowerShell session:
+Copy the whole runtime into a permanent target `Program Files` subdirectory, then put the official Windows Node.js ZIP contents in its `node` subdirectory. Run in administrator PowerShell:
 
 ```powershell
 & 'C:\Program Files\Lanto Host\host-8b04e91\install-windows-host.ps1' `
   -Name KumikoWindows -Address 192.168.100.120
 ```
 
-The installer requires Node.js 24.12 or later, and the runtime directory must be under `Program Files` ; the data directory must be under `ProgramData\Lanto` . Reparse points are rejected. The installer sets the runtime directory so only SYSTEM and Administrators can write to it, while LOCAL SERVICE has read and execute access; only these three principals can access Host data, and LOCAL SERVICE can modify it. Existing identities, certificates, and controller authorizations are not overwritten.
+The installer requires Node.js 24.12 or later, a runtime inside `Program Files`, and data inside `ProgramData\Lanto`; it rejects reparse points. Runtime writes are restricted to SYSTEM/Administrators; LOCAL SERVICE gets read/execute access. Host data is limited to these three principals, with modify access for LOCAL SERVICE. Existing identity, certificates, and controller authorization are preserved.
 
-Scheduled task `Lanto Host` uses `LOCAL SERVICE`／`ServiceAccount`, triggered at system startup, independent of an interactive user login and without storing a user password. The task has no runtime limit; on failure it retries every minute, up to 999 times. During upgrades, the existing task XML is backed up, and a same-name task not managed by this installer is not overwritten. Account selection is based on [Microsoft Scheduled Tasks documentation](https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/new-scheduledtaskprincipal?view=windowsserver2025-ps) and [LocalService account reference](https://learn.microsoft.com/en-us/windows/win32/services/localservice-account)。
+The `Lanto Host` task uses `LOCAL SERVICE`/`ServiceAccount`, triggers at system startup without interactive login, and stores no user password. It has no execution time limit and retries failures every minute up to 999 times. Upgrades back up existing task XML and refuse to replace an identically named task not managed by this installer. Account selection follows [Microsoft scheduled-task guidance](https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/new-scheduledtaskprincipal?view=windowsserver2025-ps) and [LocalService documentation](https://learn.microsoft.com/en-us/windows/win32/services/localservice-account).
 
-Existing network categories were not changed in the firewall: Lanto TCP 48199, UDP 5353, and the official Sunshine program rules are allowed only for `LocalSubnet`, across all network profiles; no public-facing port mapping was added.
+Existing network categories were unchanged. Lanto TCP 48199/UDP 5353 and official Sunshine program rules allow only `LocalSubnet` across network profiles. No public port mapping was added.
 
-To check or generate new pairing credentials, run this in an administrator PowerShell session on the target machine:
+To inspect status or issue a new ticket, run administrator PowerShell on the target:
 
 ```powershell
 $runtime = 'C:\Program Files\Lanto Host\host-8b04e91'
@@ -75,14 +75,15 @@ Get-ScheduledTaskInfo -TaskName 'Lanto Host'
 Get-Service SunshineService
 ```
 
-## Actual verification and limitations
+## Actual verification and boundaries
 
-- Lanto completed certificate-pinned HTTPS pairing using a one-time credential, and the controller stored the authorization in the system secure storage; Sunshine completed separate media pairing. The temporary credential and PIN files were deleted.
-- The native client actually received and displayed a 2560×1440 HEVC desktop, with a 60fps configuration request; the first video packet arrived in about 300ms, and D3D11VA decoding succeeded. The local cursor protocol was disabled for Windows, so the remote cursor was used.
-- One statistics sample from the static test window showed about 21.54fps, 1ms network latency, 3.2ms host processing, 0.67ms decoding, 0.10ms rendering, and 0% network frame loss. The frame rate of a static desktop does not prove sustained 60fps or represent end to end input latency.
-- Play a low-amplitude test tone in an existing remote console session; locally, test only the WASAPI audio session of that Moonlight process, with an average peak of `0.00300045`, confirming that real sound arrived. The idle silent desktop previously had no audio packets; the first packet appeared after the test sound began, so this idle period cannot be treated as audio startup latency.
-- After running the Host installer repeatedly,`host.json` and `controllers.json` The SHA-256 remained completely unchanged, and the service was restored to operation; confirmed the task-start trigger, failure retries, run account, and ACLs for each secret file.
-- After the Sunshine service restarts, the control end successfully reads through the existing media pairing `Desktop` and `Steam Big Picture` application list, without requiring pairing again. The streaming window was not opened again in this round, so the user’s local game could remain in the foreground.
-- The temporary interactive test window, audio task, and test audio were all cleaned up; performance statistics were turned off again on the controller, and each of the three devices retained its own volume setting.
+- A single-use ticket completed certificate-pinned HTTPS pairing, with controller authorization in secure system storage. Sunshine completed independent media pairing. Temporary ticket and PIN files were deleted.
+- The native client received and displayed a 2560×1440 HEVC desktop at a requested 60fps. The first video packet arrived in approximately 300ms; D3D11VA decoding succeeded. The local-cursor protocol was disabled for Windows, using the remote cursor.
+- An animated temporary window in the same console session produced short samples of 59.66/60.17fps and 59.89fps after reconnection. Network time was approximately 1ms, host processing 3.2ms, decoding 0.39–0.44ms, rendering 0.09–0.10ms, and network drops 0%. These short client statistics do not establish long-term stability or end-to-end input latency.
+- Real foreground Moonlight keyboard/mouse events produced one remote click, 128 drag updates, and exact text `lanto123`. Remote Chinese IME composition from Pinyin then submitted the six-character Chinese phrase meaning “Chinese input test,” with exact character matching. The test text was not injected into the field through SSH.
+- A low-amplitude test tone played in the existing remote console session. Only that Moonlight process's WASAPI audio session was measured locally, with average peak `0.00300045`, confirming actual audio arrival. The previously silent desktop produced no audio packets; the first arrived after the tone began, so the preceding idle period is not audio startup latency.
+- Rerunning the Host installer preserved the exact SHA-256 of `host.json` and `controllers.json` and restored service availability. Startup trigger, failure retries, account, and secret-file ACLs were confirmed.
+- After restarting Sunshine, existing media pairing successfully retrieved `Desktop` and `Steam Big Picture` and established another HEVC session. Another deliberate disconnect/reconnect preserved the desktop, test window, and entered Chinese text. First video remained approximately 300ms, and the new client's average audio-session peak was `0.00300156`, confirming audio recovery.
+- Temporary interactive windows, audio tasks, and tones were removed. Controller performance statistics were disabled again, and all three devices retained their own volume settings.
 
-The whole machine was not restarted, and the login screen, BitLocker startup unlock, Chinese input, game Raw Input, controllers, and long term stability were not verified. Sunshine’s basic desktop keyboard and mouse use the existing injection path; no virtual HID driver requiring a paid license was installed. Any future addition of this capability should follow [Sunshine Windows input documentation](https://github.com/LizardByte/Sunshine/blob/v2026.914.233613/docs/getting_started.md#windows-1) .
+This run did not test full reboot, login screens, BitLocker startup unlock, game Raw Input, controllers, or long-term stability. Basic Sunshine keyboard/mouse used its existing injection path without adding a virtual HID driver requiring a paid license. Future additions should be validated separately using [Sunshine Windows input guidance](https://github.com/LizardByte/Sunshine/blob/v2026.914.233613/docs/getting_started.md#windows-1).

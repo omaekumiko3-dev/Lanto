@@ -2,7 +2,7 @@
 
 Lanto is a multi-device remote operation tool for high-speed personal area networks. Windows handles local gaming and serves as the operation entry point, Linux1 runs the desktop, agent, and development tools, Mac provides native applications and build execution, and N100 serves as both a software router and NAS. The goal is to switch quickly between the local machine and remote desktops with one keyboard and mouse.
 
-The current system includes an Electron + React + TypeScript control app with a UI and a headless Node.js + TypeScript Host. Device management, Host discovery and one time pairing, authentication status checks, authorization revocation, Moonlight launch, screen settings, and a shortcut to return to this machine are implemented. Windows → Mac and Windows → Linux have working 2560×1440, 60fps audio, video, and basic input. Linux has been verified with the same GNOME Wayland desktop, Chinese Pinyin input, service restarts, and reconnection after automatic system login; multi machine switching latency and long term stability still need to be measured.
+The current version includes a graphical Electron + React + TypeScript controller and a headless Node.js + TypeScript Host. Implemented features include device management, Host discovery and one-time pairing, authentication status checks, authorization revocation, and Moonlight launch, display settings, and a shortcut to return to the local machine. The Windows controller is connected to Mac, Linux, and Windows Hosts for 2560×1440, 60fps audio and video and basic input. On Linux, the same GNOME Wayland desktop, Chinese Pinyin input, service restart, and reconnection after full-system automatic login have been verified. On Windows Hosts, keyboard and mouse, Chinese Pinyin input, and session reconnection have been verified. Multi-machine switching latency and long-term stability still need to be measured.
 
 ## Running the Controller
 
@@ -73,7 +73,7 @@ The Host listens on TCP 48199 by default, and discovery uses mDNS UDP 5353. The 
 
 You can also run `npm run host:build` and `node scripts/package-host.mjs out/host-runtime`on a development machine, copy the newly generated runtime directory to a fixed location on Linux, then run its `install-linux-host.sh`as the desktop user. This installs a systemd user service and preserves the existing Host identity. There is no need to install Electron or the full source code on the controlled device. See [Linux Deployment Record](docs/linux-windows-deployment.md)。
 
-The Windows runtime package provides `install-windows-host.ps1`: Configure the LOCAL SERVICE startup task, private data ACLs, and the LAN firewall. Windows → Windows has completed real Host/media pairing and 2K HEVC video and audio verification; keyboard and mouse, Chinese input, and sustained 60fps in dynamic scenes are awaiting acceptance when the foreground is free. See [Windows Deployment Record](docs/windows-windows-deployment.md)。
+The Windows runtime package provides `install-windows-host.ps1`: configure a LOCAL SERVICE startup task, private data ACLs, and a LAN firewall rule. Windows → Windows has been verified with real Host/media pairing, 2K60 HEVC video, audio, keyboard and mouse, Chinese input, and disconnect/reconnect. See [Windows Deployment Record](docs/windows-windows-deployment.md)。
 
 ## Development and Checks
 
