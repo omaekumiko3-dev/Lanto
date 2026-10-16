@@ -31,7 +31,7 @@ Check Host:
 launchctl print gui/$(id -u)/dev.lanto.host
 ```
 
-These services depend on user login; automatic login was not configured, and FileVault unlocking or control of the system login screen was not verified.
+These services depend on the user being logged in. Automatic login was not configured during the initial deployment; it was later configured at the user’s request and verified by restarting the entire machine. See “Unattended Startup Acceptance” below.
 
 ## Pairing and Local Machine Status
 
@@ -87,13 +87,21 @@ The H.264 decoding error came from the client changing the SPS reference frame l
 
 The real input probe received click, drag, and keyboard events. After each of three disconnections, waiting more than 10 seconds did not cause the service to be terminated by the old-audio-exit watchdog, and reconnection then succeeded. The last time, the service was restarted deliberately; authorization remained active and a native HEVC connection was established. The current settings retain a 2K60 request, 20Mbps, D3D11VA shared device and texture, prioritize responsiveness, and use the local cursor; the normal Mac desktop has been restored. No performance conclusion showing the native backend outperforming others was reached, and long-duration stability or sustained frame-rate acceptance has not been completed.
 
-`dev.lanto.sunshine` The login startup item now points to the native app and separate configuration. The original startup item backup is at `~/.lanto/native-video/sunshine-stable-launchagent.plist`; to roll back, first turn off the Lanto local cursor, stop the native service, restore the backed up startup item, and start the original Sunshine. launchd reload was verified; the entire Mac was not restarted. The original Moonlight and Sunshine were preserved.
+`dev.lanto.sunshine` The login startup item now points to the native app and separate configuration. The original startup item backup is at `~/.lanto/native-video/sunshine-stable-launchagent.plist`; when rollback is needed, first turn off the Lanto local cursor, exit the native service, restore the backed-up startup item, and start the original Sunshine. The original Moonlight and Sunshine are both retained; see below for the subsequent full-machine-restart acceptance check.
 
 ## Subsequent cursor shape synchronization deployment
 
 Windows has been updated to `Moonlight-Lanto-native-4`, Mac updates the one at the same path `LantoSunshineNative.app`. The added cursor modules are implemented separately in C++/Objective-C++; they sync transparent images, dimensions, and hotspots over the existing paired HTTPS connection. Local rendering is retained, and performance statistics remain disabled. The user confirmed that the cursor changes normally over text areas, links, and window edges.
 
 The specified signing requirements for the old and new Mac applications are the same, and strict signature verification passed, so no reauthorization was needed this time. The native application from before the update is retained as `~/.lanto/native-video/LantoSunshineNative-before-cursor.app`The final version established an HEVC session after restarting, and system audio initialization was normal. This round’s test window has exited. For the implementation, patch order, and test entry point, see[Native component](../native/README.md)。
+
+## Unattended Startup Acceptance
+
+Restarted the entire Mac as requested by the user on 2026-10-16. The first restart was at 11:59 (Asia/Shanghai); with FileVault enabled, SSH was restored first, but the system remained at the graphical login screen. At the user’s explicit choice, use the system `fdesetup` Turn off FileVault; after the user logs in to the desktop, use `sysadminctl -autologin` Configure automatic login for the current account. Authentication is injected by KRU; the password has not been written to the project or logs. Only `autoLoginUser` The preference being present does not mean it succeeded; check the system tool’s status and actually restart.
+
+The second launch time was 12:09:14. No user login was needed again; the console user automatically switched to the target account, and the system reported FileVault Off and that the automatic login account had been set.`dev.lanto.host`, native Sunshine and KRU auto-start; the Host and media HTTPS ports are available. Windows then reuses the existing pairing reconnection, while Mac records CLIENT CONNECTED and establishes a 2560×1440 HEVC VideoToolbox session, with the local cursor enabled and system audio and Opus initialized.
+
+The current flow is “boot → automatic desktop login → Host/Sunshine start automatically → connection initiated from Windows.” Automatic login takes the user directly to the account desktop after startup; the user chose this method. This time, sleep, screen lock, and startup settings for other applications were not changed, and this does not mean automatic startup after a power outage has been configured. The two existing Lanto LaunchAgents do not need to be modified.
 
 ## Download Sources and Verification
 
