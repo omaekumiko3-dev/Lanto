@@ -24,6 +24,8 @@ scripts/        Electron UI smoke tests
 
 The renderer only displays state and issues typed requests; it has no Node.js capabilities. The main process verifies the sending window and main frame, validates parameters, then calls the configuration and media modules. The native Moonlight process handles protocol capture, decoding, audio, and keyboard/mouse return input; Electron does not copy per-frame video data through React or IPC.
 
+Window and simple interface responsibilities:`Titlebar` handles brand display and window buttons,`DeviceCards` handles selection, editing, and status checks;`SessionBar` handles opening/switching/returning, while Settings and pairing remain separate dialogs. Window controls expose only `minimize`、`maximize`、`close` three actions and use the same origin validation. Electron creates a `frame: false` 900×620 window, minimum 680×480; CSS drag regions exclude buttons. It uses the drag-region mechanism from [Electron Custom Window Interactions](https://www.electronjs.org/docs/latest/tutorial/custom-window-interactions) . Advanced settings are collapsed, forms scroll independently, and errors appear inside dialogs to avoid covering action buttons.
+
 ```mermaid
 flowchart LR
     UI[React device and settings interface] -->|limited API| P[isolated preload]
@@ -46,7 +48,7 @@ Configuration and session changes are queued to prevent concurrent saves from ov
 
 ## Current Session Behavior
 
-The media state is `idle → launching → running → stopping → idle`, errors go to `failed`。`running` This only indicates that the operating system successfully started the client process. The upstream CLI does not yet provide a usable first frame confirmation interface for this version, so the UI shows Client Started and does not claim authentication, connection, or 30fps.
+The media state is `idle → launching → running → stopping → idle`, errors go to `failed`。`running` . This only indicates that the operating system successfully started the client process. The upstream CLI does not yet provide a first-frame confirmation interface usable by this version, so the device card says Client Started and does not claim authentication, connectivity, or that the configured frame rate has been reached. The cause of an abnormal exit is still shown as a necessary error message.
 
 This version manages only one streaming process. When connecting to another device, it waits for the old client to exit before creating a new process. A delayed exit notification from the old process cannot overwrite the new session; if the old process cannot be terminated, starting a replacement session is blocked. A return request cancels any connection not yet executed and waits for a process being created to reach a state where it can be cleaned up.
 

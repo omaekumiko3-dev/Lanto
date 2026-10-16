@@ -66,8 +66,10 @@ export interface ProbeResult {
 }
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string }
+export type WindowAction = 'minimize' | 'maximize' | 'close'
 
 export interface LantoAPI {
+  controlWindow(action: WindowAction): Promise<void>
   getState(): Promise<AppState>
   saveDevice(input: DeviceInput): Promise<AppState>
   removeDevice(id: string): Promise<AppState>
@@ -84,6 +86,7 @@ export interface LantoAPI {
 }
 
 export const channels = {
+  controlWindow: 'lanto:control-window',
   state: 'lanto:state',
   getState: 'lanto:get-state',
   saveDevice: 'lanto:save-device',

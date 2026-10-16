@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useState } from 'react'
 import type { Settings } from '../../../shared/model.ts'
 import { Icon } from '../Icon.tsx'
@@ -5,6 +6,7 @@ import { errorText } from '../format.ts'
 import { Modal } from './Modal.tsx'
 
 export function SettingsDialog({
+  notice,
   settings,
   busy,
   configDirectory,
@@ -12,6 +14,7 @@ export function SettingsDialog({
   choose,
   save
 }: {
+  notice?: ReactNode
   settings: Settings
   busy: boolean
   configDirectory: string
@@ -35,7 +38,7 @@ export function SettingsDialog({
     }
   }
   return (
-    <Modal title="Client Settings" eyebrow="MAKE IT YOURS" close={close} busy={busy || choosing}>
+    <Modal notice={notice} title="Settings" close={close} busy={busy || choosing}>
       <form
         onSubmit={(event) => {
           event.preventDefault()
@@ -43,47 +46,6 @@ export function SettingsDialog({
         }}
       >
         <div className="form-body">
-          <label>
-            Moonlight Executable
-            <div className="file-input">
-              <input
-                value={draft.moonlightPath}
-                onChange={(event) => setDraft({ ...draft, moonlightPath: event.target.value })}
-                placeholder="Leave blank to find the install location automatically"
-                spellCheck={false}
-              />
-              <button
-                type="button"
-                className="button secondary"
-                disabled={busy || choosing}
-                onClick={() => void pick()}
-              >
-                <Icon name="folder" size={17} />
-                Select
-              </button>
-            </div>
-            <small>On Windows, select Moonlight.exe; on macOS, select the executable inside the .app.</small>
-          </label>
-          {pickerError && (
-            <p className="form-error" role="alert">
-              {pickerError}
-            </p>
-          )}
-          <label>
-            Shortcut to return to this machine
-            <input
-              autoFocus
-              required
-              value={draft.returnShortcut}
-              onChange={(event) => setDraft({ ...draft, returnShortcut: event.target.value })}
-              placeholder="Control+Alt+F12"
-              maxLength={80}
-              spellCheck={false}
-            />
-            <small>For example, Control+Alt+F12. The shortcut is checked for registration when saved.</small>
-          </label>
-          <div className="form-divider" />
-          <h3>Remote Screen</h3>
           <div className="form-columns">
             <label>
               Resolution
@@ -103,8 +65,8 @@ export function SettingsDialog({
                 value={draft.fps}
                 onChange={(event) => setDraft({ ...draft, fps: Number(event.target.value) })}
               >
-                <option value={30}>30 FPS</option>
                 <option value={60}>60 FPS</option>
+                <option value={30}>30 FPS</option>
                 <option value={15}>15 FPS</option>
               </select>
             </label>
@@ -113,8 +75,8 @@ export function SettingsDialog({
             <label>
               Bitrate (Mbps)
               <input
-                required
                 type="number"
+                required
                 min={5}
                 max={100}
                 value={draft.bitrateMbps}
@@ -136,10 +98,20 @@ export function SettingsDialog({
               </select>
             </label>
           </div>
-          <p className="settings-footnote">
-            Prioritize Responsiveness disables vertical sync and frame pacing, which may cause screen tearing; frame rate can be adjusted independently.
-          </p>
           <div className="form-columns">
+            <label>
+              Show Cursor
+              <select
+                value={String(draft.localCursor)}
+                onChange={(event) =>
+                  setDraft({ ...draft, localCursor: event.target.value === 'true' })
+                }
+              >
+                <option value="false">Remote cursor</option>
+                <option value="true">Local cursor</option>
+              </select>
+              <small>The local cursor requires a companion native component and is currently a fixed arrow.</small>
+            </label>
             <label>
               Latency strategy
               <select
@@ -148,59 +120,113 @@ export function SettingsDialog({
                   setDraft({ ...draft, lowLatency: event.target.value === 'true' })
                 }
               >
-                <option value="false">Follow Moonlight settings</option>
+                <option value="false">Default</option>
                 <option value="true">Prioritize responsiveness</option>
               </select>
-            </label>
-            <label>
-              Performance Statistics
-              <select
-                value={String(draft.showPerformanceOverlay)}
-                onChange={(event) =>
-                  setDraft({ ...draft, showPerformanceOverlay: event.target.value === 'true' })
-                }
-              >
-                <option value="false">Hide</option>
-                <option value="true">Show</option>
-              </select>
+              <small>Prioritizing responsiveness disables vertical sync and may cause tearing.</small>
             </label>
           </div>
-          <p className="settings-footnote">
-            The Windows shared texture pipeline can reduce device synchronization overhead, but may affect compatibility with some graphics drivers or VRR.
-          </p>
           <label>
-            Windows graphics pipeline
-            <select
-              value={draft.windowsPipeline}
-              onChange={(event) =>
-                setDraft({
-                  ...draft,
-                  windowsPipeline: event.target.value as Settings['windowsPipeline']
-                })
-              }
-            >
-              <option value="auto">Auto (Moonlight default)</option>
-              <option value="shared-bind">Shared device and textures (experimental)</option>
-            </select>
+            Shortcut to return to this machine
+            <input
+              autoFocus
+              required
+              maxLength={80}
+              value={draft.returnShortcut}
+              onChange={(event) => setDraft({ ...draft, returnShortcut: event.target.value })}
+              spellCheck={false}
+            />
+            <small>Disconnect the remote screen and return. The connection stays active when switching with Alt + Tab.</small>
           </label>
-          <p className="settings-footnote">
-            Screen settings take effect on the next connection. Configuration is saved locally:<span>{configDirectory}</span>
-          </p>
-          <label>
-            Show Cursor
-            <select
-              value={String(draft.localCursor)}
-              onChange={(event) =>
-                setDraft({ ...draft, localCursor: event.target.value === 'true' })
-              }
-            >
-              <option value="false">Remote cursor</option>
-              <option value="true">Local Cursor (Experimental)</option>
-            </select>
-            <small>
-              The local cursor follows the mouse immediately and requires a companion native component. It currently uses a fixed arrow and does not yet follow the remote cursor shape.
-            </small>
-          </label>
+          <details className="advanced-settings">
+            <summary>Advanced Settings</summary>
+            <div className="advanced-body">
+              <label>
+                Moonlight Executable
+                <div className="file-input">
+                  <input
+                    value={draft.moonlightPath}
+                    onChange={(event) => setDraft({ ...draft, moonlightPath: event.target.value })}
+                    placeholder="Find automatically"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy || choosing}
+                    onClick={() => void pick()}
+                  >
+                    <Icon name="folder" size={16} />
+                    Select
+                  </button>
+                </div>
+              </label>
+              {pickerError && (
+                <p className="form-error" role="alert">
+                  {pickerError}
+                </p>
+              )}
+              <div className="form-columns">
+                <label>
+                  Windows graphics pipeline
+                  <select
+                    value={draft.windowsPipeline}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        windowsPipeline: event.target.value as Settings['windowsPipeline']
+                      })
+                    }
+                  >
+                    <option value="auto">Automatic</option>
+                    <option value="shared-bind">Shared device and textures (experimental)</option>
+                  </select>
+                </label>
+                <label>
+                  Performance Statistics
+                  <select
+                    value={String(draft.showPerformanceOverlay)}
+                    onChange={(event) =>
+                      setDraft({ ...draft, showPerformanceOverlay: event.target.value === 'true' })
+                    }
+                  >
+                    <option value="false">Hide</option>
+                    <option value="true">Show</option>
+                  </select>
+                </label>
+              </div>
+              <p className="settings-footnote">
+                Shared textures may affect compatibility with some graphics cards or VRR. Settings take effect the next time you connect.
+                <span>{configDirectory}</span>
+              </p>
+              <div className="settings-help">
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() =>
+                    void window.lanto
+                      .openHelp('moonlight')
+                      .catch((error: unknown) => setPickerError(errorText(error)))
+                  }
+                >
+                  Download client
+                  <Icon name="external" size={12} />
+                </button>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() =>
+                    void window.lanto
+                      .openHelp('sunshine')
+                      .catch((error: unknown) => setPickerError(errorText(error)))
+                  }
+                >
+                  Configure controlled device
+                  <Icon name="external" size={12} />
+                </button>
+              </div>
+            </div>
+          </details>
         </div>
         <footer className="modal-footer">
           <div className="footer-spacer" />

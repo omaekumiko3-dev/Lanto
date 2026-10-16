@@ -9,6 +9,7 @@ async function invoke<T>(channel: string, input?: unknown): Promise<T> {
 }
 
 const api: LantoAPI = {
+  controlWindow: (action) => invoke(channels.controlWindow, action),
   getState: () => invoke(channels.getState),
   saveDevice: (input) => invoke(channels.saveDevice, input),
   removeDevice: (id) => invoke(channels.removeDevice, id),

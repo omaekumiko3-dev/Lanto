@@ -27,7 +27,7 @@ async function launch() {
   })
   const page = await application.firstWindow()
   page.on('pageerror', (error) => errors.push(error.message))
-  await page.getByRole('heading', { name: 'Switch devices; keep working.' }).waitFor()
+  await page.getByRole('heading', { name: /^device/ }).waitFor()
   return page
 }
 
@@ -42,10 +42,57 @@ try {
   assert.equal(preferences.sandbox, true)
   assert.equal(preferences.nodeIntegration, false)
   assert.equal(
+    await page.evaluate(async () => {
+      try {
+        await window.lanto.controlWindow('invalid')
+        return false
+      } catch {
+        return true
+      }
+    }),
+    true
+  )
+  assert.equal(
+    await page
+      .locator('.titlebar')
+      .evaluate((element) => getComputedStyle(element).getPropertyValue('app-region')),
+    'drag'
+  )
+  assert.equal(
+    await page
+      .getByRole('button', { name: 'Settings', exact: true })
+      .evaluate((element) => getComputedStyle(element).getPropertyValue('app-region')),
+    'no-drag'
+  )
+  const windowBounds = await application.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    return { outer: window.getBounds(), inner: window.getContentBounds() }
+  })
+  assert.equal(windowBounds.outer.height, windowBounds.inner.height)
+  assert.equal(
     await page.getByRole('button', { name: 'Open Remote Desktop', exact: true }).isDisabled(),
     true
   )
   await page.screenshot({ path: join(artifacts, 'workbench.png'), fullPage: true })
+  await application.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0].setSize(680, 480)
+  )
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('dialog').waitFor()
+  const layout = await page.evaluate(() => ({
+    overflow: document.documentElement.scrollWidth > window.innerWidth,
+    footerBottom: document.querySelector('.modal-footer').getBoundingClientRect().bottom,
+    height: window.innerHeight
+  }))
+  assert.equal(layout.overflow, false)
+  assert.ok(layout.footerBottom <= layout.height)
+  await page.locator('summary').filter({ hasText: 'Advanced Settings' }).click()
+  await page.getByLabel('Moonlight Executable').scrollIntoViewIfNeeded()
+  await page.screenshot({ path: join(artifacts, 'settings-compact.png') })
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await application.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0].setSize(900, 620)
+  )
 
   await page.getByRole('button', { name: 'Edit Linux1', exact: true }).click()
   await page.getByLabel('IP or Hostname').fill('linux1.local')
@@ -185,8 +232,12 @@ try {
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
   assert.deepEqual((await page.evaluate(() => window.lanto.getState())).trustedHosts, [])
   assert.deepEqual(errors, [])
+  const closed = application.waitForEvent('close')
+  await page.getByRole('button', { name: 'Close Window', exact: true }).click()
+  await closed
+  application = null
   console.log(
-    'Electron smoke passed: device CRUD, validation, persistence, real Host TLS pairing, OS-encrypted credentials, restart and unpair; screenshots: test-results/'
+    'Electron smoke passed: frameless layout, compact settings, window IPC validation and close, device CRUD, real Host TLS pairing, encrypted credentials, restart and unpair; screenshots: test-results/'
   )
 } finally {
   await application?.close()

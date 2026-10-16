@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 
 export function focusWindow(window: BrowserWindow | null): void {
@@ -11,12 +11,14 @@ export function focusWindow(window: BrowserWindow | null): void {
 export function createWindow(smoke: boolean, onRendererGone: () => void): BrowserWindow {
   const window = new BrowserWindow({
     title: 'Lanto',
-    width: 1420,
-    height: 940,
-    minWidth: 1100,
-    minHeight: 740,
+    width: 900,
+    height: 620,
+    minWidth: 680,
+    minHeight: 480,
+    frame: false,
+    icon: join(app.getAppPath(), 'assets/lanto.png'),
     show: false,
-    backgroundColor: '#101214',
+    backgroundColor: '#121617',
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.cjs'),

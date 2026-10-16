@@ -36,6 +36,8 @@ pwsh -File native/build-moonlight.ps1 -Source C:/build/moonlight-qt -QtBin C:/Qt
 
 The output directory must be new. The script compiles, deploys dependencies, and writes `lanto-media.json` capability manifest; this file only describes features and is not a security signature. In Lanto, select the output `Moonlight.exe`for «Moonlight executable». The capability manifest is not required when the local cursor is disabled by default; the original version can still be used.
 
+The build entry point copies the repository’s `assets/lanto-stream.svg` and `.ico` Copy the icon assets to the upstream working copy, then bundle them into the window, taskbar, and executable. These branded assets share a source with the mint green console icon and use purple to distinguish the remote screen; they do not change the media protocol or app pairing identity. This machine currently uses `Moonlight-Lanto-native-3`。
+
 ## Mac build and deployment
 
 Prepare Xcode, CMake, Ninja, Boost, pkgconf, curl, miniupnpc, Opus, OpenSSL 3, ICU, and Node. Check out the Sunshine commit listed above and initialize its submodules. Apply the following patches in order and extract the fixed FFmpeg package to a separate directory:

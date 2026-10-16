@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Device, DeviceInput } from '../../../shared/model.ts'
@@ -5,12 +6,14 @@ import { Icon } from '../Icon.tsx'
 import { Modal } from './Modal.tsx'
 
 export function DeviceDialog({
+  notice,
   device,
   busy,
   close,
   save,
   remove
 }: {
+  notice?: ReactNode
   device: DeviceInput
   busy: boolean
   close: () => void
@@ -24,12 +27,7 @@ export function DeviceDialog({
     void save(draft)
   }
   return (
-    <Modal
-      title={device.id ? 'Edit device' : 'Add Device'}
-      eyebrow="DEVICE DETAILS"
-      close={close}
-      busy={busy}
-    >
+    <Modal notice={notice} title={device.id ? 'Edit device' : 'Add Device'} close={close} busy={busy}>
       <form onSubmit={submit}>
         <div className="form-body">
           <label>

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useState } from 'react'
 import type { DiscoveredHost } from '../../../protocol/host.ts'
 import { errorText, platformNames } from '../format.ts'
@@ -5,11 +6,13 @@ import { Icon } from '../Icon.tsx'
 import { Modal } from './Modal.tsx'
 
 export function PairHostDialog({
+  notice,
   busy,
   close,
   discover,
   pair
 }: {
+  notice?: ReactNode
   busy: boolean
   close: () => void
   discover: () => Promise<DiscoveredHost[]>
@@ -35,12 +38,7 @@ export function PairHostDialog({
   }
 
   return (
-    <Modal
-      title="Connect to Lanto Host"
-      eyebrow="PAIR YOUR DEVICE"
-      busy={busy || searching}
-      close={close}
-    >
+    <Modal notice={notice} title="Connect to Lanto Host" busy={busy || searching} close={close}>
       <form
         onSubmit={(event) => {
           event.preventDefault()

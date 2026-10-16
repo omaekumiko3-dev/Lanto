@@ -25,7 +25,8 @@
     "format:check": "prettier --check src tests scripts electron.vite.config.ts tsconfig*.json package.json .prettierrc.json",
     "test": "node --test tests/*.test.ts",
     "test:smoke": "npm run build && node scripts/smoke.mjs",
-    "build": "npm run typecheck && electron-vite build"
+    "build": "npm run typecheck && electron-vite build",
+    "icons": "node scripts/build-icons.mjs"
   },
   "dependencies": {
     "bonjour-service": "1.4.4",

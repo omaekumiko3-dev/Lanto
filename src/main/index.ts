@@ -8,6 +8,7 @@ import { createWindow, focusWindow, loadWindow } from './window.ts'
 
 const smoke = !app.isPackaged && process.argv.includes('--lanto-smoke-test')
 app.setName('Lanto')
+if (process.platform === 'win32') app.setAppUserModelId('dev.lanto.controller')
 if (smoke && process.env.LANTO_TEST_DATA_DIR)
   app.setPath('userData', process.env.LANTO_TEST_DATA_DIR)
 let window: BrowserWindow | null = null

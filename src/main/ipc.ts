@@ -24,6 +24,19 @@ export function registerIPC(window: () => BrowserWindow | null, workbench: Workb
     })
   }
   handle(channels.getState, () => workbench.snapshot())
+  handle(channels.controlWindow, (input) => {
+    const action = z.enum(['minimize', 'maximize', 'close']).parse(input)
+    const current = window()
+    if (!current) return
+    if (action === 'minimize') current.minimize()
+    else if (action === 'maximize') {
+      if (current.isMaximized()) current.unmaximize()
+      else current.maximize()
+    } else
+      setImmediate(() => {
+        if (!current.isDestroyed()) current.close()
+      })
+  })
   handle(channels.saveDevice, (input) => workbench.saveDevice(input))
   handle(channels.removeDevice, (input) => workbench.removeDevice(input))
   handle(channels.saveSettings, (input) => workbench.saveSettings(input))

@@ -24,6 +24,9 @@ $lantoVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Inst
 $lantoVs = & $lantoVswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if (-not $lantoVs) { throw 'Visual Studio C++ build tools are required' }
 $lantoBuild = Join-Path $lantoSource 'build-lanto'
+$lantoAssets = Join-Path $PSScriptRoot '../assets'
+Copy-Item -LiteralPath (Join-Path $lantoAssets 'lanto-stream.svg') -Destination (Join-Path $lantoSource 'app/res/moonlight.svg')
+Copy-Item -LiteralPath (Join-Path $lantoAssets 'lanto-stream.ico') -Destination (Join-Path $lantoSource 'app/moonlight.ico')
 New-Item -ItemType Directory -Path $lantoBuild -Force | Out-Null
 $lantoCommand = Join-Path $lantoBuild 'build-lanto.cmd'
 @"
@@ -50,6 +53,7 @@ $lantoQtVersion = & (Join-Path $lantoQtBin 'qmake.exe') -query QT_VERSION
 @{
   localCursorProtocol = 1
   h264SpsPreservationProtocol = 1
+  brand = 'lanto'
   moonlightCommit = 'de2467e433821664cdd2224aad8c89a625be1ad9'
   qtVersion = $lantoQtVersion.Trim()
 } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $lantoOutput 'lanto-media.json') -Encoding utf8NoBOM

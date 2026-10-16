@@ -1,6 +1,6 @@
 import type { WorkbenchView } from '../hooks/useWorkbench.ts'
 import { Icon } from '../Icon.tsx'
-import { platformNames } from '../format.ts'
+import { platformNames, phaseNames } from '../format.ts'
 
 export function DeviceCards({ model }: { model: WorkbenchView }) {
   const {
@@ -18,82 +18,86 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
   } = model
   return (
     <section className="device-cards" aria-label="Device list">
-      {state.config.devices.map((device, index) => {
+      {state.config.devices.map((device) => {
         const host = state.trustedHosts.find((entry) => entry.id === device.hostId)
+        const inUse = active && state.session.deviceId === device.id
+        const reachable = host
+          ? !host.error && host.status?.sunshineReachable
+          : probes[device.id]?.reachable
+        const detail =
+          host?.error || (probes[device.id]?.reachable === false ? probes[device.id]?.message : '')
         return (
           <article
             className={`device-card ${selected?.id === device.id ? 'selected-card' : ''}`}
             key={device.id}
           >
-            <div className="device-card-top">
+            <button
+              className="device-select"
+              aria-label={device.name}
+              aria-pressed={selected?.id === device.id}
+              onClick={() => setSelectedId(device.id)}
+            >
               <span className={`platform-icon ${device.platform}`}>
-                <Icon name={device.platform} size={24} />
+                <Icon name={device.platform} size={26} />
               </span>
-              <span className="device-number">{String(index + 1).padStart(2, '0')}</span>
-              <button
-                className="icon-button"
-                aria-label={`Edit ${device.name}`}
-                disabled={Boolean(busy) || (state.session.deviceId === device.id && active)}
-                onClick={() => setEditing(device)}
-              >
-                <Icon name="edit" size={16} />
-              </button>
-            </div>
-            <button className="device-name" onClick={() => setSelectedId(device.id)}>
-              {device.name}
-              <Icon name="arrow" size={16} />
+              <span className="device-identity">
+                <strong>{device.name}</strong>
+                <small>{device.host || 'Address not set'}</small>
+              </span>
+              <span className="selection-mark">
+                <Icon name="check" size={13} />
+              </span>
             </button>
-            <div className="device-address">
-              {device.host || 'Address not set'} <span>{platformNames[device.platform]}</span>
-            </div>
             <div className="device-card-footer">
-              <span className={`probe-label ${probes[device.id]?.reachable ? 'reachable' : ''}`}>
+              <span className="platform-label">{platformNames[device.platform]}</span>
+              <span className={`probe-label ${inUse || reachable ? 'reachable' : ''}`}>
                 <span className="status-dot" />
-                {host
-                  ? host.status
-                    ? 'Host connected'
-                    : host.error
-                      ? 'Host unreachable'
-                      : 'Host paired'
+                {inUse
+                  ? phaseNames[state.session.phase]
                   : !device.host
-                    ? 'Waiting for setup'
-                    : probes[device.id]
-                      ? probes[device.id].reachable
-                        ? 'Port reachable'
-                        : 'Port unreachable'
-                      : 'Not checked'}
+                    ? 'Not configured'
+                    : reachable
+                      ? 'Ready'
+                      : detail
+                        ? 'Unreachable'
+                        : host
+                          ? 'Paired'
+                          : 'Pending check'}
               </span>
-              <button
-                className="text-button"
-                disabled={Boolean(busy) || !device.host}
-                onClick={() =>
-                  void run(`probe:${device.id}`, async () => {
-                    const result = await api.probe(device.id)
-                    setProbes((previous) => ({ ...previous, [device.id]: result }))
-                  })
-                }
-              >
-                {busy === `probe:${device.id}` ? 'Checking…' : host ? 'Check status' : 'Check port'}
-              </button>
+              <div className="device-tools">
+                <button
+                  className="icon-button"
+                  title="Check connection"
+                  aria-label={`Check ${device.name}`}
+                  disabled={Boolean(busy) || !device.host}
+                  onClick={() =>
+                    void run(`probe:${device.id}`, async () => {
+                      const result = await api.probe(device.id)
+                      setProbes((previous) => ({ ...previous, [device.id]: result }))
+                    })
+                  }
+                >
+                  <Icon name="refresh" size={15} />
+                </button>
+                <button
+                  className="icon-button"
+                  title="Edit device"
+                  aria-label={`Edit ${device.name}`}
+                  disabled={Boolean(busy) || inUse}
+                  onClick={() => setEditing(device)}
+                >
+                  <Icon name="edit" size={15} />
+                </button>
+              </div>
             </div>
-            {probes[device.id] && <p className="probe-detail">{probes[device.id].message}</p>}
-            {host && !probes[device.id] && (
-              <p className="probe-detail">
-                {host.error ||
-                  (host.status
-                    ? host.status.sunshineReachable
-                      ? 'Sunshine port is reachable. For the first stream, pair in Moonlight.'
-                      : 'Host is ready; Sunshine has not started or its port is unreachable.'
-                    : 'Click Check Status to confirm whether Host and Sunshine are ready.')}
-              </p>
-            )}
+            {detail && <p className="probe-detail">{detail}</p>}
           </article>
         )
       })}
       {state.config.devices.length === 0 && (
-        <button className="empty-device button secondary" onClick={newDevice}>
-          <Icon name="plus" />
-          Add a Linux, Mac, or Windows device
+        <button className="empty-device" onClick={newDevice}>
+          <Icon name="plus" size={24} />
+          <span>Add First Device</span>
         </button>
       )}
     </section>

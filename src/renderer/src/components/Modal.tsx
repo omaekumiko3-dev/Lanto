@@ -4,13 +4,13 @@ import { Icon } from '../Icon.tsx'
 
 export function Modal({
   title,
-  eyebrow,
+  notice,
   close,
   children,
   busy
 }: {
   title: string
-  eyebrow: string
+  notice?: ReactNode
   close: () => void
   children: ReactNode
   busy: boolean
@@ -20,9 +20,11 @@ export function Modal({
       if (event.key === 'Escape' && !busy) close()
       if (event.key !== 'Tab') return
       const dialog = document.querySelector<HTMLElement>('[role="dialog"]')
-      const items = dialog?.querySelectorAll<HTMLElement>(
-        'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]'
-      )
+      const items = Array.from(
+        dialog?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]'
+        ) || []
+      ).filter((item) => item.getClientRects().length > 0)
       if (!items?.length) return
       const first = items[0]!
       const last = items[items.length - 1]!
@@ -42,13 +44,13 @@ export function Modal({
       <section className="modal" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
         <header className="modal-header">
           <div>
-            <div className="eyebrow">{eyebrow}</div>
             <h2 id="dialog-title">{title}</h2>
           </div>
           <button className="icon-button" disabled={busy} aria-label="Close Dialog" onClick={close}>
             <Icon name="close" />
           </button>
         </header>
+        {notice && <div className="dialog-notice">{notice}</div>}
         {children}
       </section>
     </div>

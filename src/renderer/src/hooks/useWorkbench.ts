@@ -42,14 +42,16 @@ export function useWorkbench() {
   }
 
   const selected =
-    state?.config.devices.find((device) => device.id === selectedId) || state?.config.devices[0]
+    state?.config.devices.find((device) => device.id === selectedId) ||
+    state?.config.devices.find((device) => device.id === state.session.deviceId) ||
+    state?.config.devices.find((device) => device.host) ||
+    state?.config.devices[0]
   const settings = state?.config.settings || defaultConfig().settings
   const active = Boolean(
     state && (state.session.pid !== null || state.session.phase === 'launching')
   )
   const selectedActive = selected?.id === state?.session.deviceId
   const phase = selectedActive && state ? state.session.phase : 'idle'
-  const configured = state?.config.devices.filter((device) => device.host).length || 0
   function newDevice() {
     setEditing({ name: '', host: '', platform: 'linux', appName: 'Desktop' })
   }
@@ -76,7 +78,6 @@ export function useWorkbench() {
     setEditing,
     probes,
     setProbes,
-    configured,
     newDevice,
     run
   }

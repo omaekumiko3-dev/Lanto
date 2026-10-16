@@ -35,7 +35,7 @@ const app = await _electron.launch({
   env: environment
 })
 const page = await app.firstWindow()
-await page.getByRole('heading', { name: 'Switch devices; keep working.' }).waitFor()
+await page.getByRole('heading', { name: /^device/ }).waitFor()
 const state = await page.evaluate(() => window.lanto.getState())
 const matches = state.config.devices.filter(
   (value) => value.name === values.device || value.id === values.device
