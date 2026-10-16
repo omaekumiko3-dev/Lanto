@@ -133,6 +133,14 @@ The final full-machine startup time was 12:36:03, and the account automatically 
 
 Final `lanto-ready.tar.gz` Includes the running native app, Host release files and standalone Node, Lanto identity and media configuration, KRU runtime directory, descriptions of the three LaunchAgents and development environment entry points; it does not include the account keychain or old project source code. SHA-256 matches on Windows and Mac:`498aadb8e52a78eb4367a66ea95b0a076750ce99f0a9aea9b182f18d9bb1e8e5`. The Windows files are in the local Lanto recovery directory mapped by the Codex application, with access restricted to the current user, administrators, and SYSTEM.
 
+## Remove Mac source code later
+
+The user then chose to delete only the source code and defer the keychain. The old project directory on the Mac has been deleted,`~/Developer/Lanto`、`~/Developer/BuildCheck`, old build-service workspaces, Sunshine source code and debugging scripts, as well as deployment/recovery archives on the Mac that contain project source code. The 54 cleanup targets totaled approximately 5.45 GiB before deletion; each was confirmed absent after cleanup. The keychain, signing materials, iCloud sync settings, build tools, simulators, and Windows repositories were retained.
+
+To prevent source code deletion from affecting the service, first install the verified compiled Host artifacts and production dependencies to `~/.lanto/runtime/host-d0bd3fd`, the LaunchAgent entry point is updated to `app/host/cli.js`. After cleaning up the source, restarted Host; the management API and Sunshine reachability checks passed. The existing Windows media session continued running, and the local cursor remained enabled. Later, you can create a new project on Mac to use the existing tools,`~/Developer/README.txt` and the simulator launch entry are retained.
+
+The current Mac recovery package is `~/.lanto/maintenance/recovery/lanto-runtime-only.tar.gz`, and contains only runtime files, configuration, and entry-point instructions. It does not contain the deleted project source code; the JavaScript runtime files and third-party production dependencies are required by the service. The package has been copied back to Windows and its SHA-256 verified:`443957e1cca86fdcf60dce29bb52cde25ef64645c185e60bac36e22d750e1231`. The previous recovery package on Windows was not deleted; the old source-containing archive on the Mac has been removed. The source cleanup checklist is located at `~/.lanto/maintenance/source-removal-completed.json`。
+
 ## Download Sources and Verification
 
 The following downloads were verified this time; all are official release assets:
