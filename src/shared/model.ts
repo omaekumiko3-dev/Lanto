@@ -1,4 +1,5 @@
 import type { DiscoveredHost, TrustedHostView } from '../protocol/host.ts'
+import type { ClipboardView } from '../protocol/clipboard.ts'
 export type Platform = 'linux' | 'macos' | 'windows'
 
 export interface DeviceAudio {
@@ -29,6 +30,8 @@ export interface Settings {
   showPerformanceOverlay: boolean
   windowsPipeline: 'auto' | 'shared-bind'
   localCursor: boolean
+  shareClipboard: boolean
+  shareFiles: boolean
 }
 
 export interface Config {
@@ -55,6 +58,7 @@ export interface Activity {
 export interface AppState {
   config: Config
   session: SessionState
+  clipboard: ClipboardView
   runtime: {
     version: string
     platform: string
@@ -81,6 +85,8 @@ export interface LantoAPI {
   setDeviceAudio(input: DeviceAudio & { id: string }): Promise<AppState>
   removeDevice(id: string): Promise<AppState>
   saveSettings(input: Settings): Promise<AppState>
+  cancelClipboardTransfer(): Promise<void>
+  openClipboardFiles(): Promise<void>
   chooseMoonlight(): Promise<string | null>
   openMoonlight(): Promise<void>
   connect(id: string): Promise<void>
@@ -100,6 +106,8 @@ export const channels = {
   setDeviceAudio: 'lanto:set-device-audio',
   removeDevice: 'lanto:remove-device',
   saveSettings: 'lanto:save-settings',
+  cancelClipboardTransfer: 'lanto:cancel-clipboard-transfer',
+  openClipboardFiles: 'lanto:open-clipboard-files',
   chooseMoonlight: 'lanto:choose-moonlight',
   openMoonlight: 'lanto:open-moonlight',
   connect: 'lanto:connect',
@@ -124,7 +132,9 @@ export function defaultConfig(): Config {
       lowLatency: false,
       showPerformanceOverlay: false,
       windowsPipeline: 'auto',
-      localCursor: false
+      localCursor: false,
+      shareClipboard: false,
+      shareFiles: false
     }
   }
 }

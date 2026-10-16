@@ -7,6 +7,7 @@ import { hostRequest } from '../protocol/request.ts'
 import { initializeHost, loadHostConfig } from './config.ts'
 import { startHost } from './service.ts'
 import { systemdUnit } from './systemd.ts'
+import { startDesktopBridge } from '../clipboard/desktop-bridge.ts'
 
 const help = `Lanto Host · Headless LAN-controlled endpoint
 
@@ -17,6 +18,7 @@ npm run host -- status
 npm run host -- controllers
 npm run host -- revoke <Controller UUID>
 npm run host -- service-file
+npm run host -- clipboard-agent
 
 All commands can specify --data-dir <Local directory>。
 init supports --listen <Bind address>、--port <Port>; existing identity will not be overwritten.
@@ -42,6 +44,18 @@ async function main() {
     return
   }
   const directory = resolve(values['data-dir'] || join(homedir(), '.lanto', 'host'))
+  if (command === 'clipboard-agent') {
+    const bridge = await startDesktopBridge(join(directory, 'clipboard', 'desktop'))
+    const stop = () => {
+      void bridge.close().catch(() => {
+        process.exitCode = 1
+      })
+    }
+    process.once('SIGINT', stop)
+    process.once('SIGTERM', stop)
+    console.log('Lanto desktop clipboard component has started')
+    return
+  }
   if (command === 'service-file') {
     if (process.platform !== 'linux') throw new Error('systemd user service is for Linux only')
     console.log(systemdUnit(process.execPath, fileURLToPath(import.meta.url), directory))

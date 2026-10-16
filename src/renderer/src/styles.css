@@ -433,6 +433,63 @@ h1 span {
   border-radius: 12px;
   font-size: 13px;
 }
+.sharing-settings {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+.setting-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.setting-switch-row strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.setting-switch-row small {
+  display: block;
+  margin-top: 5px;
+  max-width: 370px;
+  line-height: 1.6;
+}
+.setting-switch-row .connection-switch {
+  flex-shrink: 0;
+}
+.clipboard-status {
+  margin-top: 24px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 12px;
+}
+.clipboard-heading,
+.clipboard-transfer > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.clipboard-heading > div {
+  display: flex;
+  gap: 18px;
+}
+.clipboard-error {
+  color: var(--muted);
+  margin: 12px 0 0;
+  line-height: 1.5;
+}
+.clipboard-transfer {
+  margin-top: 12px;
+}
+.clipboard-transfer progress {
+  display: block;
+  width: 100%;
+  height: 4px;
+  margin-top: 8px;
+  accent-color: #73b894;
+}
 .workspace-tools {
   display: flex;
   justify-content: flex-end;

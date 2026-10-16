@@ -31,4 +31,8 @@ await writeFile(
 )
 await cp(join(root, 'scripts/install-linux-host.sh'), join(output, 'install-linux-host.sh'))
 await cp(join(root, 'scripts/install-windows-host.ps1'), join(output, 'install-windows-host.ps1'))
+await cp(
+  join(root, 'scripts/install-windows-clipboard.ps1'),
+  join(output, 'install-windows-clipboard.ps1')
+)
 console.log(`Host runtime: ${output} (${packages.length} production packages, no Electron)`)

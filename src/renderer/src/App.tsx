@@ -5,6 +5,7 @@ import { DeviceCards } from './components/DeviceCards.tsx'
 import { DeviceDialog } from './components/DeviceDialog.tsx'
 import { SettingsDialog } from './components/SettingsDialog.tsx'
 import { PairHostDialog } from './components/PairHostDialog.tsx'
+import { ClipboardStatus } from './components/ClipboardStatus.tsx'
 
 export function App() {
   const model = useWorkbench()
@@ -94,6 +95,12 @@ export function App() {
           </div>
         )}
         <DeviceCards model={view} />
+        <ClipboardStatus
+          state={state.clipboard}
+          settings={() => setSettingsOpen(true)}
+          cancel={() => void run('clipboard-cancel', () => api.cancelClipboardTransfer())}
+          openFiles={() => void run('clipboard-files', () => api.openClipboardFiles())}
+        />
         <div className="workspace-tools">
           <button
             className="text-button"

@@ -20,6 +20,11 @@ test('Moonlight uses discrete arguments and leaves the remote app running after 
   assert.ok(args.includes('--no-quit-after'))
   assert.ok(args.includes('--no-background-gamepad'))
   assert.ok(args.includes('--no-mute-on-focus-loss'))
+  assert.ok(args.includes('--audio-on-host'))
+  assert.ok(args.includes('--no-performance-overlay'))
+  const overlay = streamArguments(device, { ...config.settings, showPerformanceOverlay: true })
+  assert.ok(overlay.includes('--performance-overlay'))
+  assert.ok(!overlay.includes('--no-performance-overlay'))
   assert.equal(args[args.indexOf('--capture-system-keys') + 1], 'never')
 })
 

@@ -5,44 +5,15 @@ import { pairRequestSchema } from '../protocol/host.ts'
 import type { HostStatus } from '../protocol/host.ts'
 import type { HostConfig } from './config.ts'
 import { PairingService, secretsMatch } from './pairing.ts'
-
-class HTTPError extends Error {
-  readonly status: number
-  constructor(status: number) {
-    super('request rejected')
-    this.status = status
-  }
-}
-function send(response: ServerResponse, value: unknown, status = 200) {
-  response.writeHead(status, {
-    'Content-Type': 'application/json',
-    'Cache-Control': 'no-store',
-    'X-Content-Type-Options': 'nosniff'
-  })
-  response.end(JSON.stringify(value))
-}
-async function body(request: IncomingMessage): Promise<unknown> {
-  if (request.headers['content-type']?.split(';')[0] !== 'application/json')
-    throw new HTTPError(415)
-  let bytes = 0
-  const chunks: Buffer[] = []
-  for await (const chunk of request) {
-    bytes += chunk.length
-    if (bytes > 16384) throw new HTTPError(413)
-    chunks.push(Buffer.from(chunk))
-  }
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
-  } catch {
-    throw new HTTPError(400)
-  }
-}
+import { HTTPError, send, readBody as body } from '../common/http.ts'
+import type { HostClipboard } from './clipboard.ts'
 
 export function createHostServer(options: {
   config: HostConfig
   pairing: PairingService
   createTicket: () => string
   status: () => Promise<HostStatus>
+  clipboard?: Pick<HostClipboard, 'route' | 'revoke'>
 }) {
   const { config, pairing } = options
   const attempts = new Map<string, { count: number; until: number }>()
@@ -85,6 +56,7 @@ export function createHostServer(options: {
           .strict()
           .parse(await body(request))
         await pairing.revoke(input.id)
+        await options.clipboard?.revoke(input.id)
         return send(response, { ok: true })
       }
       if (request.method === 'GET' && path === '/admin/status')
@@ -97,7 +69,12 @@ export function createHostServer(options: {
       return send(response, await options.status())
     if (request.method === 'DELETE' && path === '/v1/pair') {
       await pairing.revoke(controller.id)
+      await options.clipboard?.revoke(controller.id)
       return send(response, { ok: true })
+    }
+    if (path?.startsWith('/v1/clipboard/') && options.clipboard) {
+      await options.clipboard.route(controller.id, request, response)
+      return
     }
     throw new HTTPError(404)
   }
@@ -110,7 +87,11 @@ export function createHostServer(options: {
     },
     (request, response) => {
       void route(request, response).catch((error: unknown) => {
-        if (response.destroyed || response.headersSent) return
+        if (response.destroyed) return
+        if (response.headersSent) {
+          response.destroy()
+          return
+        }
         const status =
           error instanceof HTTPError ? error.status : error instanceof z.ZodError ? 400 : 500
         send(response, { error: 'request_rejected' }, status)
@@ -118,7 +99,9 @@ export function createHostServer(options: {
     }
   )
   server.maxConnections = 32
-  server.requestTimeout = 5000
+  // Large files have no total-duration deadline. Idle sockets and slow headers still expire.
+  server.requestTimeout = 0
+  server.setTimeout(30000, (socket) => socket.destroy())
   server.headersTimeout = 5000
   server.on('tlsClientError', () => {})
   return server

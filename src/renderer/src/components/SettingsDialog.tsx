@@ -46,6 +46,66 @@ export function SettingsDialog({
         }}
       >
         <div className="form-body">
+          <div className="setting-switch-row">
+            <div>
+              <strong>Show Performance Data</strong>
+              <small>
+                Show data such as frame rate and latency in the upper left corner of the remote screen. Changes take effect on the next connection after saving; during streaming, press Ctrl + Alt +
+                Shift + S to toggle temporarily.
+              </small>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-label="Show Performance Data"
+              autoFocus
+              aria-checked={draft.showPerformanceOverlay}
+              className="connection-switch"
+              onClick={() =>
+                setDraft({ ...draft, showPerformanceOverlay: !draft.showPerformanceOverlay })
+              }
+            >
+              <span className="switch-thumb" />
+            </button>
+          </div>
+          <div className="sharing-settings">
+            <div className="setting-switch-row">
+              <div>
+                <strong>Share Clipboard</strong>
+                <small>Sync text and images between this machine and all paired devices that are online.</small>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-label="Share Clipboard"
+                aria-checked={draft.shareClipboard}
+                className="connection-switch"
+                onClick={() => setDraft({ ...draft, shareClipboard: !draft.shareClipboard })}
+              >
+                <span className="switch-thumb" />
+              </button>
+            </div>
+            <div className="setting-switch-row">
+              <div>
+                <strong>Share Files</strong>
+                <small>
+                  Files and folders are transferred automatically after being copied and can be pasted on other devices when complete. There is no file size limit; disk space limits still apply.
+                </small>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-label="Share Files"
+                aria-checked={draft.shareFiles}
+                disabled={!draft.shareClipboard}
+                className="connection-switch"
+                onClick={() => setDraft({ ...draft, shareFiles: !draft.shareFiles })}
+              >
+                <span className="switch-thumb" />
+              </button>
+            </div>
+            <small>Sync content copied after enabling this setting. Lanto only needs to remain running; there is no need to connect to a remote screen.</small>
+          </div>
           <div className="form-columns">
             <label>
               Resolution
@@ -129,7 +189,6 @@ export function SettingsDialog({
           <label>
             Disconnect Hotkey
             <input
-              autoFocus
               required
               maxLength={80}
               value={draft.returnShortcut}
@@ -182,18 +241,9 @@ export function SettingsDialog({
                     <option value="shared-bind">Shared device and textures (experimental)</option>
                   </select>
                 </label>
-                <label>
-                  Performance Statistics
-                  <select
-                    value={String(draft.showPerformanceOverlay)}
-                    onChange={(event) =>
-                      setDraft({ ...draft, showPerformanceOverlay: event.target.value === 'true' })
-                    }
-                  >
-                    <option value="false">Hide</option>
-                    <option value="true">Show</option>
-                  </select>
-                </label>
+                <p className="settings-footnote">
+                  Audio plays on both the target machine and this device. Volume and mute on the device card affect this device only.
+                </p>
               </div>
               <p className="settings-footnote">
                 Shared textures may affect compatibility with some graphics cards or VRR. Settings take effect the next time you connect.

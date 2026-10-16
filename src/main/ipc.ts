@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { channels } from '../shared/model.ts'
 import type { Result } from '../shared/model.ts'
 import { readableError } from '../shared/validation.ts'
+import { mkdir } from 'node:fs/promises'
+import { join } from 'node:path'
 import type { Workbench } from './workbench.ts'
 
 export function registerIPC(window: () => BrowserWindow | null, workbench: Workbench): void {
@@ -41,6 +43,13 @@ export function registerIPC(window: () => BrowserWindow | null, workbench: Workb
   handle(channels.setDeviceAudio, (input) => workbench.setDeviceAudio(input))
   handle(channels.removeDevice, (input) => workbench.removeDevice(input))
   handle(channels.saveSettings, (input) => workbench.saveSettings(input))
+  handle(channels.cancelClipboardTransfer, () => workbench.cancelClipboardTransfer())
+  handle(channels.openClipboardFiles, async () => {
+    const path = join(workbench.snapshot().runtime.configDirectory, 'clipboard', 'received')
+    await mkdir(path, { recursive: true, mode: 0o700 })
+    const error = await shell.openPath(path)
+    if (error) throw new Error('Unable to open the file receiving directory')
+  })
   handle(channels.openMoonlight, () => workbench.openMoonlight())
   handle(channels.connect, (input) => workbench.connect(input))
   handle(channels.returnLocal, () => workbench.returnLocal())

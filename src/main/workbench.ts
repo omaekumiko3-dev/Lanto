@@ -20,6 +20,7 @@ import { probeSunshine } from './probe.ts'
 import { systemVault } from './secret-vault.ts'
 import { SessionManager } from './session-manager.ts'
 import { ReturnShortcut } from './shortcuts.ts'
+import { ClipboardSync } from './clipboard-sync.ts'
 
 export class Workbench {
   private config: Config = defaultConfig()
@@ -30,6 +31,7 @@ export class Workbench {
   private readonly adapter: MoonlightAdapter
   private readonly session: SessionManager
   private readonly shortcut: ReturnShortcut
+  private readonly clipboard: ClipboardSync
   private readonly activity: Activity[] = []
   private readonly directory: string
   private readonly version: string
@@ -52,6 +54,7 @@ export class Workbench {
     this.store = new ConfigStore(this.directory)
     this.trust = new TrustStore(this.directory, systemVault)
     this.hosts = new HostClient(this.trust)
+    this.clipboard = new ClipboardSync(this.trust, this.directory, this.changed)
     this.adapter = new MoonlightAdapter(join(this.directory, 'media-logs'))
     this.session = new SessionManager(this.adapter, this.changed, (message, error) =>
       this.log(message, error)
@@ -72,6 +75,10 @@ export class Workbench {
     }
     this.moonlightPath = await findMoonlight(this.config.settings.moonlightPath)
     this.shortcut.start(this.config.settings.returnShortcut)
+    await this.clipboard.configure({
+      enabled: this.config.settings.shareClipboard,
+      files: this.config.settings.shareFiles
+    })
     this.log('Local workbench is ready')
     if (!this.shortcut.registered) this.log('Failed to register the return shortcut. Change the key combination in Settings', true)
   }
@@ -80,6 +87,7 @@ export class Workbench {
     return {
       config: this.config,
       session: this.session.state,
+      clipboard: this.clipboard.snapshot(),
       trustedHosts: this.hosts.list(),
       runtime: {
         version: this.version,
@@ -193,6 +201,10 @@ export class Workbench {
       await this.shortcut.update(settings.returnShortcut, () =>
         this.persist({ ...this.config, settings })
       )
+      await this.clipboard.configure({
+        enabled: settings.shareClipboard,
+        files: settings.shareFiles
+      })
       this.log('Client settings saved')
       return this.snapshot()
     })
@@ -280,6 +292,10 @@ export class Workbench {
     this.epoch++
     this.shortcut.close()
     await this.queue.drain()
+    await this.clipboard.stop()
     await this.session.disconnect()
+  }
+  cancelClipboardTransfer(): void {
+    this.clipboard.cancel()
   }
 }

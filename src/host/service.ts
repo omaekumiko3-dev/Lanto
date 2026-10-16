@@ -4,6 +4,11 @@ import type { HostStatus } from '../protocol/host.ts'
 import type { HostConfig } from './config.ts'
 import { PairingService } from './pairing.ts'
 import { createHostServer } from './server.ts'
+import { join } from 'node:path'
+import { NativeClipboard } from '../clipboard/native.ts'
+import type { DesktopClipboard } from '../clipboard/native.ts'
+import { DesktopBridge } from '../clipboard/desktop-bridge.ts'
+import { HostClipboard } from './clipboard.ts'
 
 export async function startHost(
   config: HostConfig,
@@ -11,6 +16,7 @@ export async function startHost(
   options: {
     discovery?: boolean
     onDiscoveryError?: () => void
+    clipboard?: DesktopClipboard
   } = {}
 ) {
   const pairing = new PairingService(directory)
@@ -29,7 +35,14 @@ export async function startHost(
       port,
       certificate: config.certificate
     })
-  const server = createHostServer({ config, pairing, createTicket, status })
+  const clipboard =
+    process.platform === 'win32' && !options.clipboard
+      ? new DesktopBridge(join(directory, 'clipboard', 'desktop'))
+      : new HostClipboard(
+          options.clipboard || new NativeClipboard(join(directory, 'clipboard', 'native')),
+          join(directory, 'clipboard', 'received')
+        )
+  const server = createHostServer({ config, pairing, createTicket, status, clipboard })
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject)
     server.listen(config.port, config.listen, () => {
@@ -53,6 +66,7 @@ export async function startHost(
     createTicket,
     async close() {
       stopDiscovery?.()
+      await clipboard.close()
       await new Promise<void>((resolve) => {
         server.close(() => resolve())
         server.closeAllConnections()

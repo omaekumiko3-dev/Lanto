@@ -49,7 +49,9 @@ export const settingsSchema = z
     lowLatency: z.boolean().default(false),
     showPerformanceOverlay: z.boolean().default(false),
     windowsPipeline: z.enum(['auto', 'shared-bind']).default('auto'),
-    localCursor: z.boolean().default(false)
+    localCursor: z.boolean().default(false),
+    shareClipboard: z.boolean().default(false),
+    shareFiles: z.boolean().default(false)
   })
   .strict()
 

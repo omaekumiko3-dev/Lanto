@@ -22,12 +22,13 @@ export function streamArguments(device: Device, settings: Settings): string[] {
     '--absolute-mouse',
     '--no-quit-after',
     '--no-mute-on-focus-loss',
+    '--audio-on-host',
     '--no-background-gamepad',
     '--capture-system-keys',
     'never'
   ]
   if (settings.lowLatency) args.push('--no-vsync', '--no-frame-pacing')
-  if (settings.showPerformanceOverlay) args.push('--performance-overlay')
+  args.push(settings.showPerformanceOverlay ? '--performance-overlay' : '--no-performance-overlay')
   return args
 }
 

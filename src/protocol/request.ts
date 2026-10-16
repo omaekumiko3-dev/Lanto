@@ -1,5 +1,6 @@
 import { X509Certificate } from 'node:crypto'
 import { request } from 'node:https'
+import type { RequestOptions } from 'node:https'
 import type { HostEndpoint } from './host.ts'
 
 export class HostRequestError extends Error {
@@ -10,6 +11,22 @@ export class HostRequestError extends Error {
   }
 }
 
+export function hostRequestOptions(endpoint: HostEndpoint): RequestOptions {
+  const expected = new X509Certificate(endpoint.certificate).fingerprint256
+  return {
+    hostname: endpoint.address.replace(/^\[|\]$/g, ''),
+    port: endpoint.port,
+    ca: endpoint.certificate,
+    rejectUnauthorized: true,
+    minVersion: 'TLSv1.2',
+    agent: false,
+    checkServerIdentity: (_host, peer) =>
+      peer.fingerprint256 === expected
+        ? undefined
+        : new Error('Host certificate does not match. Confirm the device identity again')
+  }
+}
+
 export async function hostRequest(
   endpoint: HostEndpoint,
   path: string,
@@ -17,25 +34,19 @@ export async function hostRequest(
     method?: string
     body?: unknown
     token?: string
+    signal?: AbortSignal
+    maxBytes?: number
+    timeout?: number
   } = {}
 ): Promise<unknown> {
-  const expected = new X509Certificate(endpoint.certificate).fingerprint256
   const body = options.body === undefined ? undefined : JSON.stringify(options.body)
   return new Promise((resolve, reject) => {
     const request_ = request(
       {
-        hostname: endpoint.address.replace(/^\[|\]$/g, ''),
-        port: endpoint.port,
+        ...hostRequestOptions(endpoint),
+        signal: options.signal,
         path,
         method: options.method || 'GET',
-        ca: endpoint.certificate,
-        rejectUnauthorized: true,
-        minVersion: 'TLSv1.2',
-        agent: false,
-        checkServerIdentity: (_host, peer) =>
-          peer.fingerprint256 === expected
-            ? undefined
-            : new Error('Host certificate does not match. Confirm the device identity again'),
         headers: {
           ...(body
             ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
@@ -48,7 +59,7 @@ export async function hostRequest(
         let bytes = 0
         response.on('data', (chunk: Buffer) => {
           bytes += chunk.length
-          if (bytes > 32768) {
+          if (bytes > (options.maxBytes ?? 32768)) {
             request_.destroy(new Error('Host response is too large'))
             return
           }
@@ -81,7 +92,7 @@ export async function hostRequest(
     )
     const deadline = setTimeout(
       () => request_.destroy(new Error('Host request timed out. Check the address and network')),
-      5000
+      options.timeout ?? 5000
     )
     request_.once('close', () => clearTimeout(deadline))
     request_.once('error', (error) => reject(error))
