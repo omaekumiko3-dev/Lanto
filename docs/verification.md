@@ -108,3 +108,13 @@ The local machine was updated to native client v5, retaining the existing stream
 | Unmute and restore to 25% | 0.0062580 |
 
 This result verifies that the actual output gain changes with the card; it does not mean perceived loudness is linear. The test tone has stopped; everyday volume and diagnostic settings have been restored, and the remote system volume and service were not changed.
+
+## Windows controlled-device deployment
+
+On 2026-10-17, installed the official stable Sunshine MSI, standalone Node.js Host, and LOCAL SERVICE startup task on Windows 11 Pro / RTX 3080, and completed both Host and Sunshine pairing. The Windows control app displayed a real 2560×1440 HEVC desktop; the first video packet arrived in about 300ms, and D3D11VA decoding succeeded. The configured send rate was 60fps; a static desktop sample cannot be accepted as proof of sustained 60fps. A low volume test sound played in an existing remote console session. This machine read only the WASAPI audio session for that Moonlight process, with an average peak of `0.00300045`, confirming actual audio output.
+
+After rerunning the Windows installer, the identity and authorization file hashes remain unchanged, and the Host is usable again; check the startup trigger, LOCAL SERVICE account, failure retries, absence of a runtime limit, and private file ACLs. After restarting the Sunshine service, the existing media pairing can still be read through the authenticated applications list endpoint for Desktop/Steam Big Picture. The firewall entries for both Host and Sunshine are restricted to the local subnet; the machine was not rebooted.
+
+The user asked to complete background checks first; their local full screen game occupies the foreground. Keyboard and mouse events were not injected, and clicking, dragging, Chinese input, or game input were not marked as passed. Temporary test windows and audio tasks were deleted, and performance statistics were turned off again. For detailed versions, paths, and limits, see [Windows Deployment Record](windows-windows-deployment.md)。
+
+The 23 core tests in this run, Host TypeScript build, formatting checks, PowerShell parsing, and diff whitespace checks passed. No changes were made to the controller UI or native player code, and no unit tests duplicating existing implementation logic were added; first-time installation, repeated execution, real service recovery, and permission checks for the Windows installer were all completed on the target machine.

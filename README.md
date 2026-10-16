@@ -69,9 +69,11 @@ npm run host -- controllers
 npm run host -- revoke <Controller UUID>
 ```
 
-The Host listens on TCP 48199 by default and uses mDNS UDP 5353 for discovery; it does not automatically adjust the system firewall. Local CLI management operations use only the loopback address. Host and Sunshine are separate processes; Sunshine currently needs to be installed and started independently. See[Host Usage](docs/host.md)。
+The Host listens on TCP 48199 by default, and discovery uses mDNS UDP 5353. The CLI does not automatically adjust the system firewall; the Windows installer provides a rule limited to the local subnet. Local management operations in the CLI use only the loopback address. The Host and Sunshine are separate processes, and Sunshine currently needs to be installed and started separately. See[Host Usage](docs/host.md)。
 
 You can also run `npm run host:build` and `node scripts/package-host.mjs out/host-runtime`on a development machine, copy the newly generated runtime directory to a fixed location on Linux, then run its `install-linux-host.sh`as the desktop user. This installs a systemd user service and preserves the existing Host identity. There is no need to install Electron or the full source code on the controlled device. See [Linux Deployment Record](docs/linux-windows-deployment.md)。
+
+The Windows runtime package provides `install-windows-host.ps1`: Configure the LOCAL SERVICE startup task, private data ACLs, and the LAN firewall. Windows → Windows has completed real Host/media pairing and 2K HEVC video and audio verification; keyboard and mouse, Chinese input, and sustained 60fps in dynamic scenes are awaiting acceptance when the foreground is free. See [Windows Deployment Record](docs/windows-windows-deployment.md)。
 
 ## Development and Checks
 
@@ -96,6 +98,7 @@ Icon source files are in `assets/*.svg`. PNG and ICO files with multiple sizes f
 - [Host Usage](docs/host.md): initialization, pairing, authorization revocation, and Linux background operation.
 - [Windows → Mac Deployment Record](docs/mac-windows-deployment.md): physical machine installation, startup after login, dual pairing, and desktop permission acceptance status.
 - [Windows → Linux Deployment Record](docs/linux-windows-deployment.md): Ubuntu/NVIDIA deployment, same Wayland session, Chinese input, and restart acceptance.
+- [Windows → Windows Deployment Record](docs/windows-windows-deployment.md): Windows service, Host startup task, ACLs, dual pairing, and audio/video acceptance scope.
 - [Performance Investigation](docs/performance-investigation.md): real-machine decoding/rendering comparison, native media path, and measurement basis.
 - [Native Media Experiment Components](native/README.md): local cursor, fixed patches for Mac ScreenCaptureKit/VideoToolbox, build, and rollback.
 - [First-Version Verification Record](docs/verification.md): local checks that have passed and real-machine capabilities not yet verified.
