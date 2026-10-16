@@ -127,7 +127,7 @@ export function SettingsDialog({
             </label>
           </div>
           <label>
-            Shortcut to return to this machine
+            Disconnect Hotkey
             <input
               autoFocus
               required
@@ -136,7 +136,7 @@ export function SettingsDialog({
               onChange={(event) => setDraft({ ...draft, returnShortcut: event.target.value })}
               spellCheck={false}
             />
-            <small>Disconnect the remote screen and return. The connection stays active when switching with Alt + Tab.</small>
+            <small>Keep the connection when switching windows with Alt + Tab. Display settings take effect the next time you connect.</small>
           </label>
           <details className="advanced-settings">
             <summary>Advanced Settings</summary>

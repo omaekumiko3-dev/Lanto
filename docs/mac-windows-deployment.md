@@ -54,7 +54,7 @@ After reboot, Sunshine’s screen capture initialization succeeded and the H.264
 
 Current status: management connection, media pairing, media handshake, and encoder startup have passed; the user has seen the desktop and confirmed that basic input works. Subsequent responsiveness optimization is described below. Stable frame rate, full Chinese input compatibility, and dedicated keyboard shortcuts still require separate acceptance.`sunshineReachable: true` This only indicates that the local TCP port is reachable; it cannot replace visual acceptance.
 
-Open Lanto on the Windows desktop, select KumikoMac, then click Open Remote Desktop. For the first connection, use 2560×1440, 30fps, and 20Mbps; this machine currently uses the response optimized settings below. The shortcut to return to this machine is `Ctrl + Alt + F12`, which will close the local streaming client. The display is hosted in a separate Moonlight window; use Windows native `Alt + Tab` Switching windows can retain the session without rewriting system keyboard shortcuts.
+On Windows, open the Lanto desktop app and turn on the connection switch in the upper-right corner of the KumikoMac card. For the initial connection, use 2560×1440, 30fps, and 20Mbps; this local machine currently uses the response-optimization settings below. The shortcut key to return to this machine is `Ctrl + Alt + F12`, which will close the local streaming client. The display is hosted in a separate Moonlight window; use Windows native `Alt + Tab` Switching windows can retain the session without rewriting system keyboard shortcuts.
 
 ## Response Optimization
 

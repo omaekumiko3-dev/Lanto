@@ -6,7 +6,6 @@ import { errorText } from '../format.ts'
 export function useWorkbench() {
   const api = window.lanto
   const [state, setState] = useState<AppState | null>(null)
-  const [selectedId, setSelectedId] = useState('')
   const [busy, setBusy] = useState('')
   const [notice, setNotice] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -41,17 +40,10 @@ export function useWorkbench() {
     }
   }
 
-  const selected =
-    state?.config.devices.find((device) => device.id === selectedId) ||
-    state?.config.devices.find((device) => device.id === state.session.deviceId) ||
-    state?.config.devices.find((device) => device.host) ||
-    state?.config.devices[0]
   const settings = state?.config.settings || defaultConfig().settings
   const active = Boolean(
     state && (state.session.pid !== null || state.session.phase === 'launching')
   )
-  const selectedActive = selected?.id === state?.session.deviceId
-  const phase = selectedActive && state ? state.session.phase : 'idle'
   function newDevice() {
     setEditing({ name: '', host: '', platform: 'linux', appName: 'Desktop' })
   }
@@ -60,13 +52,8 @@ export function useWorkbench() {
     api,
     state,
     setState,
-    selected,
-    selectedId,
-    setSelectedId,
     settings,
     active,
-    selectedActive,
-    phase,
     busy,
     notice,
     setNotice,

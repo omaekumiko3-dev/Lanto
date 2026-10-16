@@ -120,8 +120,6 @@ export class Workbench {
         (previous.host !== value.host || previous.platform !== value.platform)
       )
         throw new Error('The address and system of a paired device are managed by Host identity; pair again after the address changes')
-      if (value.id === this.session.state.deviceId && this.session.state.pid !== null)
-        throw new Error('Return to this machine before editing the current session’s device')
       const device = { ...value, id: value.id || randomUUID() }
       const devices = previous
         ? this.config.devices.map((entry) => (entry.id === device.id ? device : entry))
@@ -136,7 +134,7 @@ export class Workbench {
     return this.queue.run(async () => {
       const device = this.device(input)
       if (device.id === this.session.state.deviceId && this.session.state.pid !== null)
-        throw new Error('Return to this machine before removing this device')
+        throw new Error('Disconnect before removing this device')
       if (device.hostId) await this.hosts.unpair(device.hostId)
       await this.persist({
         ...this.config,
@@ -189,7 +187,7 @@ export class Workbench {
   openMoonlight(): Promise<void> {
     return this.queue.run(async () => {
       if (this.session.state.pid !== null)
-        throw new Error('Return to this machine before opening the Moonlight pairing window')
+        throw new Error('Disconnect before opening the Moonlight pairing window')
       await this.adapter.open(this.config.settings)
       this.log('Moonlight opened. Complete streaming pairing there')
     })
@@ -216,14 +214,14 @@ export class Workbench {
 
   pairHost(input: unknown): Promise<AppState> {
     return this.queue.run(async () => {
-      if (this.session.state.pid !== null) throw new Error('Return to this machine before pairing the Host')
+      if (this.session.state.pid !== null) throw new Error('Disconnect before pairing with the Host')
       const ticket = z.string().max(16000).parse(input)
       const host = await this.hosts.pair(ticket)
       const existing = this.config.devices.find((entry) => entry.hostId === host.id)
       const device: Device = {
         id: existing?.id || randomUUID(),
         hostId: host.id,
-        name: host.name.slice(0, 50),
+        name: existing?.name || host.name.slice(0, 50),
         platform: host.platform,
         host: host.address,
         appName: existing?.appName || 'Desktop'

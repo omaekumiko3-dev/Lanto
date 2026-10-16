@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,6 +22,7 @@ async function launch() {
   application = await electron.launch({
     executablePath: electronExecutable,
     args: [root, '--lanto-smoke-test'],
+    cwd: testData,
     env: environment,
     timeout: 30000
   })
@@ -72,10 +73,8 @@ try {
   assert.deepEqual((await page.evaluate(() => window.lanto.getState())).config.devices, [])
   assert.equal(await page.locator('.device-card').count(), 0)
   await page.getByRole('button', { name: 'Add First Device', exact: true }).waitFor()
-  assert.equal(
-    await page.getByRole('button', { name: 'Open Remote Desktop', exact: true }).isDisabled(),
-    true
-  )
+  assert.equal(await page.getByRole('switch').count(), 0)
+  assert.equal(await page.getByRole('button', { name: 'Return to This Machine', exact: true }).count(), 0)
   await page.screenshot({ path: join(artifacts, 'workbench.png'), fullPage: true })
   await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].setSize(680, 480)
@@ -116,7 +115,7 @@ try {
   assert.equal((await page.evaluate(() => window.lanto.getState())).config.devices.length, 2)
 
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await page.getByLabel('Shortcut to return to this machine').fill('Control+Alt+Shift+F11')
+  await page.getByLabel('Disconnect Hotkey').fill('Control+Alt+Shift+F11')
   await page.getByLabel('Bitrate (Mbps)').fill('35')
   await page.getByLabel('Show Cursor').selectOption('true')
   await page.getByRole('button', { name: 'Save Settings', exact: true }).click()
@@ -166,12 +165,142 @@ try {
     }
   })
   assert.equal(rejection, true)
+
+  // A real, isolated child process exercises session lifecycle without a remote host.
+  // MoonlightAdapter passes "stream" as its first argument; Node runs this fixture.
+  await writeFile(
+    join(testData, 'stream'),
+    `const fs = require('node:fs');
+fs.appendFileSync('media-starts.jsonl', JSON.stringify({ pid: process.pid, args: process.argv.slice(2) }) + '\\n');
+setInterval(() => {}, 1000);
+`
+  )
+  const mediaSettings = (await page.evaluate(() => window.lanto.getState())).config.settings
+  await page.evaluate(
+    (moonlightPath) =>
+      window.lanto.getState().then(({ config }) =>
+        window.lanto.saveSettings({
+          ...config.settings,
+          moonlightPath,
+          localCursor: false,
+          windowsPipeline: 'auto'
+        })
+      ),
+    process.execPath
+  )
+  async function waitPhase(phase, deviceName) {
+    let matched = false
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const state = await page.evaluate(() => window.lanto.getState())
+      if (
+        state.session.phase === phase &&
+        (!deviceName ||
+          state.config.devices.some(
+            (device) => device.id === state.session.deviceId && device.name === deviceName
+          ))
+      ) {
+        matched = true
+        break
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+    assert.equal(matched, true, `Session did not reach ${phase} for ${deviceName || 'any device'}`)
+    if (phase === 'running') {
+      const { config, session } = await page.evaluate(() => window.lanto.getState())
+      const name = config.devices.find((device) => device.id === session.deviceId).name
+      await page.getByRole('switch', { name: `${name} Connectivity`, exact: true, checked: true }).waitFor()
+    } else if (phase === 'idle' || phase === 'failed') {
+      await page.waitForFunction(
+        () => document.querySelectorAll('[role="switch"][aria-checked="true"]').length === 0
+      )
+    }
+  }
+  async function launches(count) {
+    let records = []
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const content = await readFile(join(testData, 'media-starts.jsonl'), 'utf8').catch(() => '')
+      records = content
+        .trim()
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => JSON.parse(line))
+      if (records.length >= count) return records
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+    throw new Error(`Expected ${count} media launches, got ${records.length}`)
+  }
+  const linuxSwitch = page.getByRole('switch', { name: 'Connect to Test Linux', exact: true })
+  assert.equal(await linuxSwitch.isChecked(), false)
+  await linuxSwitch.click()
+  await waitPhase('running', 'Test Linux')
+  assert.equal(await linuxSwitch.isChecked(), true)
+  const running = (await page.evaluate(() => window.lanto.getState())).session
+  await launches(1)
+  await page.getByRole('button', { name: 'Edit Test Linux', exact: true }).click()
+  assert.equal(await page.getByRole('button', { name: 'Remove Device', exact: true }).isDisabled(), true)
+  await page.getByLabel('Device name').fill('Build Linux')
+  await page.getByLabel('Sunshine Application Name').fill('Next Desktop')
+  await page.getByRole('button', { name: 'Save Device', exact: true }).click()
+  await page.getByRole('dialog').waitFor({ state: 'hidden' })
+  assert.equal(
+    await page.getByRole('switch', { name: 'Connect to Build Linux', exact: true }).isChecked(),
+    true
+  )
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByLabel('Bitrate (Mbps)').fill('36')
+  await page.getByRole('button', { name: 'Save Settings', exact: true }).click()
+  await page.getByRole('dialog').waitFor({ state: 'hidden' })
+  assert.equal((await page.evaluate(() => window.lanto.getState())).session.pid, running.pid)
+  assert.equal(
+    await page.evaluate(async (id) => {
+      try {
+        await window.lanto.removeDevice(id)
+        return false
+      } catch {
+        return true
+      }
+    }, running.deviceId),
+    true
+  )
+  await page.screenshot({ path: join(artifacts, 'connection-switch.png') })
+
+  const windowsSwitch = page.getByRole('switch', { name: 'Connect to Test Windows', exact: true })
+  await windowsSwitch.click()
+  await waitPhase('running', 'Test Windows')
+  assert.equal(await windowsSwitch.isChecked(), true)
+  assert.equal(
+    await page.getByRole('switch', { name: 'Connect to Build Linux', exact: true }).isChecked(),
+    false
+  )
+  await launches(2)
+  await windowsSwitch.focus()
+  await windowsSwitch.press('Space')
+  await waitPhase('idle')
+  assert.equal(await windowsSwitch.isChecked(), false)
+
+  await page.getByRole('switch', { name: 'Connect to Build Linux', exact: true }).click()
+  await waitPhase('running')
+  const records = await launches(3)
+  assert.equal(records[0].args[1], 'Desktop')
+  assert.equal(records[2].args[1], 'Next Desktop')
+  assert.equal(records[2].args[records[2].args.indexOf('--bitrate') + 1], '36000')
+  process.kill(records[2].pid)
+  await waitPhase('failed')
+  assert.equal(await page.getByRole('switch', { checked: true }).count(), 0)
+  await page.getByRole('alert').filter({ hasText: 'Moonlight Has Exited' }).waitFor()
+  await page.getByRole('switch', { name: 'Connect to Build Linux', exact: true }).click()
+  await waitPhase('running')
+  await page.getByRole('switch', { name: 'Connect to Build Linux', exact: true }).click()
+  await waitPhase('idle')
+  await page.evaluate((settings) => window.lanto.saveSettings(settings), mediaSettings)
+
   await application.close()
   application = null
 
   page = await launch()
   const persisted = await page.evaluate(() => window.lanto.getState())
   assert.equal(persisted.config.devices[0].host, 'linux1.local')
+  assert.equal(persisted.config.devices[0].name, 'Build Linux')
   assert.equal(persisted.config.settings.bitrateMbps, 35)
   assert.equal(persisted.session.phase, 'idle')
   await page.getByRole('button', { name: 'Edit Test Windows', exact: true }).click()
@@ -241,7 +370,7 @@ try {
   await closed
   application = null
   console.log(
-    'Electron smoke passed: frameless layout, compact settings, window IPC validation and close, device CRUD, real Host TLS pairing, encrypted credentials, restart and unpair; screenshots: test-results/'
+    'Electron smoke passed: connection switches, live rename/settings, next-launch parameters, process exit recovery, frameless layout, device CRUD, real Host TLS pairing, encrypted credentials, restart and unpair; screenshots: test-results/'
   )
 } finally {
   await application?.close()

@@ -1,7 +1,6 @@
 import { useWorkbench } from './hooks/useWorkbench.ts'
 import { Icon } from './Icon.tsx'
 import { Titlebar } from './components/Titlebar.tsx'
-import { SessionBar } from './components/SessionBar.tsx'
 import { DeviceCards } from './components/DeviceCards.tsx'
 import { DeviceDialog } from './components/DeviceDialog.tsx'
 import { SettingsDialog } from './components/SettingsDialog.tsx'
@@ -16,7 +15,6 @@ export function App() {
     settingsOpen,
     setSettingsOpen,
     newDevice,
-    setSelectedId,
     run,
     api,
     setEditing,
@@ -107,7 +105,6 @@ export function App() {
           </button>
         </div>
       </main>
-      <SessionBar model={view} />
 
       {pairOpen && (
         <PairHostDialog
@@ -120,7 +117,6 @@ export function App() {
               await run('pair-host', async () => {
                 const next = await api.pairHost(ticket)
                 setState(next)
-                setSelectedId(next.config.devices.at(-1)!.id)
               })
             )
               setPairOpen(false)
@@ -149,6 +145,7 @@ export function App() {
         <DeviceDialog
           notice={feedback}
           device={editing}
+          active={active && editing.id === state.session.deviceId}
           busy={Boolean(busy)}
           close={() => setEditing(null)}
           save={async (input) => {
@@ -156,7 +153,6 @@ export function App() {
               await run('device', async () => {
                 const next = await api.saveDevice(input)
                 setState(next)
-                setSelectedId(input.id || next.config.devices.at(-1)!.id)
                 setProbes((previous) => {
                   const copy = { ...previous }
                   if (input.id) delete copy[input.id]

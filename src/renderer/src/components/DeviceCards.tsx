@@ -3,19 +3,8 @@ import { Icon } from '../Icon.tsx'
 import { platformNames, phaseNames } from '../format.ts'
 
 export function DeviceCards({ model }: { model: WorkbenchView }) {
-  const {
-    state,
-    selected,
-    active,
-    busy,
-    newDevice,
-    setSelectedId,
-    run,
-    api,
-    setEditing,
-    probes,
-    setProbes
-  } = model
+  const { state, active, busy, newDevice, run, api, setEditing, probes, setProbes } = model
+  const waiting = state.session.phase === 'launching' || state.session.phase === 'stopping'
   return (
     <section className="device-cards" aria-label="Device list">
       {state.config.devices.map((device) => {
@@ -27,16 +16,8 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
         const detail =
           host?.error || (probes[device.id]?.reachable === false ? probes[device.id]?.message : '')
         return (
-          <article
-            className={`device-card ${selected?.id === device.id ? 'selected-card' : ''}`}
-            key={device.id}
-          >
-            <button
-              className="device-select"
-              aria-label={device.name}
-              aria-pressed={selected?.id === device.id}
-              onClick={() => setSelectedId(device.id)}
-            >
+          <article className={`device-card ${inUse ? 'active-card' : ''}`} key={device.id}>
+            <div className="device-heading">
               <span className={`platform-icon ${device.platform}`}>
                 <Icon name={device.platform} size={26} />
               </span>
@@ -44,10 +25,31 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
                 <strong>{device.name}</strong>
                 <small>{device.host || 'Address not set'}</small>
               </span>
-              <span className="selection-mark">
-                <Icon name="check" size={13} />
-              </span>
-            </button>
+              <button
+                type="button"
+                className="connection-switch"
+                role="switch"
+                aria-label={`${device.name} Connectivity`}
+                aria-checked={inUse}
+                aria-busy={inUse && waiting}
+                title={inUse ? 'Disconnect' : 'Connect device'}
+                disabled={
+                  Boolean(busy) ||
+                  waiting ||
+                  (!inUse &&
+                    (!device.host ||
+                      !state.runtime.moonlightPath ||
+                      !state.runtime.shortcutRegistered))
+                }
+                onClick={() =>
+                  void run(`connection:${device.id}`, () =>
+                    inUse ? api.returnLocal() : api.connect(device.id)
+                  )
+                }
+              >
+                <span className="switch-thumb" />
+              </button>
+            </div>
             <div className="device-card-footer">
               <span className="platform-label">{platformNames[device.platform]}</span>
               <span className={`probe-label ${inUse || reachable ? 'reachable' : ''}`}>
@@ -81,9 +83,9 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
                 </button>
                 <button
                   className="icon-button"
-                  title="Edit device"
+                  title="Rename and device settings"
                   aria-label={`Edit ${device.name}`}
-                  disabled={Boolean(busy) || inUse}
+                  disabled={Boolean(busy)}
                   onClick={() => setEditing(device)}
                 >
                   <Icon name="edit" size={15} />

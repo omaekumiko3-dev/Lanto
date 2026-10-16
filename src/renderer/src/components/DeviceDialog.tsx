@@ -8,6 +8,7 @@ import { Modal } from './Modal.tsx'
 export function DeviceDialog({
   notice,
   device,
+  active,
   busy,
   close,
   save,
@@ -15,6 +16,7 @@ export function DeviceDialog({
 }: {
   notice?: ReactNode
   device: DeviceInput
+  active: boolean
   busy: boolean
   close: () => void
   save: (device: DeviceInput) => Promise<void>
@@ -82,9 +84,11 @@ export function DeviceDialog({
           <div className="form-note">
             <Icon name="link" size={17} />
             <span>
-              {device.hostId
-                ? 'Host is paired. Pair again if the address or system changes. Removing the device revokes this control app’s Host authorization; Moonlight streaming pairing is managed separately.'
-                : 'You can enter the address later. Before connecting for the first time, add this host in Moonlight and complete pairing.'}
+              {active
+                ? 'Name updates immediately; connection settings take effect the next time you connect.'
+                : device.hostId
+                  ? 'Host is paired. Pair again if the address or system changes. Removing the device revokes this control app’s Host authorization; Moonlight streaming pairing is managed separately.'
+                  : 'You can enter the address later. Before connecting for the first time, add this host in Moonlight and complete pairing.'}
             </span>
           </div>
         </div>
@@ -93,7 +97,8 @@ export function DeviceDialog({
             <button
               className={`text-button danger ${confirmRemove ? 'confirm' : ''}`}
               type="button"
-              disabled={busy}
+              disabled={busy || active}
+              title={active ? 'Turn off the connection toggle before removing the device' : undefined}
               onClick={() => (confirmRemove ? void remove() : setConfirmRemove(true))}
             >
               {confirmRemove ? 'Confirm Device Removal' : 'Remove Device'}
