@@ -75,6 +75,8 @@ When statistics are enabled, Lanto writes Moonlight stderr to Windows `%APPDATA%
 
 If tearing occurs, you can change “Latency Strategy” back to “Follow Moonlight Settings”; it takes effect on the next connection. The statistics overlay can use Moonlight’s `Ctrl + Alt + Shift + S` Temporarily hidden; starts with the settings saved by Lanto when reconnected.
 
+Later, at the user’s request, a native decoding/rendering investigation and eight short comparisons were conducted, adding reversible Windows shared-device and texture experiment items. They are enabled locally, and the user confirmed “Normal, the controls feel more responsive.” The data supports a reduction in average rendering time; there is not yet a complete end-to-end measurement. See[Performance Investigation](performance-investigation.md). The temporary test animation on the Mac has exited, and the normal desktop connection has been restored.
+
 ## Download Sources and Verification
 
 The following downloads were verified this time; all are official release assets:

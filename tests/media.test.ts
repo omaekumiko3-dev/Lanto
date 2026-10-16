@@ -1,9 +1,13 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer } from 'node:net'
+import { mkdtemp, readFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { defaultConfig } from '../src/shared/model.ts'
 import { launchMedia, streamArguments } from '../src/main/moonlight.ts'
 import { probeSunshine } from '../src/main/probe.ts'
+import { removeTestDirectory } from './temp.ts'
 
 test('Moonlight uses discrete arguments and leaves the remote app running after disconnect', () => {
   const config = defaultConfig()
@@ -49,4 +53,25 @@ test('native adapter stops its own child and reports a missing executable', asyn
     await child.stop()
   }
   await assert.rejects(launchMedia('C:/lanto-nonexistent-test-fixture/absent.exe', []), /unable to start/)
+})
+
+test('native renderer overrides reach only the owned child and leave its parent unchanged', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'lanto-media-env-'))
+  const previous = process.env.LANTO_MEDIA_TEST_ENV
+  try {
+    const script = 'process.stderr.write(process.env.LANTO_MEDIA_TEST_ENV ?? "unset")'
+    const overrideFile = join(directory, 'override.log')
+    const child = await launchMedia(process.execPath, ['-e', script], overrideFile, {
+      LANTO_MEDIA_TEST_ENV: 'child-only'
+    })
+    assert.equal((await child.closed).code, 0)
+    assert.equal(await readFile(overrideFile, 'utf8'), 'child-only')
+    assert.equal(process.env.LANTO_MEDIA_TEST_ENV, previous)
+    const defaultFile = join(directory, 'default.log')
+    const next = await launchMedia(process.execPath, ['-e', script], defaultFile)
+    assert.equal((await next.closed).code, 0)
+    assert.equal(await readFile(defaultFile, 'utf8'), previous ?? 'unset')
+  } finally {
+    await removeTestDirectory(directory, 'lanto-media-env-')
+  }
 })

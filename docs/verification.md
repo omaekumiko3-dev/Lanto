@@ -7,7 +7,7 @@ Date: 2026-10-16. Environment: local Windows machine, Node.js 24.12.0, Electron 
 | `npm run build` | Type checking and main/preload/renderer builds pass |
 | `npm run host:build` | The standalone Node.js Host build passes, and the built CLI runs |
 | `npm run format:check` | Passed |
-| `npm test` | All 17 items passed |
+| `npm test` | All 18 items passed |
 | `npm run test:smoke` | Real Electron operations and loopback Host pairing passed under isolated configuration |
 | npm dependency audit | Reported 0 known vulnerabilities after installation; this does not mean that no unknown issues exist |
 | `git diff --check` | Passed |
@@ -23,5 +23,7 @@ Real component deployment from Windows → Mac has also been completed: the Node
 Later, Windows → Mac was changed to 2K 60fps, prioritize responsiveness, and enable statistics. Client logs confirm `2560x1440x60`、RTX 3080 D3D11VA hardware decoding/rendering, with V-sync and frame pacing disabled; the server confirmed that the hardware encoding session was established. The user reported that the mouse, input, and dragging experience had “improved noticeably.” The new settings were saved through the actual interface and the connection was re-established; it was verified that the diagnostic file could still be written by the child process after the parent process closed the file handle. No end-to-end latency figures before and after optimization were recorded.
 
 No connection was made to a real Linux1 machine, and no firewall, router, or NAS was modified. Cross device mDNS discovery and actual Linux systemd installation have not been accepted on site. There are no complete real world results for Chinese input compatibility, shortcut use in games, remote key release, stable frame rate, game frame time, or multi machine switching latency.
+
+In addition, eight sets of real-media comparisons have been completed: shared-device and direct-decoded texture binding had lower average values in this rendering round; decoding has not yet consistently won. See[Performance Investigation](performance-investigation.md)Windows then enabled the experimental items on the local machine; the logs confirmed shared／bind／D3D11VA, and the user confirmed that the picture and input worked normally and felt more responsive. A new real subprocess check covers that the environment parameters apply only to the specified subprocess, without contaminating the parent process or subsequent ordinary subprocesses. PresentMon ETW capture was not completed due to insufficient current permissions; no physical-display or end-to-end latency was reported.
 
 The next step is to connect the real Windows → Linux1 Sunshine/Moonlight link and run acceptance tests according to[Design document](design.md#Verification Phase), then expand media telemetry and warm up sessions.

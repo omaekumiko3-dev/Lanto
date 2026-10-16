@@ -31,6 +31,8 @@ For quick everyday switching, use the native Windows `Alt + Tab`: Moonlight stay
 
 Performance Statistics can show Moonlight’s diagnostic overlay and save that client run’s log under `media-logs/`, created only when statistics are enabled. Logs may contain host addresses, device information, and app information, and are not included in Git. The next connection will not create a diagnostic log if statistics are turned off. Moonlight’s own `Ctrl + Alt + Shift + S` can temporarily show or hide the statistics overlay.[Meaning of Statistics Fields](https://github.com/moonlight-stream/moonlight-docs/wiki/Frequently-Asked-Questions#what-do-the-numbers-mean-in-the-on-screen-connection-statistics)。
 
+Windows can use the experimental Shared Device and Texture graphics pipeline. A short local comparison measured average rendering time dropping from the default 0.19–0.21ms to 0.07–0.08ms; decoding has not yet shown a consistent win. The default remains Automatic. Some drivers and VRR still need separate testing. Evidence, rewrite boundaries, and retest tools are in[Performance Investigation](docs/performance-investigation.md)。
+
 Device addresses are blank by default; the interface does not pretend that a device is online. Paired Hosts use an authenticated endpoint to check identity and Sunshine status; manual devices only check whether TCP 47989 is reachable. Neither means that video is connected. Custom Sunshine ports are not yet supported.
 
 This version manages one streaming process at a time. Switching to another device first closes the current client, then starts the next one; multi-device prewarming and embedded displays are not yet implemented. Returning to the local machine attempts to close the window normally, then terminates the client process created by Lanto if it times out. It does not send the remote application termination `quit` command. Moonlight’s own `Ctrl + Alt + Shift + Q`can be used as an emergency backup exit shortcut; it still needs verification in actual systems and games.
@@ -83,6 +85,7 @@ Core tests cover configuration, sessions, real TLS, pairing invalidation, author
 - [Responsibilities of the Two Sides and Implementation Order](docs/roles.md): responsibility constraints for the controller, Host, shared protocol, and media engine.
 - [Host Usage](docs/host.md): initialization, pairing, authorization revocation, and Linux background operation.
 - [Windows → Mac Deployment Record](docs/mac-windows-deployment.md): physical machine installation, startup after login, dual pairing, and desktop permission acceptance status.
+- [Performance Investigation](docs/performance-investigation.md): real-machine decoding/rendering comparison, native media path, and measurement basis.
 - [First-Version Verification Record](docs/verification.md): local checks that have passed and real-machine capabilities not yet verified.
 - [Repository Metadata Snapshot](research/repositories.json): upstream addresses, push times, archive status, and item-by-item assessments checked on 2026-10-16.
 - [Key Project Version Snapshot](research/source-pins.json): commit and release records from the research period. A release record may refer to a prerelease and does not necessarily indicate a recommended version to install.

@@ -45,7 +45,8 @@ export const settingsSchema = z
     bitrateMbps: z.number().int().min(5).max(100),
     windowMode: z.enum(['borderless', 'windowed']),
     lowLatency: z.boolean().default(false),
-    showPerformanceOverlay: z.boolean().default(false)
+    showPerformanceOverlay: z.boolean().default(false),
+    windowsPipeline: z.enum(['auto', 'shared-bind']).default('auto')
   })
   .strict()
 

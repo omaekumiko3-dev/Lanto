@@ -21,6 +21,7 @@ export interface Settings {
   windowMode: 'borderless' | 'windowed'
   lowLatency: boolean
   showPerformanceOverlay: boolean
+  windowsPipeline: 'auto' | 'shared-bind'
 }
 
 export interface Config {
@@ -124,7 +125,8 @@ export function defaultConfig(): Config {
       bitrateMbps: 20,
       windowMode: 'borderless',
       lowLatency: false,
-      showPerformanceOverlay: false
+      showPerformanceOverlay: false,
+      windowsPipeline: 'auto'
     }
   }
 }

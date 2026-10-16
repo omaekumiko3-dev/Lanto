@@ -1,0 +1,156 @@
+{
+  "date": "2026-10-16",
+  "hardware": {
+    "host": "Apple M2",
+    "client": "NVIDIA RTX 3080",
+    "hostRefreshHz": 60,
+    "clientReportedRefreshHz": 60
+  },
+  "installed": {
+    "moonlight": { "version": "6.2.0", "commit": "de2467e433821664cdd2224aad8c89a625be1ad9" },
+    "sunshine": {
+      "version": "2026.914.233613",
+      "commit": "63d35f702ee9e362e43263742981836ec0710384"
+    }
+  },
+  "userScreenshot": {
+    "codec": "HEVC",
+    "resolution": [2560, 1440],
+    "fps": 59.79,
+    "networkRttMs": 1,
+    "networkVarianceMs": 0,
+    "networkDropPercent": 0,
+    "jitterDropPercent": 0,
+    "decodeMs": 0.29,
+    "queueMs": 0.01,
+    "renderMs": 0.17,
+    "hostProcessingLatencyReported": false
+  },
+  "measurementLimits": [
+    "Whole-session client averages, not end-to-end input-to-photon latency or P95/P99",
+    "Each trial process ran for 28 seconds, including initialization",
+    "Round 2 first trial included a test animation restart race; sample retained",
+    "Different animation workload from user screenshot; no direct before/after comparison",
+    "No physical scanout measurement or statistically powered conclusion"
+  ],
+  "presentMon": {
+    "version": "2.6.0",
+    "sha256": "b2a706bc6ad475749e3b7e3409263aa1e6906d45bdcf993f6dbc0f660188f1af",
+    "captured": false,
+    "reason": "ETW session start returned Access denied; no elevation or group changes"
+  },
+  "candidate": {
+    "pullRequest": "https://github.com/LizardByte/Sunshine/pull/5817",
+    "state": "open",
+    "merged": false,
+    "head": "c95e1bacd6a867631ace23b7642f7d59b3700e56",
+    "deployed": false
+  },
+  "sources": [
+    "https://github.com/moonlight-stream/moonlight-qt/blob/de2467e433821664cdd2224aad8c89a625be1ad9/app/streaming/video/ffmpeg-renderers/d3d11va.cpp",
+    "https://github.com/moonlight-stream/moonlight-qt/blob/de2467e433821664cdd2224aad8c89a625be1ad9/app/streaming/video/ffmpeg.cpp",
+    "https://github.com/LizardByte/Sunshine/blob/63d35f702ee9e362e43263742981836ec0710384/src/platform/macos/av_video.m",
+    "https://github.com/LizardByte/Sunshine/blob/63d35f702ee9e362e43263742981836ec0710384/src/video.cpp",
+    "https://github.com/andygrundman/Sunshine/blob/c95e1bacd6a867631ace23b7642f7d59b3700e56/src/platform/macos/sck_video.mm",
+    "https://github.com/andygrundman/Sunshine/blob/c95e1bacd6a867631ace23b7642f7d59b3700e56/src/platform/macos/videotoolbox.mm"
+  ],
+  "trials": [
+    {
+      "round": 1,
+      "case": "hevc-default",
+      "deviceMode": "separate",
+      "textureMode": "bind",
+      "decodeMs": 0.62,
+      "queueMs": 0.01,
+      "renderMs": 0.21,
+      "renderedFps": 59.64,
+      "networkDropPercent": 0,
+      "jitterDropPercent": 0.38
+    },
+    {
+      "round": 1,
+      "case": "hevc-shared-bind",
+      "deviceMode": "shared",
+      "textureMode": "bind",
+      "decodeMs": 0.44,
+      "queueMs": 0.01,
+      "renderMs": 0.07,
+      "renderedFps": 59.91,
+      "networkDropPercent": 0,
+      "jitterDropPercent": 0
+    },
+    {
+      "round": 1,
+      "case": "h264-default",
+      "deviceMode": "separate",
+      "textureMode": "bind",
+      "decodeMs": 0.64,
+      "queueMs": 0.01,
+      "renderMs": 0.2,
+      "renderedFps": 58.92,
+      "networkDropPercent": 1.57,
+      "jitterDropPercent": 0.24
+    },
+    {
+      "round": 1,
+      "case": "hevc-default-repeat",
+      "deviceMode": "separate",
+      "textureMode": "bind",
+      "decodeMs": 0.8,
+      "queueMs": 0.01,
+      "renderMs": 0.2,
+      "renderedFps": 59.41,
+      "networkDropPercent": 0,
+      "jitterDropPercent": 0.47
+    },
+    {
+      "round": 2,
+      "case": "hevc-shared-bind",
+      "deviceMode": "shared",
+      "textureMode": "bind",
+      "decodeMs": 1.04,
+      "queueMs": 0.01,
+      "renderMs": 0.08,
+      "renderedFps": 61.55,
+      "networkDropPercent": 0,
+      "jitterDropPercent": 0,
+      "note": "Animation restart race"
+    },
+    {
+      "round": 2,
+      "case": "hevc-default",
+      "deviceMode": "separate",
+      "textureMode": "bind",
+      "decodeMs": 0.47,
+      "queueMs": 0.01,
+      "renderMs": 0.19,
+      "renderedFps": 60.0,
+      "networkDropPercent": 0,
+      "jitterDropPercent": 0.16
+    },
+    {
+      "round": 2,
+      "case": "hevc-shared-bind-repeat",
+      "deviceMode": "shared",
+      "textureMode": "bind",
+      "decodeMs": 0.53,
+      "queueMs": 0.01,
+      "renderMs": 0.07,
+      "renderedFps": 60.13,
+      "networkDropPercent": 0,
+      "jitterDropPercent": 0
+    },
+    {
+      "round": 2,
+      "case": "hevc-default-repeat",
+      "deviceMode": "separate",
+      "textureMode": "bind",
+      "decodeMs": 0.75,
+      "queueMs": 0.01,
+      "renderMs": 0.2,
+      "renderedFps": 59.84,
+      "networkDropPercent": 0,
+      "jitterDropPercent": 0.39
+    }
+  ]
+}

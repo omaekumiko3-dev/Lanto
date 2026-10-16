@@ -166,6 +166,24 @@ export function SettingsDialog({
             </label>
           </div>
           <p className="settings-footnote">
+            The Windows shared texture pipeline can reduce device synchronization overhead, but may affect compatibility with some graphics drivers or VRR.
+          </p>
+          <label>
+            Windows graphics pipeline
+            <select
+              value={draft.windowsPipeline}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  windowsPipeline: event.target.value as Settings['windowsPipeline']
+                })
+              }
+            >
+              <option value="auto">Auto (Moonlight default)</option>
+              <option value="shared-bind">Shared device and textures (experimental)</option>
+            </select>
+          </label>
+          <p className="settings-footnote">
             Screen settings take effect on the next connection. Configuration is saved locally:<span>{configDirectory}</span>
           </p>
         </div>

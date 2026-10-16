@@ -93,7 +93,12 @@ export class MoonlightAdapter implements MediaAdapter {
       await mkdir(this.logDirectory, { recursive: true, mode: 0o700 })
       logFile = join(this.logDirectory, `moonlight-${Date.now()}.log`)
     }
-    return launchMedia(executable, streamArguments(device, settings), logFile)
+    const environmentOverrides: Record<string, string> = {}
+    if (process.platform === 'win32' && settings.windowsPipeline === 'shared-bind') {
+      environmentOverrides.D3D11VA_FORCE_SEPARATE_DEVICES = '0'
+      environmentOverrides.D3D11VA_FORCE_BIND = '1'
+    }
+    return launchMedia(executable, streamArguments(device, settings), logFile, environmentOverrides)
   }
 
   async open(settings: Settings): Promise<void> {
@@ -108,13 +113,15 @@ export class MoonlightAdapter implements MediaAdapter {
 export async function launchMedia(
   executable: string,
   args: string[],
-  logFile?: string
+  logFile?: string,
+  environmentOverrides: Record<string, string> = {}
 ): Promise<MediaHandle> {
   const log = logFile ? await open(logFile, 'wx', 0o600) : undefined
   try {
     const child = spawn(executable, args, {
       shell: false,
       stdio: log ? ['ignore', 'ignore', log.fd] : 'ignore',
+      env: { ...process.env, ...environmentOverrides },
       windowsHide: true
     })
     let ended = false
