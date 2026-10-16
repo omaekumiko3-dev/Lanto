@@ -63,6 +63,12 @@ export class Workbench {
   async load(): Promise<void> {
     this.config = await this.store.load()
     await this.trust.load()
+    // Device config is authoritative if a previous save stopped between the two files.
+    for (const host of this.trust.list()) {
+      const device = this.config.devices.find((entry) => entry.hostId === host.id)
+      if (device && device.host !== host.address)
+        await this.trust.updateAddress(host.id, device.host)
+    }
     this.moonlightPath = await findMoonlight(this.config.settings.moonlightPath)
     this.shortcut.start(this.config.settings.returnShortcut)
     this.log('Local workbench is ready')
@@ -115,16 +121,21 @@ export class Workbench {
       const value = deviceInputSchema.parse(input)
       const previous = value.id ? this.device(value.id) : undefined
       if (previous?.hostId !== value.hostId) throw new Error('Host identity can only be established through pairing')
-      if (
-        previous?.hostId &&
-        (previous.host !== value.host || previous.platform !== value.platform)
-      )
-        throw new Error('The address and system of a paired device are managed by Host identity; pair again after the address changes')
+      if (previous?.hostId && previous.platform !== value.platform)
+        throw new Error('The Host identity manages the system for a paired device. Pair again after changing the system')
+      if (previous?.hostId && !value.host) throw new Error('Enter an IP address or hostname for the paired device')
       const device = { ...value, id: value.id || randomUUID() }
       const devices = previous
         ? this.config.devices.map((entry) => (entry.id === device.id ? device : entry))
         : [...this.config.devices, device]
-      await this.persist({ ...this.config, devices })
+      const addressChanged = previous?.hostId && previous.host !== device.host
+      if (addressChanged) await this.hosts.updateAddress(previous.hostId!, device.host)
+      try {
+        await this.persist({ ...this.config, devices })
+      } catch (error) {
+        if (addressChanged) await this.hosts.updateAddress(previous.hostId!, previous.host)
+        throw error
+      }
       this.log(`${device.name} configuration saved`)
       return this.snapshot()
     })

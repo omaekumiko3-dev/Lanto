@@ -61,8 +61,8 @@ export function DeviceDialog({
             <label>
               IP or Hostname
               <input
+                required={Boolean(device.hostId)}
                 value={draft.host}
-                readOnly={Boolean(device.hostId)}
                 onChange={(event) => setDraft({ ...draft, host: event.target.value })}
                 placeholder="For example, 192.168.1.20"
                 maxLength={253}
@@ -87,7 +87,7 @@ export function DeviceDialog({
               {active
                 ? 'Name updates immediately; connection settings take effect the next time you connect.'
                 : device.hostId
-                  ? 'Host is paired. Pair again if the address or system changes. Removing the device revokes this control app’s Host authorization; Moonlight streaming pairing is managed separately.'
+                  ? 'Changing the address keeps the pairing and takes effect the next time you connect.'
                   : 'You can enter the address later. Before connecting for the first time, add this host in Moonlight and complete pairing.'}
             </span>
           </div>

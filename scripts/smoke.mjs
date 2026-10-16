@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rename, rm, rmdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -239,6 +239,7 @@ setInterval(() => {}, 1000);
   await page.getByRole('button', { name: 'Edit Test Linux', exact: true }).click()
   assert.equal(await page.getByRole('button', { name: 'Remove Device', exact: true }).isDisabled(), true)
   await page.getByLabel('Device name').fill('Build Linux')
+  await page.getByLabel('IP or Hostname').fill('192.0.2.21')
   await page.getByLabel('Sunshine Application Name').fill('Next Desktop')
   await page.getByRole('button', { name: 'Save Device', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
@@ -283,6 +284,8 @@ setInterval(() => {}, 1000);
   const records = await launches(3)
   assert.equal(records[0].args[1], 'Desktop')
   assert.equal(records[2].args[1], 'Next Desktop')
+  assert.equal(records[0].args[0], 'linux1.local')
+  assert.equal(records[2].args[0], '192.0.2.21')
   assert.equal(records[2].args[records[2].args.indexOf('--bitrate') + 1], '36000')
   process.kill(records[2].pid)
   await waitPhase('failed')
@@ -299,7 +302,7 @@ setInterval(() => {}, 1000);
 
   page = await launch()
   const persisted = await page.evaluate(() => window.lanto.getState())
-  assert.equal(persisted.config.devices[0].host, 'linux1.local')
+  assert.equal(persisted.config.devices[0].host, '192.0.2.21')
   assert.equal(persisted.config.devices[0].name, 'Build Linux')
   assert.equal(persisted.config.settings.bitrateMbps, 35)
   assert.equal(persisted.session.phase, 'idle')
@@ -313,7 +316,7 @@ setInterval(() => {}, 1000);
 
   const hostConfig = await initializeHost(join(testData, 'host'), {
     name: 'Smoke Host',
-    listen: '127.0.0.1',
+    listen: '0.0.0.0',
     address: '127.0.0.1',
     port: 0
   })
@@ -346,20 +349,69 @@ setInterval(() => {}, 1000);
     }, encrypted),
     true
   )
+  await page.getByRole('button', { name: 'Edit Smoke Host', exact: true }).click()
+  assert.equal(await page.getByLabel('IP or Hostname').isEditable(), true)
+  assert.equal(await page.getByLabel('Operating System').isDisabled(), true)
+  await page.getByLabel('Device name').fill('My Host')
+  await page.getByLabel('IP or Hostname').fill('127.0.0.2')
+  await page.screenshot({ path: join(artifacts, 'edit-host-address.png') })
+  await page.getByRole('button', { name: 'Save Device', exact: true }).click()
+  await page.getByRole('dialog').waitFor({ state: 'hidden' })
+  const updated = await page.evaluate(() => window.lanto.getState())
+  const updatedDevice = updated.config.devices.find(
+    (entry) => entry.hostId === hostConfig.identity.id
+  )
+  assert.equal(updatedDevice.host, '127.0.0.2')
+  assert.equal(updated.trustedHosts[0].address, '127.0.0.2')
+  assert.equal(updated.trustedHosts[0].status, undefined)
+  const updatedTrust = JSON.parse(await readFile(join(testData, 'trusted-hosts.json'), 'utf8'))
+  assert.deepEqual(updatedTrust.hosts[0], { ...trustOnDisk.hosts[0], address: '127.0.0.2' })
+
+  // A failed config write must not leave the management endpoint at a different address.
+  const configFile = join(testData, 'config.json')
+  await rename(configFile, `${configFile}.held`)
+  await mkdir(configFile)
+  try {
+    assert.equal(
+      await page.evaluate(async (device) => {
+        try {
+          await window.lanto.saveDevice({ ...device, host: '127.0.0.3' })
+          return false
+        } catch {
+          return true
+        }
+      }, updatedDevice),
+      true
+    )
+    const failed = await page.evaluate(() => window.lanto.getState())
+    assert.equal(
+      failed.config.devices.find((entry) => entry.id === updatedDevice.id).host,
+      '127.0.0.2'
+    )
+    assert.equal(failed.trustedHosts[0].address, '127.0.0.2')
+  } finally {
+    await rmdir(configFile)
+    await rename(`${configFile}.held`, configFile)
+  }
   await page.screenshot({ path: join(artifacts, 'host-paired.png'), fullPage: true })
   await application.close()
   application = null
+  // Recover an interrupted two-file save using the committed device config.
+  await writeFile(join(testData, 'trusted-hosts.json'), JSON.stringify(trustOnDisk))
   page = await launch()
   const pairedAfterRestart = await page.evaluate(() => window.lanto.getState())
   const hostDevice = pairedAfterRestart.config.devices.find(
     (entry) => entry.hostId === hostConfig.identity.id
   )
+  assert.equal(hostDevice.name, 'My Host')
+  assert.equal(hostDevice.host, '127.0.0.2')
+  assert.equal(pairedAfterRestart.trustedHosts[0].address, '127.0.0.2')
   await page.evaluate((id) => window.lanto.probe(id), hostDevice.id)
   assert.equal(
     (await page.evaluate(() => window.lanto.getState())).trustedHosts[0].status.identity.id,
     hostConfig.identity.id
   )
-  await page.getByRole('button', { name: 'Edit Smoke Host', exact: true }).click()
+  await page.getByRole('button', { name: 'Edit My Host', exact: true }).click()
   await page.getByRole('button', { name: 'Remove Device', exact: true }).click()
   await page.getByRole('button', { name: 'Confirm Device Removal', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
@@ -370,7 +422,7 @@ setInterval(() => {}, 1000);
   await closed
   application = null
   console.log(
-    'Electron smoke passed: connection switches, live rename/settings, next-launch parameters, process exit recovery, frameless layout, device CRUD, real Host TLS pairing, encrypted credentials, restart and unpair; screenshots: test-results/'
+    'Electron smoke passed: editable paired IP, credential preservation, save rollback/recovery, next-launch address, connection switches, real Host TLS pairing, restart and unpair; screenshots: test-results/'
   )
 } finally {
   await application?.close()

@@ -100,6 +100,56 @@ test('a different TLS certificate is rejected before a pairing secret is sent', 
   }
 })
 
+test('a paired Host can change address while preserving credentials and rejecting another identity', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'lanto-address-'))
+  const config = await initializeHost(directory, {
+    listen: '127.0.0.1',
+    address: '127.0.0.1',
+    port: 0
+  })
+  let service = await startHost(config, directory, { discovery: false })
+  const port = service.port
+  const clientDirectory = join(directory, 'client')
+  const vault = {
+    encrypt: (value: string) => Buffer.from(value).toString('base64'),
+    decrypt: (value: string) => Buffer.from(value, 'base64').toString()
+  }
+  try {
+    const trust = new TrustStore(clientDirectory, vault)
+    await trust.load()
+    const client = new HostClient(trust)
+    const paired = await client.pair(service.createTicket())
+    const before = JSON.parse(await readFile(join(clientDirectory, 'trusted-hosts.json'), 'utf8'))
+    await client.updateAddress(paired.id, '127.0.0.2')
+    assert.equal(client.list()[0]?.status, undefined)
+    assert.equal(client.list()[0]?.address, '127.0.0.2')
+    const after = JSON.parse(await readFile(join(clientDirectory, 'trusted-hosts.json'), 'utf8'))
+    assert.deepEqual(after.hosts[0], { ...before.hosts[0], address: '127.0.0.2' })
+
+    await service.close()
+    service = await startHost({ ...config, listen: '0.0.0.0', port }, directory, {
+      discovery: false
+    })
+    const restored = new TrustStore(clientDirectory, vault)
+    await restored.load()
+    const restoredClient = new HostClient(restored)
+    assert.equal((await restoredClient.refresh(paired.id)).status?.identity.id, paired.id)
+
+    await service.close()
+    const unrelatedDirectory = join(directory, 'unrelated')
+    const unrelated = await initializeHost(unrelatedDirectory, { listen: '0.0.0.0', port })
+    service = await startHost(unrelated, unrelatedDirectory, { discovery: false })
+    const rejected = await restoredClient.refresh(paired.id)
+    assert.equal(rejected.status, undefined)
+    assert.ok(rejected.error)
+    assert.equal(restored.connection(paired.id).endpoint.certificate, config.certificate)
+    assert.equal(restored.connection(paired.id).token, trust.connection(paired.id).token)
+  } finally {
+    await service.close()
+    await removeTestDirectory(directory, 'lanto-address-')
+  }
+})
+
 test('pairing tickets expire, are replaced, and persisted controllers survive Host reload', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'lanto-grant-'))
   let now = Date.now()

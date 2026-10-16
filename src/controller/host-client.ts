@@ -39,15 +39,23 @@ export class HostClient {
   async refresh(id: string): Promise<TrustedHostView> {
     const existing = this.trust.list().find((entry) => entry.id === id)
     if (!existing) throw new Error('This Host has not been paired')
+    let state: Pick<TrustedHostView, 'status' | 'error'>
     try {
       const { endpoint, token } = this.trust.connection(id)
       const status = hostStatusSchema.parse(await hostRequest(endpoint, '/v1/status', { token }))
       if (status.identity.id !== id) throw new Error('Host identity has changed; pair again')
-      this.states.set(id, { status })
+      state = { status }
     } catch {
-      this.states.set(id, { error: 'Host is temporarily unreachable or authorization has expired; check the network and Host status' })
+      state = { error: 'Host is temporarily unreachable or authorization has expired; check the network and Host status' }
     }
+    if (this.trust.list().some((entry) => entry.id === id && entry.address === existing.address))
+      this.states.set(id, state)
     return this.list().find((entry) => entry.id === id)!
+  }
+
+  async updateAddress(id: string, address: string): Promise<void> {
+    await this.trust.updateAddress(id, address)
+    this.states.delete(id)
   }
 
   async unpair(id: string): Promise<void> {

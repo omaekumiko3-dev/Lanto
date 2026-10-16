@@ -83,6 +83,14 @@ export class TrustStore {
     await this.persist(this.hosts.filter((entry) => entry.id !== id))
   }
 
+  async updateAddress(id: string, address: string): Promise<void> {
+    const existing = this.hosts.find((entry) => entry.id === id)
+    if (!existing) throw new Error('This Host has not been paired')
+    if (existing.address === address) return
+    const updated = recordSchema.parse({ ...existing, address })
+    await this.persist(this.hosts.map((entry) => (entry.id === id ? updated : entry)))
+  }
+
   private async persist(hosts: TrustedRecord[]): Promise<void> {
     const contents = fileSchema.parse({ schemaVersion: 1, controllerId: this.controllerId, hosts })
     await writeJSON(this.file, contents)

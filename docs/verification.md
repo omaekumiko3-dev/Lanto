@@ -7,7 +7,7 @@ Date: 2026-10-16. Environment: local Windows machine, Node.js 24.12.0, Electron 
 | `npm run build` | Type checking and main/preload/renderer builds pass |
 | `npm run host:build` | The standalone Node.js Host build passes, and the built CLI runs |
 | `npm run format:check` | Passed |
-| `npm test` | All 19 items passed |
+| `npm test` | All 20 items passed |
 | `npm run test:smoke` | Real Electron operations and loopback Host pairing passed under isolated configuration |
 | npm dependency audit | Reported 0 known vulnerabilities after installation; this does not mean that no unknown issues exist |
 | `git diff --check` | Passed |
@@ -57,7 +57,7 @@ The console window icon, desktop shortcut, and window/executable icons for the n
 
 ## Device Connection Toggle and Online Editing
 
-Replace the connection button in the upper right of each device card with a keyboard accessible toggle, and remove the bottom session bar and separate return button. A device in an active connection can be renamed and its settings saved; the name appears immediately, media parameters take effect on the next connection, and the current device cannot be removed until disconnected. Update the address and system for pairing identity management by pairing again; re pairing preserves the user name.
+The upper-right corner of the device card is now a keyboard-operable connection toggle; the bottom session bar and separate Back button have been removed. Devices that are connecting can be renamed and their settings saved; the name appears immediately, while media parameters take effect on the next connection. The current device cannot be removed until disconnected. Paired devices now support editing their address; the system type is still managed by the pairing identity, and re-pairing preserves the user’s name.
 
 All 19 tests, type checking, production build, formatting checks, and Electron smoke tests passed. The new smoke test uses an isolated configuration and a real local subprocess, covering connection/disconnection and device switching via the toggle, Space key operation, renaming while connected and saving parameters without changing the PID, refusing to remove the current device, reading new parameters on the next launch, and automatically turning off the toggle and allowing reconnection after an abnormal client exit. This subprocess test does not constitute network streaming acceptance.
 
@@ -78,3 +78,9 @@ This round again passed 19 control-side tests, type checking, production build, 
 On 2026-10-16, two full-system restarts were completed. The first confirmed that the existing LaunchAgent starts automatically after the user logs in. Then, with the user’s explicit authorization, FileVault was turned off, and the system tools were used in a GUI session to configure automatic login. The second restart’s boot time was 12:09:14 (Asia/Shanghai); no further user login or manual application launch was requested, and the target user’s desktop, Host, native Sunshine, and KRU all recovered automatically. Windows reconnected using the existing pairing, and the host logs confirmed HEVC 2560×1440, local cursor, and system audio initialization. Media components were not recompiled or modified this time, and screen recording/accessibility permissions were not requested again.
 
 Startup items and disk were inspected read-only at the same time; no files were deleted and no other apps were disabled. System swap space released about 10.7 GB after restart. The final observed built-in APFS capacity was about 245.1 GB, with 93.6 GB used and 151.5 GB remaining; these values change during operation. Storage details are saved in the local ignored directory `work/maintenance/mac-2026-10-16.html`, do not submit a personal project list.
+
+## Change the IP of a paired device
+
+Remove the read-only restriction on the paired device address input field, and save the management and streaming addresses in sync, while retaining the device identity and operating system restrictions. All 20 tests, type checking, production build, and Electron smoke test passed. Added real TLS tests covering address migration, continued token availability after restart, and rejection of a different certificate at the new address.
+
+Isolated Electron tests cover the editable address, field-by-field preservation of the certificate and encrypted token after saving, fallback when writing the configuration fails, repair at startup when the two configurations are inconsistent, and an unchanged current session PID with the next streaming session using the new address. The tests used a loopback address and isolated configuration; they did not change the user’s Mac network configuration or the actual saved address. The screenshot of the editing interface is local `test-results/edit-host-address.png`。
