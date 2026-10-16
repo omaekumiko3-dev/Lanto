@@ -137,6 +137,35 @@ export function SettingsDialog({
             </label>
           </div>
           <p className="settings-footnote">
+            Prioritize Responsiveness disables vertical sync and frame pacing, which may cause screen tearing; frame rate can be adjusted independently.
+          </p>
+          <div className="form-columns">
+            <label>
+              Latency strategy
+              <select
+                value={String(draft.lowLatency)}
+                onChange={(event) =>
+                  setDraft({ ...draft, lowLatency: event.target.value === 'true' })
+                }
+              >
+                <option value="false">Follow Moonlight settings</option>
+                <option value="true">Prioritize responsiveness</option>
+              </select>
+            </label>
+            <label>
+              Performance Statistics
+              <select
+                value={String(draft.showPerformanceOverlay)}
+                onChange={(event) =>
+                  setDraft({ ...draft, showPerformanceOverlay: event.target.value === 'true' })
+                }
+              >
+                <option value="false">Hide</option>
+                <option value="true">Show</option>
+              </select>
+            </label>
+          </div>
+          <p className="settings-footnote">
             Screen settings take effect on the next connection. Configuration is saved locally:<span>{configDirectory}</span>
           </p>
         </div>

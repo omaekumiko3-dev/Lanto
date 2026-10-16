@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { isAbsolute } from 'node:path'
+import { isAbsolute, join } from 'node:path'
 import { z } from 'zod'
 import { SerialQueue } from '../common/serial-queue.ts'
 import { HostClient } from '../controller/host-client.ts'
@@ -26,7 +26,7 @@ export class Workbench {
   private readonly trust: TrustStore
   private readonly hosts: HostClient
   private readonly queue = new SerialQueue()
-  private readonly adapter = new MoonlightAdapter()
+  private readonly adapter: MoonlightAdapter
   private readonly session: SessionManager
   private readonly shortcut: ReturnShortcut
   private readonly activity: Activity[] = []
@@ -51,6 +51,7 @@ export class Workbench {
     this.store = new ConfigStore(this.directory)
     this.trust = new TrustStore(this.directory, systemVault)
     this.hosts = new HostClient(this.trust)
+    this.adapter = new MoonlightAdapter(join(this.directory, 'media-logs'))
     this.session = new SessionManager(this.adapter, this.changed, (message, error) =>
       this.log(message, error)
     )

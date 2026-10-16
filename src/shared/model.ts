@@ -19,6 +19,8 @@ export interface Settings {
   fps: number
   bitrateMbps: number
   windowMode: 'borderless' | 'windowed'
+  lowLatency: boolean
+  showPerformanceOverlay: boolean
 }
 
 export interface Config {
@@ -120,7 +122,9 @@ export function defaultConfig(): Config {
       resolution: '2560x1440',
       fps: 30,
       bitrateMbps: 20,
-      windowMode: 'borderless'
+      windowMode: 'borderless',
+      lowLatency: false,
+      showPerformanceOverlay: false
     }
   }
 }

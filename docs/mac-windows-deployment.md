@@ -52,9 +52,28 @@ The Mac then restarted and returned to the desktop; the original Host identity a
 
 After reboot, Sunshine’s screen capture initialization succeeded and the H.264/HEVC VideoToolbox encoders were detected. After Lanto started a Desktop stream, Sunshine logged `New streaming session started` and `CLIENT CONNECTED`, and an HEVC hardware encoding session was established. Windows Lanto also recorded that the managed Moonlight client was running.
 
-Current status: management connection, media pairing, actual media handshake, and encoder startup passed; Windows first-frame visibility, keyboard and mouse, actual frame rate, and shortcut keys still await user confirmation. The client is configured for 2K 30fps, which does not mean a stable 30fps was measured.`sunshineReachable: true` This only indicates that the local TCP port is reachable; it cannot replace visual acceptance.
+Current status: management connection, media pairing, media handshake, and encoder startup have passed; the user has seen the desktop and confirmed that basic input works. Subsequent responsiveness optimization is described below. Stable frame rate, full Chinese input compatibility, and dedicated keyboard shortcuts still require separate acceptance.`sunshineReachable: true` This only indicates that the local TCP port is reachable; it cannot replace visual acceptance.
 
-On Windows, open Lanto on the desktop, select KumikoMac, then click “Open Remote Desktop.” The preset is 2560×1440, 30fps, 20Mbps; the shortcut to return to this machine is `Ctrl + Alt + F12`. The picture is displayed in a separate Moonlight window.
+Open Lanto on the Windows desktop, select KumikoMac, then click Open Remote Desktop. For the first connection, use 2560×1440, 30fps, and 20Mbps; this machine currently uses the response optimized settings below. The shortcut to return to this machine is `Ctrl + Alt + F12`, which will close the local streaming client. The display is hosted in a separate Moonlight window; use Windows native `Alt + Tab` Switching windows can retain the session without rewriting system keyboard shortcuts.
+
+## Response Optimization
+
+After first use, the user reported slow mouse/input response and sluggish window dragging. On-site checks: Windows has an RTX 3080 and 2.5GbE; the Mac Ethernet link negotiated at 1Gbps; all 12 LAN pings were under 1ms with no packet loss. This only indicates the small-packet round-trip and link state for that check; it cannot replace video-link or end-to-end latency measurements. The Mac’s startup load has subsided, and Sunshine uses VideoToolbox HEVC hardware encoding.
+
+This time, keep 2K and 20Mbps, set the frame rate to 60fps, and enable “Prioritize Response” and “Performance Statistics” in Lanto settings. Prioritize Response only explicitly appends `--no-vsync --no-frame-pacing`; does not force codec changes, adjust the Mac display, or modify the network. When the old configuration lacks the newly added fields, these options default to off for continued compatibility.
+
+After reconnection, client diagnostic logs confirmed:
+
+- Video format is `2560x1440x60`。
+- Select NVIDIA RTX 3080, use D3D11VA accelerated decoding/rendering, and use the hardware-accelerated path for HEVC.
+- `V-sync disabled`，`Frame pacing disabled`。
+- Sunshine recorded again `CLIENT CONNECTED` and establish a HEVC VideoToolbox session.
+
+The user subsequently confirmed that the mouse, typing, and dragging experience had “clearly improved.” This is user experience feedback; host processing, decoding, frame queue, or rendering times before and after optimization have not yet been recorded, so specific end-to-end milliseconds, stable frame rate, or frame drop rate cannot be reported based on this.
+
+When statistics are enabled, Lanto writes Moonlight stderr to Windows `%APPDATA%\Lanto\media-logs\moonlight-<Timestamp>.log`, making it easier to investigate later. Logs are saved locally and may contain device and application information; Moonlight 6.2.0, used here, redacts streaming session keys in its log handler and limits the size of each log. No new diagnostic logs are created when statistics are off. The settings and media adapter handle interface parameters and log saving separately; Host does not control image parameters.
+
+If tearing occurs, you can change “Latency Strategy” back to “Follow Moonlight Settings”; it takes effect on the next connection. The statistics overlay can use Moonlight’s `Ctrl + Alt + Shift + S` Temporarily hidden; starts with the settings saved by Lanto when reconnected.
 
 ## Download Sources and Verification
 

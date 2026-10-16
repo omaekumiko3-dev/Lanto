@@ -43,7 +43,9 @@ export const settingsSchema = z
     resolution: z.enum(['2560x1440', '1920x1080']),
     fps: z.number().int().min(15).max(60),
     bitrateMbps: z.number().int().min(5).max(100),
-    windowMode: z.enum(['borderless', 'windowed'])
+    windowMode: z.enum(['borderless', 'windowed']),
+    lowLatency: z.boolean().default(false),
+    showPerformanceOverlay: z.boolean().default(false)
   })
   .strict()
 
