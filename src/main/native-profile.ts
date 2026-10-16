@@ -1,21 +1,24 @@
 import { readFile, stat } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import type { Settings } from '../shared/model.ts'
+import type { Platform, Settings } from '../shared/model.ts'
 
 /** Map the selected native features to one owned media process. */
 export async function nativeEnvironment(
   executable: string,
   settings: Settings,
+  hostPlatform: Platform,
   platform: NodeJS.Platform = process.platform
 ): Promise<Record<string, string>> {
+  // The native host cursor protocol is currently implemented only on macOS.
+  const localCursor = settings.localCursor && hostPlatform === 'macos'
   const environment: Record<string, string> = {
-    LANTO_LOCAL_CURSOR: settings.localCursor ? '1' : '0'
+    LANTO_LOCAL_CURSOR: localCursor ? '1' : '0'
   }
   if (platform === 'win32' && settings.windowsPipeline === 'shared-bind') {
     environment.D3D11VA_FORCE_SEPARATE_DEVICES = '0'
     environment.D3D11VA_FORCE_BIND = '1'
   }
-  if (settings.localCursor) {
+  if (localCursor) {
     const supported = await hasLocalCursor(executable)
     if (!supported)
       throw new Error('Local cursor requires the Lanto native version of Moonlight. Select the companion app or turn off the local cursor in Settings')

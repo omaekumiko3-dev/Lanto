@@ -2,7 +2,7 @@
 
 Lanto is a multi-device remote operation tool for high-speed personal area networks. Windows handles local gaming and serves as the operation entry point, Linux1 runs the desktop, agent, and development tools, Mac provides native applications and build execution, and N100 serves as both a software router and NAS. The goal is to switch quickly between the local machine and remote desktops with one keyboard and mouse.
 
-Currently includes a GUI-based Electron + React + TypeScript control client and a headless Node.js + TypeScript Host. Device management, Host discovery and one-time pairing, authentication status checks, authorization revocation, and Moonlight launch, display settings, and return-to-local-machine shortcuts have been implemented. Windows → Mac has been verified for audio/video and basic input at 2560×1440, 60fps; Linux1, switching between multiple machines, and long-term stability still require on-site verification.
+The current system includes an Electron + React + TypeScript control app with a UI and a headless Node.js + TypeScript Host. Device management, Host discovery and one time pairing, authentication status checks, authorization revocation, Moonlight launch, screen settings, and a shortcut to return to this machine are implemented. Windows → Mac and Windows → Linux have working 2560×1440, 60fps audio, video, and basic input. Linux has been verified with the same GNOME Wayland desktop, Chinese Pinyin input, service restarts, and reconnection after automatic system login; multi machine switching latency and long term stability still need to be measured.
 
 ## Running the Controller
 
@@ -34,6 +34,8 @@ The console uses a compact window without a system title bar. Drag it from the b
 Performance Statistics can show Moonlight’s diagnostic overlay and save that client run’s log under `media-logs/`, created only when statistics are enabled. Logs may contain host addresses, device information, and app information, and are not included in Git. The next connection will not create a diagnostic log if statistics are turned off. Moonlight’s own `Ctrl + Alt + Shift + S` can temporarily show or hide the statistics overlay.[Meaning of Statistics Fields](https://github.com/moonlight-stream/moonlight-docs/wiki/Frequently-Asked-Questions#what-do-the-numbers-mean-in-the-on-screen-connection-statistics)。
 
 Windows can use the experimental Shared Device and Texture graphics pipeline. A short local comparison measured average rendering time dropping from the default 0.19–0.21ms to 0.07–0.08ms; decoding has not yet shown a consistent win. The default remains Automatic. Some drivers and VRR still need separate testing. Evidence, rewrite boundaries, and retest tools are in[Performance Investigation](docs/performance-investigation.md)。
+
+Local Cursor is currently only for the companion Mac native Host. When connected to Linux or Windows, the remote cursor is used automatically and the global preference is retained; when returning to Mac, the local cursor is used again.
 
 The device list is empty on first launch; no sample device is added automatically. Paired Hosts use the authentication interface to check identity and Sunshine status. Manually added devices only check whether TCP port 47989 is reachable. Neither check means video is connected. Custom Sunshine ports are not yet supported.
 
@@ -67,6 +69,8 @@ npm run host -- revoke <Controller UUID>
 
 The Host listens on TCP 48199 by default and uses mDNS UDP 5353 for discovery; it does not automatically adjust the system firewall. Local CLI management operations use only the loopback address. Host and Sunshine are separate processes; Sunshine currently needs to be installed and started independently. See[Host Usage](docs/host.md)。
 
+You can also run `npm run host:build` and `node scripts/package-host.mjs out/host-runtime`on a development machine, copy the newly generated runtime directory to a fixed location on Linux, then run its `install-linux-host.sh`as the desktop user. This installs a systemd user service and preserves the existing Host identity. There is no need to install Electron or the full source code on the controlled device. See [Linux Deployment Record](docs/linux-windows-deployment.md)。
+
 ## Development and Checks
 
 ```powershell
@@ -89,6 +93,7 @@ Icon source files are in `assets/*.svg`. PNG and ICO files with multiple sizes f
 - [Responsibilities of the Two Sides and Implementation Order](docs/roles.md): responsibility constraints for the controller, Host, shared protocol, and media engine.
 - [Host Usage](docs/host.md): initialization, pairing, authorization revocation, and Linux background operation.
 - [Windows → Mac Deployment Record](docs/mac-windows-deployment.md): physical machine installation, startup after login, dual pairing, and desktop permission acceptance status.
+- [Windows → Linux Deployment Record](docs/linux-windows-deployment.md): Ubuntu/NVIDIA deployment, same Wayland session, Chinese input, and restart acceptance.
 - [Performance Investigation](docs/performance-investigation.md): real-machine decoding/rendering comparison, native media path, and measurement basis.
 - [Native Media Experiment Components](native/README.md): local cursor, fixed patches for Mac ScreenCaptureKit/VideoToolbox, build, and rollback.
 - [First-Version Verification Record](docs/verification.md): local checks that have passed and real-machine capabilities not yet verified.
@@ -108,10 +113,10 @@ Selkies is the main comparison for the browser integration approach, but the tak
 - Local Windows games display directly; switching back to the local machine must release all remote input capture.
 - The Linux desktop operated by the agent and the desktop seen by the user must be the same session.
 - The main source working directory is stored on the N100 NAS, and Linux1 mounts it to perform development tasks; build caches and dependencies may use Linux1’s local temporary storage.
-- N100 is known to have 8GB of memory and 6 2.5G Ethernet ports; the disk interfaces, network cards for other devices, GPU, and desktop environment still need to be inventoried on site.
+- The known N100 configuration is 8GB memory and 6 2.5G network ports. Linux1 has been confirmed as Ryzen 5 7500F, RTX 3080, Ubuntu 26.04 GNOME Wayland. The NAS drive interfaces and complete network topology still need to be inventoried on site.
 - Rust, Electron, JS, TS, Python, and Godot are the main development technologies. Build tasks requiring Windows-only toolchains can be handled by a Windows virtual machine on Linux1.
 - The current repository remains private;`native/patches` it contains small patches for GPL upstream projects and follows the corresponding upstream licenses. The project’s own license for external distribution has not yet been selected.
 
 ## Next Steps
 
-First complete validation of Windows-to-Linux1 2K 30fps streaming, the same graphics session, Chinese input, returning to the local machine, and agent tasks continuing to run; then decide whether to modify the Moonlight worker process and how to add Mac. See[Technical Design](docs/design.md)。
+Continue verifying Linux agent operations in the current graphical session, the NAS working directory, multi-machine switching time, and long-term stability. Basic streaming, keyboard and mouse, Chinese Pinyin input, and restart recovery already have real-machine records; these results do not mean that the GUI agent and NAS have been fully deployed. Detailed acceptance steps are in[Technical Design](docs/design.md)。

@@ -57,7 +57,23 @@ systemctl --user status lanto-host.service
 journalctl --user -u lanto-host.service
 ```
 
-This is a user service started by the user’s session. A responsive Host does not prove that the desktop session or Sunshine is ready, so it cannot be claimed to control the login screen or unlock at startup. Sunshine still needs to be connected to the correct graphics session according to its platform instructions. The systemd file was checked as text on this machine; actual installation and session lifecycle have not been accepted on a real Linux machine.[systemd service syntax](https://github.com/systemd/systemd/blob/main/man/systemd.service.xml)。
+This is a user service started by the user session. A responsive Host does not prove that the desktop session or Sunshine is ready, and does not establish that the login screen or startup unlock can be controlled. Sunshine still needs to be connected to the correct graphical session according to its platform instructions. On 2026-10-16, it was installed on Ubuntu 26.04 and verified through service restart, full system restart, and Windows reconnection after automatic login; see [Linux Deployment Record](linux-windows-deployment.md)。[systemd service syntax](https://github.com/systemd/systemd/blob/main/man/systemd.service.xml)。
+
+To avoid copying the full repository to the controlled device, run the following command on the development machine; the output directory must not exist:
+
+```bash
+npm run host:build
+node scripts/package-host.mjs out/host-runtime
+```
+
+Copy the entire directory to a fixed runtime path on Linux. The packaged program copies only compiled output and production dependencies from the lockfile; it does not copy Electron, development tools, Host identity, or controller credentials. Dependency licenses are retained in the package. Packaging across platforms is rejected if it encounters a native install script or platform-specific dependency; review those separately. Then run it as the desktop user, not with sudo:
+
+```bash
+LANTO_NODE=/absolute/path/to/node bash /absolute/path/to/host-runtime/install-linux-host.sh \
+  --name Linux1 --address 192.168.1.20
+```
+
+`LANTO_NODE` By default, it looks for Node in PATH;`LANTO_HOST_DATA_DIR` Default `~/.lanto/host`The installer validates the service file, backs up any existing unit, restarts the service, and checks the authenticated local status. Repeated installation preserves the existing UUID, certificate, and controller authorization;`init` does not overwrite an existing name or address. The runtime directory cannot be moved after installation.
 
 Windows and macOS can run the Host using the same CLI; a system service/launchd automatic installer is not yet available. A launchd user service was installed manually on Mac, and pairing with the Windows control app was completed. Details are in [Windows → Mac Deployment Record](mac-windows-deployment.md)macOS screen recording and keyboard and mouse permissions are requested by the actual media engine; Host having no window does not mean system permissions can be bypassed.
 
@@ -67,4 +83,4 @@ Lanto Host manages authorization for its management interface; Moonlight manages
 
 in the status `sunshineReachable` only checks local TCP 47989 on Host. It does not prove the peer’s protocol identity, completed pairing, receipt of video, or availability of hardware encoding. Host does not provide network interfaces for arbitrary command execution, remote input injection, or automatic Sunshine startup; those capabilities need to be designed and verified separately.
 
-At runtime, use the source entry point `node src/host/cli.ts`With the full development dependencies installed, you can also run `npm run host:build`and then run `node out/host/host/cli.js start`; this build does not include Electron. Packaged installers, automatic media dependency installation, Mac GUI agent takeover, and multi machine hot switching are later stage work.
+At runtime, use the source entry point `node src/host/cli.ts`With the full development dependencies installed, you can also run `npm run host:build`and then run `node out/host/host/cli.js start`; this build does not introduce Electron. Scripts for packaging the Linux Host runtime directory and installing the user service have been provided; installing media dependencies uniformly, taking over the Mac GUI agent, and hot-switching among multiple machines are for a later phase.

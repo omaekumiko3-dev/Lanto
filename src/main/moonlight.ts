@@ -94,7 +94,7 @@ export class MoonlightAdapter implements MediaAdapter {
       await mkdir(this.logDirectory, { recursive: true, mode: 0o700 })
       logFile = join(this.logDirectory, `moonlight-${Date.now()}.log`)
     }
-    const environmentOverrides = await nativeEnvironment(executable, settings)
+    const environmentOverrides = await nativeEnvironment(executable, settings, device.platform)
     return launchMedia(executable, streamArguments(device, settings), logFile, environmentOverrides)
   }
 

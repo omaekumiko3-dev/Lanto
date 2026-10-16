@@ -110,7 +110,7 @@ export function SettingsDialog({
                 <option value="false">Remote cursor</option>
                 <option value="true">Local cursor</option>
               </select>
-              <small>The local cursor requires a companion native component.</small>
+              <small>Local cursor is for the companion Mac; Linux and Windows use the remote cursor automatically.</small>
             </label>
             <label>
               Latency strategy
