@@ -16,6 +16,10 @@ $lantoHttpSource = Get-Content -LiteralPath (Join-Path $lantoSource 'app/backend
 if (-not $lantoInputSource.Contains('LANTO_LOCAL_CURSOR') -or -not $lantoHttpSource.Contains('LantoLocalCursor')) {
   throw 'Apply moonlight-local-cursor.patch before building'
 }
+$lantoDecoderSource = Get-Content -LiteralPath (Join-Path $lantoSource 'app/streaming/video/ffmpeg.cpp') -Raw
+if (-not $lantoHttpSource.Contains('LantoPreserveH264Sps') -or -not $lantoDecoderSource.Contains('LANTO_PRESERVE_H264_SPS')) {
+  throw 'Apply moonlight-h264-sps.patch before building'
+}
 $lantoVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
 $lantoVs = & $lantoVswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if (-not $lantoVs) { throw 'Visual Studio C++ build tools are required' }
@@ -45,6 +49,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Qt deployment failed' }
 $lantoQtVersion = & (Join-Path $lantoQtBin 'qmake.exe') -query QT_VERSION
 @{
   localCursorProtocol = 1
+  h264SpsPreservationProtocol = 1
   moonlightCommit = 'de2467e433821664cdd2224aad8c89a625be1ad9'
   qtVersion = $lantoQtVersion.Trim()
 } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $lantoOutput 'lanto-media.json') -Encoding utf8NoBOM

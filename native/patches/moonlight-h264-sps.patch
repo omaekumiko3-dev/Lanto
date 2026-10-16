@@ -1,0 +1,29 @@
+--- a/app/backend/nvhttp.cpp
++++ b/app/backend/nvhttp.cpp
+@@ -210,9 +210,15 @@
+     int riKeyId;
+ 
+     const bool localCursor = qEnvironmentVariableIntValue("LANTO_LOCAL_CURSOR") == 1;
+-    if (localCursor && getXmlString(getServerInfo(NVLL_ERROR), "LantoLocalCursor") != "1") {
++    const QString serverInfo = getServerInfo(NVLL_ERROR);
++    if (localCursor && getXmlString(serverInfo, "LantoLocalCursor") != "1") {
+         throw GfeHttpResponseException(400, "Local cursor requires the Lanto native Sunshine host. Disable local cursor to connect to this host.");
+     }
++    // Native VideoToolbox may use more than one H.264 reference frame. Its SPS
++    // must remain intact; forcing a single reference corrupts decoder state.
++    const bool preserveSps = getXmlString(serverInfo, "LantoPreserveH264Sps") == "1";
++    qputenv("LANTO_PRESERVE_H264_SPS", preserveSps ? "1" : "0");
++    qInfo() << "Lanto preserve H.264 SPS:" << preserveSps;
+ 
+     memcpy(&riKeyId, streamConfig->remoteInputAesIv, sizeof(riKeyId));
+     riKeyId = qFromBigEndian(riKeyId);
+--- a/app/streaming/video/ffmpeg.cpp
++++ b/app/streaming/video/ffmpeg.cpp
+@@ -714,6 +714,7 @@
+ 
+     if (testMode != TestMode::TestFrameOnly) {
+         if ((params->videoFormat & VIDEO_FORMAT_MASK_H264) &&
++                qEnvironmentVariableIntValue("LANTO_PRESERVE_H264_SPS") != 1 &&
+                 !(m_BackendRenderer->getDecoderCapabilities() & CAPABILITY_REFERENCE_FRAME_INVALIDATION_AVC)) {
+             SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                         "Using H.264 SPS fixup");

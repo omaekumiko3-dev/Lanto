@@ -1,0 +1,10 @@
+--- a/src/nvhttp.cpp
++++ b/src/nvhttp.cpp
+@@ -1234,6 +1234,7 @@
+     tree.put("root.hostname", config::nvhttp.sunshine_name);
+ #ifdef __APPLE__
+     tree.put("root.LantoLocalCursor", 1);
++    tree.put("root.LantoPreserveH264Sps", 1);
+ #endif
+ 
+     tree.put("root.appversion", VERSION);
