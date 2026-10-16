@@ -11,6 +11,9 @@ case "$output_app" in /*.app) ;; *) printf 'Output must be an absolute .app path
 if [ -e "$output_app" ]; then printf 'Choose a new output app path\n' >&2; exit 1; fi
 grep -q 'LantoLocalCursor' "$source_dir/src/nvhttp.cpp"
 grep -q 'LantoPreserveH264Sps' "$source_dir/src/nvhttp.cpp"
+grep -q 'LantoCursorShape' "$source_dir/src/nvhttp.cpp"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+cp "$script_dir/sunshine/lanto_cursor.h" "$script_dir/sunshine/lanto_cursor.mm" "$source_dir/src/platform/macos/"
 grep -q 'Running macOS event loop without tray' "$source_dir/src/main.cpp"
 grep -q 'sck_error_description' "$source_dir/src/platform/macos/sck_video.mm"
 export BUILD_VERSION="${BUILD_VERSION:-2026.1016.1}" BRANCH=lanto-native

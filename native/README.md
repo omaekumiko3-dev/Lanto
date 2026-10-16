@@ -9,11 +9,21 @@ Current acceptance result: the H.264 SPS rewriting issue exposed in this run has
 | Module | Responsibilities |
 | --- | --- |
 | `src/main/native-profile.ts` | Maps settings to environment parameters for the current media subprocess; checks the client capability manifest before enabling the local cursor |
-| Moonlight patch | Native SDL cursor; verify host capability; pass cursor mode in paired launch/resume requests |
-| Sunshine cursor patch | Pass the mode to ScreenCaptureKit with the session to exclude the cursor from video; the next normal connection restores the remote cursor |
+| `moonlight/cursor-frame.*` | Validates the cursor protocol, image dimensions, and hotspot, and decodes transparent PNG images |
+| `moonlight/cursor-sync.*` | Retrieves shapes on a separate thread; the SDL thread creates, scales, and releases the local cursor |
+| `sunshine/lanto_cursor.*` | Reads the system cursor and hotspot on the AppKit main thread and generates shape responses |
+| Moonlight／Sunshine patches | Connects session, capability negotiation, and pairing HTTPS; ScreenCaptureKit excludes the cursor from video |
 | Upstream PR #5817 | ScreenCaptureKit capture, native asynchronous VideoToolbox encoding |
 
-The current local cursor is a fixed arrow, with no remote shape/hotspot synchronization yet. Cursor movement does not need to wait for the remote screen, but click results, window dragging, and text updates still go through the video link. The Mac test host allows one active media client to avoid mixing the two cursor modes when sharing a capture source. A normal controller can still connect, but the local cursor must be turned off.
+Currently supports synchronization of Mac system cursor shapes and hotspots; arrow, text, link, horizontal／vertical resize, and actual window edges have been verified. Cursor movement does not need to wait for the remote image, but click results, window dragging, and text updates still travel through the video path. The Mac experiment host allows one active media client to avoid mixing the two cursor modes when sharing a capture source. Regular controllers can still connect, but the local cursor must be disabled.
+
+## Cursor shape channel
+
+Mac uses the public [`NSCursor.currentSystem`](https://developer.apple.com/documentation/appkit/nscursor/currentsystem) to read the current system cursor and transmit a transparent PNG, logical dimensions, and a hotspot with the top-left corner as origin. The client scales the image and hotspot based on the remote primary display’s logical dimensions and the local stream window size. The current verification environment has one primary display; multi-display setups and combinations with different scaling have not been accepted.
+
+The host declares the capability through `LantoCursorShape=1` and the client manifest adds `cursorShapeProtocol=1`。`/lantocursor?since=<id>` It is registered only with the existing pairing HTTPS service, validates the client certificate, and requires an active session; the client pins the host certificate, does not follow redirects, and does not fall back to unauthenticated HTTP. It checks about every 33ms and returns an image only when the image or geometry information changes.
+
+Network requests and PNG decoding run on a separate thread, while SDL events retrieve only the latest shape; mouse movement does not wait for the network. Mac combines sampling tasks on the main thread, and HTTPS waits at most 40ms to avoid blocking shutdown when the main loop exits. The protocol limits response, image, and hotspot ranges; an invalid response preserves the previous shape without interrupting video. The default cursor is restored and resources released when focus is lost or the session ends. The fixed arrow can still be used when connecting to an old host.
 
 ## Fixed sources
 
@@ -28,15 +38,15 @@ Both upstream repositories use GPL; patches are used under their respective upst
 
 Prepare MSVC x64, Windows SDK, and the MSVC version of the Qt SDK. Upstream recommends Qt 6.11 or later; this run first used the existing local Qt 5.15.2 to compile and perform actual TLS／D3D11 streaming verification, and this is also a variable that needs to be fixed for subsequent performance comparisons.
 
-Check out the Moonlight commit listed above, initialize all its submodules, and extract the verified v19 x64 package to `libs/windows`, then apply, in order, `patches/moonlight-local-cursor.patch` and `patches/moonlight-h264-sps.patch`, and then run:
+Check out the Moonlight commit listed above, initialize all its submodules, and extract the verified v19 x64 package to `libs/windows`, then apply, in order, `patches/moonlight-local-cursor.patch`、`patches/moonlight-h264-sps.patch` and `patches/moonlight-cursor-shape.patch`, and then run:
 
 ```powershell
 pwsh -File native/build-moonlight.ps1 -Source C:/build/moonlight-qt -QtBin C:/Qt/msvc_64/bin -Output C:/build/Moonlight-Lanto
 ```
 
-The output directory must be new. The script compiles, deploys dependencies, and writes `lanto-media.json` capability manifest; this file only describes features and is not a security signature. In Lanto, select the output `Moonlight.exe`for «Moonlight executable». The capability manifest is not required when the local cursor is disabled by default; the original version can still be used.
+The output directory must be a new directory. The script copies the `native/moonlight/` source files into the upstream `app/streaming/lanto/`, compiles, deploys dependencies, and writes the `lanto-media.json` capability manifest; this file only describes features and is not a security signature. In Lanto, select the output `Moonlight.exe`for «Moonlight executable». The capability manifest is not required when the local cursor is disabled by default; the original version can still be used.
 
-The build entry point copies the repository’s `assets/lanto-stream.svg` and `.ico` Copy the icon assets to the upstream working copy, then bundle them into the window, taskbar, and executable. These branded assets share a source with the mint green console icon and use purple to distinguish the remote screen; they do not change the media protocol or app pairing identity. This machine currently uses `Moonlight-Lanto-native-3`。
+The build entry point copies the repository’s `assets/lanto-stream.svg` and `.ico` Copy the icon assets to the upstream working copy, then bundle them into the window, taskbar, and executable. These branded assets share a source with the mint green console icon and use purple to distinguish the remote screen; they do not change the app pairing identity. This machine currently uses `Moonlight-Lanto-native-4`。
 
 ## Mac build and deployment
 
@@ -47,6 +57,7 @@ git apply /absolute/Lanto/native/patches/sunshine-local-cursor.patch
 git apply /absolute/Lanto/native/patches/sunshine-sdk-compat.patch
 git apply /absolute/Lanto/native/patches/sunshine-runtime.patch
 git apply /absolute/Lanto/native/patches/sunshine-h264-sps.patch
+git apply /absolute/Lanto/native/patches/sunshine-cursor-shape.patch
 ```
 
 The SDK patch removes diagnostic constant mappings missing from the local SDK; the runtime patch preserves the macOS main-thread event loop in trayless mode and prevents a nullable ScreenCaptureKit error reason from triggering a diagnostic crash.
@@ -55,7 +66,7 @@ The SDK patch removes diagnostic constant mappings missing from the local SDK; t
 LANTO_SIGNING_IDENTITY='<Local stable code-signing identity>' bash native/build-sunshine.sh /absolute/Sunshine /absolute/ffmpeg /absolute/LantoSunshineNative.app
 ```
 
-The script does not switch services or read authentication materials; the app uses a separate `dev.lanto.sunshine.native` identifier and requires a stable signing identity to be provided explicitly. This deployment used the existing local Developer ID and passed `codesign --verify --deep --strict`. Before signing, ensure the signing keychain is unlocked in the same build session; the password is injected through KRU and is not written to the script or logs. On first launch, grant screen recording, accessibility, and the audio／network permissions in use through the system interface.
+The script copies `native/sunshine/` source files into the upstream `src/platform/macos/`, without switching services or reading authentication material. The application uses a separate `dev.lanto.sunshine.native` identifier and requires a stable signing identity to be provided explicitly. This deployment used the existing local Developer ID and passed `codesign --verify --deep --strict`. Before signing, ensure the signing keychain is unlocked in the same build session; the password is injected through KRU and is not written to the script or logs. On first launch, grant screen recording, accessibility, and the audio／network permissions in use through the system interface.
 
 During migration from temporary signing, TCC may retain requirements for the old binary. This run’s logs separately identified the old signatures of `PostEvent` and `AudioCapture` ; resetting only `Accessibility` or `ScreenCapture` did not clear them. Only if the same issue is confirmed through diagnosis, use the official `tccutil reset PostEvent dev.lanto.sunshine.native`／`tccutil reset AudioCapture dev.lanto.sunshine.native`, have the user allow access again in the system interface, and restart the application. Do not reset permissions on every build. See [Apple designated requirement documentation](https://developer.apple.com/library/archive/documentation/Security/Conceptual/CodeSigningGuide/RequirementLang/RequirementLang.html)。
 
@@ -64,6 +75,8 @@ The H.264 fix has the host declare the capability through `LantoPreserveH264Sps=
 Create a separate `0700` configuration directory for the experimental version. Pairing state and certificates can be copied locally on the Mac from the existing configuration; set the files to `0600`. Do not print them in terminal output or sync them to the repository. First check startup on another port, then disconnect the controller, quit the original service, and switch to the production port. Explicitly set `disable_vsync_macos = false`to avoid using the private Quartz debug interface enabled by default in the upstream experimental branch.
 
 ## Acceptance and rollback
+
+Run the native cursor parsing tests in the same Qt／MSVC environment in a separate build directory using `qmake /absolute/Lanto/native/tests/cursor-frame-test.pro CONFIG+=release CONFIG-=debug`、`nmake`, then run the generated `LantoCursorTests.exe`. Tests cover transparency, dimensions, hotspots, and malformed／out-of-range responses; they do not replace verification of real desktop shapes. The six cursor sizes and hotspots read back through Windows Win32 matched Mac samples after scaling, and the user also confirmed that text, links, and window edge shapes change normally.
 
 Check both endpoints’ logs for `Lanto local cursor`, the actual codec, received video packets, real input, and disconnect／reconnect; a live process alone does not mean the connection succeeded. Native encoding is not guaranteed to outperform the existing path; compare using the same animation, bitrate, codec, and sampling window.
 

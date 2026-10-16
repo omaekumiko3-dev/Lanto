@@ -89,6 +89,12 @@ The real input probe received click, drag, and keyboard events. After each of th
 
 `dev.lanto.sunshine` The login startup item now points to the native app and separate configuration. The original startup item backup is at `~/.lanto/native-video/sunshine-stable-launchagent.plist`; to roll back, first turn off the Lanto local cursor, stop the native service, restore the backed up startup item, and start the original Sunshine. launchd reload was verified; the entire Mac was not restarted. The original Moonlight and Sunshine were preserved.
 
+## Subsequent cursor shape synchronization deployment
+
+Windows has been updated to `Moonlight-Lanto-native-4`, Mac updates the one at the same path `LantoSunshineNative.app`. The added cursor modules are implemented separately in C++/Objective-C++; they sync transparent images, dimensions, and hotspots over the existing paired HTTPS connection. Local rendering is retained, and performance statistics remain disabled. The user confirmed that the cursor changes normally over text areas, links, and window edges.
+
+The specified signing requirements for the old and new Mac applications are the same, and strict signature verification passed, so no reauthorization was needed this time. The native application from before the update is retained as `~/.lanto/native-video/LantoSunshineNative-before-cursor.app`The final version established an HEVC session after restarting, and system audio initialization was normal. This round’s test window has exited. For the implementation, patch order, and test entry point, see[Native component](../native/README.md)。
+
 ## Download Sources and Verification
 
 The following downloads were verified this time; all are official release assets:

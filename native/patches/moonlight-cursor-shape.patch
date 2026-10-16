@@ -1,0 +1,122 @@
+--- a/app/app.pro
++++ b/app/app.pro
+@@ -190,6 +190,8 @@
+     streaming/input/input.cpp \
+     streaming/input/keyboard.cpp \
+     streaming/input/mouse.cpp \
++    streaming/lanto/cursor-frame.cpp \
++    streaming/lanto/cursor-sync.cpp \
+     streaming/input/reltouch.cpp \
+     streaming/session.cpp \
+     streaming/audio/audio.cpp \
+--- a/app/streaming/session.cpp
++++ b/app/streaming/session.cpp
+@@ -1,4 +1,5 @@
+ #include "session.h"
++#include "lanto/cursor-sync.h"
+ #include "settings/streamingpreferences.h"
+ #include "streaming/streamutils.h"
+ #include "backend/richpresencemanager.h"
+@@ -1960,6 +1961,8 @@
+     // Switch to async logging mode when we enter the SDL loop
+     StreamUtils::enterAsyncLoggingMode();
+ 
++    LantoCursorSync cursorSync(m_Computer);
++
+     // Hijack this thread to be the SDL main thread. We have to do this
+     // because we want to suspend all Qt processing until the stream is over.
+     SDL_Event event;
+@@ -1995,6 +1998,10 @@
+             continue;
+         }
+ #endif
++        if (event.type == cursorSync.eventType()) {
++            cursorSync.apply(m_Window);
++            continue;
++        }
+         switch (event.type) {
+         case SDL_QUIT:
+             SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+@@ -2048,6 +2055,7 @@
+                 if (m_Preferences->muteOnFocusLoss) {
+                     m_AudioMuted = true;
+                 }
++                cursorSync.restore();
+                 m_InputHandler->notifyFocusLost();
+                 break;
+             case SDL_WINDOWEVENT_FOCUS_GAINED:
+@@ -2055,6 +2063,7 @@
+                     m_AudioMuted = false;
+                 }
+                 m_InputHandler->notifyFocusGained();
++                cursorSync.apply(m_Window);
+                 break;
+             case SDL_WINDOWEVENT_LEAVE:
+                 m_InputHandler->notifyMouseLeave();
+@@ -2257,6 +2266,7 @@
+             break;
+         case SDL_MOUSEMOTION:
+             m_InputHandler->handleMouseMotionEvent(&event.motion);
++            cursorSync.apply(m_Window);
+             break;
+         case SDL_MOUSEWHEEL:
+             m_InputHandler->handleMouseWheelEvent(&event.wheel);
+@@ -2308,6 +2318,7 @@
+     }
+ 
+ DispatchDeferredCleanup:
++    cursorSync.stop();
+     // Switch back to synchronous logging mode
+     StreamUtils::exitAsyncLoggingMode();
+ 
+--- a/app/backend/nvhttp.cpp
++++ b/app/backend/nvhttp.cpp
+@@ -509,7 +509,9 @@
+                  "&uuid=" + QUuid::createUuid().toRfc4122().toHex() +
+                  ((arguments != nullptr) ? ("&" + arguments) : ""));
+ 
++    const bool cursorRequest = command == "lantocursor";
+     QNetworkRequest request(url);
++    if (cursorRequest) request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
+ 
+     // Add our client certificate
+     request.setSslConfiguration(IdentityManager::get()->getSslConfig());
+@@ -523,11 +525,17 @@
+     // Use fine-grained idle timeouts to avoid calling QNetworkAccessManager::clearAccessCache(),
+     // which tears down the NAM's global thread each time. We must not keep persistent connections
+     // or GFE will puke.
+-    request.setAttribute(QNetworkRequest::ConnectionCacheExpiryTimeoutSecondsAttribute, 0);
++    if (!cursorRequest) request.setAttribute(QNetworkRequest::ConnectionCacheExpiryTimeoutSecondsAttribute, 0);
+ #endif
+ 
+     auto sslErrorsConnection = connect(m_Nam, &QNetworkAccessManager::sslErrors, this, &NvHTTP::handleSslErrors);
+     QNetworkReply* reply = m_Nam->get(request);
++    if (cursorRequest) {
++        reply->setReadBufferSize(140001);
++        connect(reply, &QIODevice::readyRead, reply, [reply]() {
++            if (reply->bytesAvailable() > 140000) reply->abort();
++        });
++    }
+ 
+     // Run the request with a timeout if requested
+     QEventLoop loop;
+@@ -552,7 +560,7 @@
+ 
+ #if QT_VERSION < QT_VERSION_CHECK(6, 3, 0)
+     // If we couldn't use fine-grained connection idle timeouts, kill them all now
+-    m_Nam->clearAccessCache();
++    if (!cursorRequest) m_Nam->clearAccessCache();
+ #endif
+     disconnect(sslErrorsConnection);
+ 
+@@ -582,5 +590,10 @@
+         }
+     }
+ 
++    if (cursorRequest && (reply->sslConfiguration().peerCertificate() != m_ServerCert ||
++        reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 200)) {
++        delete reply;
++        throw GfeHttpResponseException(401, "Cursor response authentication failed");
++    }
+     return reply;
+ }

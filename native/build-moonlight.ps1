@@ -24,6 +24,10 @@ $lantoVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Inst
 $lantoVs = & $lantoVswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if (-not $lantoVs) { throw 'Visual Studio C++ build tools are required' }
 $lantoBuild = Join-Path $lantoSource 'build-lanto'
+if (-not $lantoHttpSource.Contains('lantocursor')) { throw 'Apply moonlight-cursor-shape.patch before building' }
+$lantoCursorSource = Join-Path $lantoSource 'app/streaming/lanto'
+New-Item -ItemType Directory -Path $lantoCursorSource -Force | Out-Null
+Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'moonlight') -File | Copy-Item -Destination $lantoCursorSource
 $lantoAssets = Join-Path $PSScriptRoot '../assets'
 Copy-Item -LiteralPath (Join-Path $lantoAssets 'lanto-stream.svg') -Destination (Join-Path $lantoSource 'app/res/moonlight.svg')
 Copy-Item -LiteralPath (Join-Path $lantoAssets 'lanto-stream.ico') -Destination (Join-Path $lantoSource 'app/moonlight.ico')
@@ -52,6 +56,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Qt deployment failed' }
 $lantoQtVersion = & (Join-Path $lantoQtBin 'qmake.exe') -query QT_VERSION
 @{
   localCursorProtocol = 1
+  cursorShapeProtocol = 1
   h264SpsPreservationProtocol = 1
   brand = 'lanto'
   moonlightCommit = 'de2467e433821664cdd2224aad8c89a625be1ad9'

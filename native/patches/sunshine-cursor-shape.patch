@@ -1,0 +1,50 @@
+--- a/cmake/compile_definitions/macos.cmake
++++ b/cmake/compile_definitions/macos.cmake
+@@ -52,6 +52,7 @@
+         "${CMAKE_SOURCE_DIR}/src/platform/macos/av_img_t.h"
+         "${CMAKE_SOURCE_DIR}/src/platform/macos/display.mm"
+         "${CMAKE_SOURCE_DIR}/src/platform/macos/input.cpp"
++        "${CMAKE_SOURCE_DIR}/src/platform/macos/lanto_cursor.mm"
+         "${CMAKE_SOURCE_DIR}/src/platform/macos/microphone.mm"
+         "${CMAKE_SOURCE_DIR}/src/platform/macos/misc.mm"
+         "${CMAKE_SOURCE_DIR}/src/platform/macos/misc.h"
+--- a/src/nvhttp.cpp
++++ b/src/nvhttp.cpp
+@@ -33,6 +33,9 @@
+ #include "network.h"
+ #include "nvhttp.h"
+ #include "platform/common.h"
++#ifdef __APPLE__
++#include "platform/macos/lanto_cursor.h"
++#endif
+ #include "process.h"
+ #include "rtsp.h"
+ #include "system_tray.h"
+@@ -1235,6 +1238,7 @@
+ #ifdef __APPLE__
+     tree.put("root.LantoLocalCursor", 1);
+     tree.put("root.LantoPreserveH264Sps", 1);
++    tree.put("root.LantoCursorShape", 1);
+ #endif
+ 
+     tree.put("root.appversion", VERSION);
+@@ -1716,6 +1720,19 @@
+     https_server.resource["^/pair$"]["GET"] = [](auto resp, auto req) {
+       pair<SunshineHTTPS>(resp, req);
+     };
++#ifdef __APPLE__
++    // The HTTPS server verifies a paired client certificate before every request.
++    // This route is deliberately absent from the unauthenticated HTTP server.
++    https_server.resource["^/lantocursor$"]["GET"] = [](auto resp, auto req) {
++      const auto args = req->parse_query_string();
++      const auto previous = get_arg(args, "since", "");
++      if (rtsp_stream::session_count() == 0 || previous.size() > 256) {
++        resp->write("<root status_code=\"409\" status_message=\"No active cursor session\"/>");
++        return;
++      }
++      resp->write(lanto::cursor_xml(previous));
++    };
++#endif
+     https_server.resource["^/applist$"]["GET"] = applist;
+     https_server.resource["^/appasset$"]["GET"] = appasset;
+     https_server.resource["^/launch$"]["GET"] = [&host_audio](auto resp, auto req) {

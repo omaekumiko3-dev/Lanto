@@ -110,7 +110,7 @@ export function SettingsDialog({
                 <option value="false">Remote cursor</option>
                 <option value="true">Local cursor</option>
               </select>
-              <small>The local cursor requires a companion native component and is currently a fixed arrow.</small>
+              <small>The local cursor requires a companion native component.</small>
             </label>
             <label>
               Latency strategy
