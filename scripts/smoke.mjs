@@ -65,10 +65,16 @@ try {
   assert.equal((await page.evaluate(() => window.lanto.getState())).config.devices.length, 3)
 
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByLabel('Shortcut to return to this machine').fill('Control+Alt+Shift+F11')
   await page.getByLabel('Bitrate (Mbps)').fill('35')
+  await page.getByLabel('Show Cursor').selectOption('true')
   await page.getByRole('button', { name: 'Save Settings', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
   assert.equal((await page.evaluate(() => window.lanto.getState())).config.settings.bitrateMbps, 35)
+  assert.equal(
+    (await page.evaluate(() => window.lanto.getState())).config.settings.localCursor,
+    true
+  )
   const oldShortcut = (await page.evaluate(() => window.lanto.getState())).config.settings
     .returnShortcut
   const invalidShortcut = await page.evaluate(async () => {

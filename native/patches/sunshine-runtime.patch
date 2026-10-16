@@ -1,0 +1,127 @@
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -15,6 +15,7 @@
+ #ifdef __APPLE__
+   #include "platform/macos/misc.h"
+ 
++  #include <CoreFoundation/CoreFoundation.h>
+   #include <mach-o/dyld.h>
+ #endif
+ #ifdef __linux__
+@@ -149,6 +150,17 @@
+  * @param shutdown_event Shutdown event.
+  */
+ void mainThreadLoop(const std::shared_ptr<safe::event_t<bool>> &shutdown_event) {
++#ifdef __APPLE__
++  if (!tray_is_enabled || !config::sunshine.system_tray) {
++    BOOST_LOG(info) << "Running macOS event loop without tray"sv;
++    while (!shutdown_event->peek()) {
++      if (CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, true) == kCFRunLoopRunFinished) {
++        std::this_thread::sleep_for(10ms);
++      }
++    }
++    return;
++  }
++#endif
+   bool run_loop = false;
+ 
+   // Conditions that would require the main thread event loop
+--- a/src/platform/macos/sck_video.mm
++++ b/src/platform/macos/sck_video.mm
+@@ -26,6 +26,16 @@
+ // The active capture, so sck_present_picker() can reach it from the confighttp server
+ static std::mutex active_capture_mutex;
+ static struct screen_capture *active_capture = nullptr;
++
++/**
++ * @brief Return a non-null diagnostic string for ScreenCaptureKit failures.
++ * @param error Error supplied by the asynchronous capture API, possibly nil.
++ * @return A description valid for the current autorelease scope.
++ */
++static const char *sck_error_description(NSError *error) {
++  const char *description = [[error localizedDescription] UTF8String];
++  return description ? description : "Unknown ScreenCaptureKit error";
++}
+ 
+ uint32_t FramesIn = 0;
+ uint32_t FramesIdle = 0;
+@@ -69,7 +79,7 @@
+     [sc->stream stopCaptureWithCompletionHandler:^(NSError *_Nullable nsError) {
+       if (nsError && nsError.code != SCStreamErrorAttemptToStopStreamState) {
+         BOOST_LOG(error) << "destroy_screen_stream: Failed to stop stream with error "
+-                         << [[nsError localizedFailureReason] cStringUsingEncoding:NSUTF8StringEncoding];
++                         << sck_error_description(nsError);
+       }
+     }];
+   }
+@@ -378,7 +388,7 @@
+                                               error:&addStreamOutputError];
+   if (!did_add_output) {
+     BOOST_LOG(error) << "ScreenCaptureKit: Failed to add video stream output with error: "
+-                     << [[addStreamOutputError localizedFailureReason] cStringUsingEncoding:NSUTF8StringEncoding];
++                     << sck_error_description(addStreamOutputError);
+     return !did_add_output;
+   }
+ 
+@@ -389,7 +399,7 @@
+                                            error:&addStreamOutputError];
+     if (!did_add_output) {
+       BOOST_LOG(error) << "ScreenCaptureKit: Failed to add audio stream output with error: "
+-                       << [[addStreamOutputError localizedFailureReason] cStringUsingEncoding:NSUTF8StringEncoding];
++                       << sck_error_description(addStreamOutputError);
+       return !did_add_output;
+     }
+   }
+@@ -416,7 +426,7 @@
+     did_stream_start = (BOOL) (nsError == nil);
+     if (!did_stream_start) {
+       BOOST_LOG(error) << "init_screen_stream: Failed to start capture with error: "
+-                       << [[nsError localizedFailureReason] cStringUsingEncoding:NSUTF8StringEncoding];
++                       << sck_error_description(nsError);
+       [sc->stream release];
+       sc->stream = NULL;
+     }
+@@ -564,14 +574,14 @@
+ 
+               if (nsError) {
+                 BOOST_LOG(error) << "SCStream updateContentFilter: Failed to update content filter with error "sv
+-                                 << [[nsError localizedFailureReason] cStringUsingEncoding:NSUTF8StringEncoding];
++                                 << sck_error_description(nsError);
+               }
+             }];
+ }
+ 
+ - (void)contentSharingPickerStartDidFailWithError:(NSError *)nsError API_AVAILABLE(macos(14.0)) {
+   BOOST_LOG(error) << "SharingPicker: Failed with error "sv
+-                   << [[nsError localizedFailureReason] cStringUsingEncoding:NSUTF8StringEncoding];
++                   << sck_error_description(nsError);
+ }
+ 
+ @end
+@@ -703,7 +713,7 @@
+                     completionHandler:^(NSError *_Nullable nsError) {
+                       if (nsError) {
+                         BOOST_LOG(error) << "screen_stream_video_update: Failed to update stream properties with error "sv
+-                                         << [[nsError localizedFailureReason] cStringUsingEncoding:NSUTF8StringEncoding];
++                                         << sck_error_description(nsError);
+                       }
+                     }];
+     }
+@@ -798,7 +808,7 @@
+                 completionHandler:^(NSError *_Nullable nsError) {
+                   if (nsError) {
+                     BOOST_LOG(error) << "sck_set_show_cursor: Failed to update stream properties with error "sv
+-                                     << [[nsError localizedFailureReason] cStringUsingEncoding:NSUTF8StringEncoding];
++                                     << sck_error_description(nsError);
+                   }
+                 }];
+ 
+@@ -879,7 +889,7 @@
+       sc->shareable_content = [shareable_content retain];
+     } else {
+       BOOST_LOG(error) << "screen_capture_build_content_list: Failed to get shareable content with error "
+-                       << [[nsError localizedFailureReason] cStringUsingEncoding:NSUTF8StringEncoding];
++                       << sck_error_description(nsError);
+     }
+     os_sem_post(sc->shareable_content_available);
+   };

@@ -22,6 +22,7 @@ export interface Settings {
   lowLatency: boolean
   showPerformanceOverlay: boolean
   windowsPipeline: 'auto' | 'shared-bind'
+  localCursor: boolean
 }
 
 export interface Config {
@@ -126,7 +127,8 @@ export function defaultConfig(): Config {
       windowMode: 'borderless',
       lowLatency: false,
       showPerformanceOverlay: false,
-      windowsPipeline: 'auto'
+      windowsPipeline: 'auto',
+      localCursor: false
     }
   }
 }

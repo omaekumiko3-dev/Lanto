@@ -86,6 +86,7 @@ Core tests cover configuration, sessions, real TLS, pairing invalidation, author
 - [Host Usage](docs/host.md): initialization, pairing, authorization revocation, and Linux background operation.
 - [Windows → Mac Deployment Record](docs/mac-windows-deployment.md): physical machine installation, startup after login, dual pairing, and desktop permission acceptance status.
 - [Performance Investigation](docs/performance-investigation.md): real-machine decoding/rendering comparison, native media path, and measurement basis.
+- [Native Media Experiment Components](native/README.md): local cursor, fixed patches for Mac ScreenCaptureKit/VideoToolbox, build, and rollback.
 - [First-Version Verification Record](docs/verification.md): local checks that have passed and real-machine capabilities not yet verified.
 - [Repository Metadata Snapshot](research/repositories.json): upstream addresses, push times, archive status, and item-by-item assessments checked on 2026-10-16.
 - [Key Project Version Snapshot](research/source-pins.json): commit and release records from the research period. A release record may refer to a prerelease and does not necessarily indicate a recommended version to install.
@@ -105,7 +106,7 @@ Selkies is the main comparison for the browser integration approach, but the tak
 - The main source working directory is stored on the N100 NAS, and Linux1 mounts it to perform development tasks; build caches and dependencies may use Linux1’s local temporary storage.
 - N100 is known to have 8GB of memory and 6 2.5G Ethernet ports; the disk interfaces, network cards for other devices, GPU, and desktop environment still need to be inventoried on site.
 - Rust, Electron, JS, TS, Python, and Godot are the main development technologies. Build tasks requiring Windows-only toolchains can be handled by a Windows virtual machine on Linux1.
-- The current repository remains private; no third-party implementation source code was copied or introduced, and a distribution license for the project itself has not yet been selected.
+- The current repository remains private;`native/patches` it contains small patches for GPL upstream projects and follows the corresponding upstream licenses. The project’s own license for external distribution has not yet been selected.
 
 ## Next Steps
 

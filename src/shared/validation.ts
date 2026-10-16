@@ -46,7 +46,8 @@ export const settingsSchema = z
     windowMode: z.enum(['borderless', 'windowed']),
     lowLatency: z.boolean().default(false),
     showPerformanceOverlay: z.boolean().default(false),
-    windowsPipeline: z.enum(['auto', 'shared-bind']).default('auto')
+    windowsPipeline: z.enum(['auto', 'shared-bind']).default('auto'),
+    localCursor: z.boolean().default(false)
   })
   .strict()
 

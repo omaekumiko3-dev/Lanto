@@ -1,0 +1,41 @@
+--- a/app/streaming/input/input.cpp
++++ b/app/streaming/input/input.cpp
+@@ -22,7 +22,7 @@
+       m_FakeMouseCaptureActive(false),
+       m_KeyboardCaptureActive(false),
+       m_CaptureSystemKeysMode(prefs.captureSysKeysMode),
+-      m_MouseCursorCapturedVisibilityState(SDL_DISABLE),
++      m_MouseCursorCapturedVisibilityState(qEnvironmentVariableIntValue("LANTO_LOCAL_CURSOR") == 1 ? SDL_ENABLE : SDL_DISABLE),
+       m_LongPressTimer(0),
+       m_StreamWidth(streamWidth),
+       m_StreamHeight(streamHeight),
+@@ -35,6 +35,7 @@
+       m_DragButton(0),
+       m_NumFingersDown(0)
+ {
++    qInfo() << "Lanto local cursor:" << (m_MouseCursorCapturedVisibilityState == SDL_ENABLE);
+     // System keys are always captured when running without a DE
+     if (!WMUtils::isRunningDesktopEnvironment()) {
+         m_CaptureSystemKeysMode = StreamingPreferences::CSK_ALWAYS;
+--- a/app/backend/nvhttp.cpp
++++ b/app/backend/nvhttp.cpp
+@@ -208,6 +208,11 @@
+                  QString& rtspSessionUrl)
+ {
+     int riKeyId;
++
++    const bool localCursor = qEnvironmentVariableIntValue("LANTO_LOCAL_CURSOR") == 1;
++    if (localCursor && getXmlString(getServerInfo(NVLL_ERROR), "LantoLocalCursor") != "1") {
++        throw GfeHttpResponseException(400, "Local cursor requires the Lanto native Sunshine host. Disable local cursor to connect to this host.");
++    }
+ 
+     memcpy(&riKeyId, streamConfig->remoteInputAesIv, sizeof(riKeyId));
+     riKeyId = qFromBigEndian(riKeyId);
+@@ -234,6 +239,7 @@
+                                    "&remoteControllersBitmap="+QString::number(gamepadMask)+
+                                    "&gcmap="+QString::number(gamepadMask)+
+                                    "&gcpersist="+QString::number(persistGameControllersOnDisconnect ? 1 : 0)+
++                                   "&lantoLocalCursor="+QString::number(localCursor ? 1 : 0)+
+                                    LiGetLaunchUrlQueryParameters(),
+                                    LAUNCH_TIMEOUT_MS);
+ 

@@ -186,6 +186,21 @@ export function SettingsDialog({
           <p className="settings-footnote">
             Screen settings take effect on the next connection. Configuration is saved locally:<span>{configDirectory}</span>
           </p>
+          <label>
+            Show Cursor
+            <select
+              value={String(draft.localCursor)}
+              onChange={(event) =>
+                setDraft({ ...draft, localCursor: event.target.value === 'true' })
+              }
+            >
+              <option value="false">Remote cursor</option>
+              <option value="true">Local Cursor (Experimental)</option>
+            </select>
+            <small>
+              The local cursor follows the mouse immediately and requires a companion native component. It currently uses a fixed arrow and does not yet follow the remote cursor shape.
+            </small>
+          </label>
         </div>
         <footer className="modal-footer">
           <div className="footer-spacer" />

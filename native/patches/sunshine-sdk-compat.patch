@@ -1,0 +1,10 @@
+--- a/src/platform/macos/coreaudio_helpers.h
++++ b/src/platform/macos/coreaudio_helpers.h
+@@ -62,7 +62,6 @@
+         VT_ERROR_CASE(kVTCouldNotFindExtensionErr);
+         VT_ERROR_CASE(kVTExtensionConflictErr);
+         VT_ERROR_CASE(kVTVideoEncoderAutoWhiteBalanceNotLockedErr);
+-        VT_ERROR_CASE(kVTLogTransferFunctionMismatchErr);
+ #undef VT_ERROR_CASE
+ 
+       default:

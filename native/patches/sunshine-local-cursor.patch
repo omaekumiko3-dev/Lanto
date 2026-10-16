@@ -1,0 +1,105 @@
+--- a/src/nvhttp.cpp
++++ b/src/nvhttp.cpp
+@@ -483,6 +483,7 @@
+     std::copy(rikey.cbegin(), rikey.cend(), std::back_inserter(launch_session->gcm_key));
+ 
+     launch_session->host_audio = host_audio;
++    launch_session->lanto_local_cursor = get_arg(args, "lantoLocalCursor", "0") == "1";
+     std::stringstream mode = std::stringstream(get_arg(args, "mode", "0x0x0"));
+     // Split mode by the char "x", to populate width/height/fps
+     int x = 0;
+@@ -1231,6 +1232,9 @@
+ 
+     tree.put("root.<xmlattr>.status_code", 200);
+     tree.put("root.hostname", config::nvhttp.sunshine_name);
++#ifdef __APPLE__
++    tree.put("root.LantoLocalCursor", 1);
++#endif
+ 
+     tree.put("root.appversion", VERSION);
+     tree.put("root.GfeVersion", GFE_VERSION);
+@@ -1496,6 +1500,15 @@
+     // so we should use it if it's present in the args and there are
+     // no active sessions we could be interfering with.
+     const bool no_active_sessions {rtsp_stream::session_count() == 0};
++#ifdef __APPLE__
++    // One capture source must not serve clients with conflicting cursor modes.
++    if (!no_active_sessions) {
++      tree.put("root.resume", 0);
++      tree.put("root.<xmlattr>.status_code", 409);
++      tree.put("root.<xmlattr>.status_message", "Lanto native host permits one active streaming client");
++      return;
++    }
++#endif
+     if (no_active_sessions && args.find("localAudioPlayMode"s) != std::end(args)) {
+       host_audio = util::from_view(get_arg(args, "localAudioPlayMode"));
+     }
+--- a/src/rtsp.h
++++ b/src/rtsp.h
+@@ -27,6 +27,7 @@
+     uint32_t control_connect_data;  ///< Client-provided token used when connecting the control channel.
+ 
+     bool host_audio;  ///< Whether host audio should be played locally.
++    bool lanto_local_cursor = false;  ///< Omit cursor from capture for a Lanto local pointer.
+     std::string unique_id;  ///< Moonlight client unique identifier for this launch request.
+     int width;  ///< Frame or display width in pixels.
+     int height;  ///< Frame or display height in pixels.
+--- a/src/rtsp.cpp
++++ b/src/rtsp.cpp
+@@ -1302,6 +1302,7 @@
+       return;
+     }
+ 
++    config.monitor.lanto_local_cursor = session.lanto_local_cursor;
+     auto stream_session = stream::session::alloc(config, session);
+     server->insert(stream_session);
+ 
+--- a/src/video.h
++++ b/src/video.h
+@@ -39,6 +39,7 @@
+     int dynamicRange;  ///< Encoding color depth: 0 = 8-bit, 1 = 10-bit.
+     int chromaSamplingType;  ///< Chroma sampling type: 0 = 4:2:0, 1 = 4:4:4.
+     int enableIntraRefresh;  ///< Intra refresh setting: 0 = disabled, 1 = enabled.
++    bool lanto_local_cursor = false;  ///< Render pointer locally instead of in captured video.
+   };
+ 
+   namespace amf {
+--- a/src/platform/macos/display.mm
++++ b/src/platform/macos/display.mm
+@@ -90,6 +90,7 @@
+     CGDirectDisplayID display_id {};  ///< Display ID.
+     std::unique_ptr<display_device::DisplayPowerGuardInterface> display_power_guard;  ///< Display power guard.
+     int client_frame_rate {};
++    bool lanto_local_cursor = false;  ///< Omit the remote pointer when the client draws its own.
+     AVRational client_frame_rate_strict {};
+     std::optional<nanoseconds> uptime_to_steady_offset;
+ 
+@@ -102,6 +103,8 @@
+ 
+     int init(const ::video::config_t &config) {
+       client_frame_rate = config.framerate;
++      lanto_local_cursor = config.lanto_local_cursor;
++      BOOST_LOG(info) << "Lanto local cursor: " << lanto_local_cursor;
+       if (client_frame_rate <= 0) {
+         client_frame_rate = 60;
+       }
+@@ -227,7 +230,7 @@
+     capture_e snapshot(const pull_free_image_cb_t &pull_free_image_cb, std::shared_ptr<platf::img_t> &img_out, milliseconds timeout, bool cursor) {
+       @autoreleasepool {
+         // Changes to cursor status will take effect on future frames
+-        sck_set_show_cursor(sc, cursor);
++        sck_set_show_cursor(sc, cursor && !lanto_local_cursor);
+ 
+         CMSampleBufferRef sb = sck_get_latest_sample_buffer(sc, timeout);
+ 
+--- a/src/platform/macos/sck_video.mm
++++ b/src/platform/macos/sck_video.mm
+@@ -430,7 +430,7 @@
+ struct screen_capture *sck_video_capture_create(platf::mem_type_e hwdevice_type, const std::string &capture_target, const video::config_t &vconfig) {
+   struct screen_capture *sc = (struct screen_capture *) calloc(1, sizeof(struct screen_capture));
+ 
+-  sc->show_cursor = true;
++  sc->show_cursor = !vconfig.lanto_local_cursor;
+   sc->show_empty_names = false;
+   sc->show_hidden_windows = false;
+   // Default to full-display capture of the main display. build_display_list() will

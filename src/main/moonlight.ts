@@ -3,6 +3,7 @@ import { mkdir, open, stat } from 'node:fs/promises'
 import { delimiter, extname, isAbsolute, join } from 'node:path'
 import type { Device, Settings } from '../shared/model.ts'
 import type { MediaAdapter, MediaExit, MediaHandle } from './session-manager.ts'
+import { nativeEnvironment } from './native-profile.ts'
 
 export function streamArguments(device: Device, settings: Settings): string[] {
   const args = [
@@ -93,11 +94,7 @@ export class MoonlightAdapter implements MediaAdapter {
       await mkdir(this.logDirectory, { recursive: true, mode: 0o700 })
       logFile = join(this.logDirectory, `moonlight-${Date.now()}.log`)
     }
-    const environmentOverrides: Record<string, string> = {}
-    if (process.platform === 'win32' && settings.windowsPipeline === 'shared-bind') {
-      environmentOverrides.D3D11VA_FORCE_SEPARATE_DEVICES = '0'
-      environmentOverrides.D3D11VA_FORCE_BIND = '1'
-    }
+    const environmentOverrides = await nativeEnvironment(executable, settings)
     return launchMedia(executable, streamArguments(device, settings), logFile, environmentOverrides)
   }
 

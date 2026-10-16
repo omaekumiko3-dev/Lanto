@@ -77,6 +77,16 @@ If tearing occurs, you can change “Latency Strategy” back to “Follow Moonl
 
 Later, at the user’s request, a native decoding/rendering investigation and eight short comparisons were conducted, adding reversible Windows shared-device and texture experiment items. They are enabled locally, and the user confirmed “Normal, the controls feel more responsive.” The data supports a reduction in average rendering time; there is not yet a complete end-to-end measurement. See[Performance Investigation](performance-investigation.md). The temporary test animation on the Mac has exited, and the normal desktop connection has been restored.
 
+## Local Cursor and Native VideoToolbox Experiment
+
+Deployed Windows alongside the existing installation `Moonlight-Lanto-native-1` and Mac `~/Applications/LantoSunshineNative.app`. Mac uses a separate identifier `dev.lanto.sunshine.native`, independent `~/.lanto/native-video/profile`, preserving the original application, pairing state, and login startup item. The experimental configuration defaults to test port 48989; use the production port only during testing. Restore the test port after the experiment. Fixed source code and build entry points are listed in[Native component](../native/README.md)。
+
+The first real connection received 2560×1440, 60fps H.264 video. Logs from both sides confirmed local cursor mode and a native VideoToolbox session. Screen Recording permission was eventually granted successfully; changing the temporary local signing caused the old authorization to become invalid, so we used the official `tccutil` to reset the experimental app’s screen recording record, then the user allowed it again. After Accessibility was added again, the branch’s Post Event permission check still reported a denial, so real input did not pass acceptance.
+
+After compiling the no-tray main-thread event loop and nullable error diagnostics patches, another connection attempt still showed Core Audio IOProc creation blocking, no first audio packet from the client, and repeated decoding errors. Therefore, the experimental version was not enabled again, and a successful build was not treated as proof of stability.
+
+Lanto has now been reopened, and the connection is back to stable Sunshine, 2K60 HEVC, a D3D11VA shared device and texture, with the local cursor disabled; logs confirm receipt of the first video and audio packets. Windows currently uses the custom client’s normal mode, while the original Moonlight remains available for selection in Settings. The Mac experimental app has exited, and the original app remains the login startup item. No performance conclusion was reached showing the native backend to be superior.
+
 ## Download Sources and Verification
 
 The following downloads were verified this time; all are official release assets:
