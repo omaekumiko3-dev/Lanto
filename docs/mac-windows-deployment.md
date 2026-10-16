@@ -103,6 +103,36 @@ The second launch time was 12:09:14. No user login was needed again; the console
 
 The current flow is “boot → automatic desktop login → Host/Sunshine start automatically → connection initiated from Windows.” Automatic login takes the user directly to the account desktop after startup; the user chose this method. This time, sleep, screen lock, and startup settings for other applications were not changed, and this does not mean automatic startup after a power outage has been configured. The two existing Lanto LaunchAgents do not need to be modified.
 
+## Rebuilding the development environment on the retained system
+
+2026-10-16 The user chose to retain macOS and the account, and redeploy after cleaning up the old development environment. The source code, keychain, signing identities, SSH, and Lanto pairing were actually retained; the disk was not erased and macOS was not reinstalled. Deleted 19 instances of project Git metadata, including the recovery worktrees of `.git` pointer. The old project is still an ordinary source-code directory and no longer retains its local commit history; the Windows repository and GitHub remote are unaffected.
+
+Also clean up the old `node_modules`, virtual environments, Cargo package caches, Xcode DerivedData, real-device support caches, old simulator devices, native build outputs, and duplicate installation packages; remove old Rust 1.88, Node 22, Go 1.25, JDK 17, and old uv Python versions. For the targeted directories already deleted, according to the pre-cleanup `du` The estimated total is approximately 17.36 GiB, which is not equivalent to net space freed on APFS. Rebuild tools and simulators also take up space.
+
+Native Sunshine was redeployed along the same path as a Developer ID-signed app containing runtime libraries. Host updated to `~/.lanto/releases/d0bd3fd`, using the existing standalone Node 24.22.0 runtime and retaining its identity. The same executable and browser extension for KRU have been moved to `~/.local/share/kru-runtime`, and the corresponding LaunchAgent has been updated; the old project’s `target` Can be safely cleaned up. The current working version and recovery package have been separated; several native temporary `.app` The backup has been deleted.
+
+A new terminal uses `~/.config/lanto/development.zsh` Unified tool path:
+
+| Tool | Verified version/configuration |
+| --- | --- |
+| Node / npm | 24.21.0 LTS / 11.19.0，Homebrew `node@24` |
+| Rust | stable 1.99.1, including rustfmt, clippy, macOS arm64, iOS arm64, and iOS Simulator arm64 targets |
+| Python / uv | 3.13.16 / 0.12.24; the project uses an independent virtual environment and preserves the system Python |
+| Xcode | 26.6 (17F113), keep usable applications and clean up old build state |
+| CMake / Ninja / pkgconf | 4.4.4 / 1.13.2 / 3.0.7 |
+| Godot | Retain and verify 4.7.1 and the corresponding export template |
+| iOS Simulator | Keep the usable iOS 26.5 runtime and create a new `Lanto iPhone 17` |
+
+`~/Developer/Lanto` is a source working copy without Git metadata, with development dependencies installed;`~/Developer/BuildCheck` Save the build check example.`~/Developer/README.txt` To explain how to use it, double-click `~/Developer/open-ios-simulator.command` A new simulator can be opened. The SwiftUI test app was actually displayed in the simulator and was uninstalled after acceptance. CMake/C++, the Rust native program, the Rust simulator static library, the Python virtual environment, and the Godot script all ran/compiled successfully; Lanto’s 19 tests, type checking, Electron production build, and Host compilation passed, and the Electron 44.7.2 arm64 executable was launched to verify its version.
+
+The network check found that the system’s HTTP/HTTPS/SOCKS proxy points to a `127.0.0.1:10808`. These settings have been backed up; only matching stale proxy entries were disabled. Direct access to GitHub Release from the Mac still timed out, so the official Electron archive was downloaded on Windows and transferred via KRU, with SHA-256 checked against the npm package at both ends:`07d73d3d6dd0b8679c2f1849e30df179ea50c1d6b17630fcc398ae05221f0bd2`. TLS verification was not disabled, and no third-party mirror was configured.
+
+Recovery packages and pairing materials are stored in an access-restricted local directory outside the repository; cleanup checklists, verification logs, and proxy backups are saved on the Mac `~/.lanto/maintenance`. They should not be committed to Git.
+
+The final full-machine startup time was 12:36:03, and the account automatically entered the desktop. Host `d0bd3fd`Both the native Sunshine with runtime libraries included and the migrated KRU launch automatically; at 12:37, Windows reused the pairing to reconnect, and new host logs confirmed initialization of HEVC, the local cursor, and system audio. The tool paths and versions in the new terminal were confirmed again after reboot. After reopening the emulator and saving the final recovery package, APFS had about 167.54 GB remaining in actual measurements, a net increase of about 16.0 GB compared with the approximately 151.5 GB after the second reboot before cleanup; this figure includes space used by tools, the emulator, and the recovery package added during that time, and will continue to fluctuate.
+
+Final `lanto-ready.tar.gz` Includes the running native app, Host release files and standalone Node, Lanto identity and media configuration, KRU runtime directory, descriptions of the three LaunchAgents and development environment entry points; it does not include the account keychain or old project source code. SHA-256 matches on Windows and Mac:`498aadb8e52a78eb4367a66ea95b0a076750ce99f0a9aea9b182f18d9bb1e8e5`. The Windows files are in the local Lanto recovery directory mapped by the Codex application, with access restricted to the current user, administrators, and SYSTEM.
+
 ## Download Sources and Verification
 
 The following downloads were verified this time; all are official release assets:
