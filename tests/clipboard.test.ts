@@ -107,7 +107,7 @@ test('file metadata rejects traversal, reserved names, collisions and impossible
         { ...large, path: 'a' },
         { ...large, path: 'A' }
       ]),
-    /duplicate name/
+    /duplicate/
   )
 })
 
@@ -125,7 +125,10 @@ test('disabling synchronization invalidates queued reads and writes before they 
   const node = new ClipboardNode(native)
   const first = node.read(true)
   const queued = node.apply({ id: randomUUID(), kind: 'text', text: 'must not be copied' }, '0')
-  const rejected = Promise.all([assert.rejects(first, /stop/), assert.rejects(queued, /stop/)])
+  const rejected = Promise.all([
+    assert.rejects(first, /stopped/),
+    assert.rejects(queued, /stopped/)
+  ])
   node.stop()
   release()
   await rejected
@@ -163,7 +166,7 @@ test('streaming preserves empty and nested files, refuses changed sources and cl
     const partial = await IncomingFiles.create(join(directory, 'received'), event, '1')
     await assert.rejects(
       partial.receive(0, Readable.from([Buffer.alloc(20)]), new AbortController().signal),
-      /incomplete/
+      /not transferred completely/
     )
     await partial.cancel()
     assert.deepEqual(await readdir(join(directory, 'received')), [])
@@ -194,7 +197,10 @@ test('real TLS clipboard routes enforce pairing and switches, verify file hashes
     const connection = trust.connection(paired.id)
     const peer = new ClipboardPeer(connection)
     const signal = new AbortController().signal
-    await assert.rejects(hostRequest(connection.endpoint, '/v1/clipboard/state'), /invalid authorization/)
+    await assert.rejects(
+      hostRequest(connection.endpoint, '/v1/clipboard/state'),
+      /authorization is invalid/
+    )
     await assert.rejects(peer.state(undefined, signal), /rejected/)
     await peer.session({ enabled: true, files: false }, signal)
     let state = await peer.state(undefined, signal)

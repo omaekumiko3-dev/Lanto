@@ -27,6 +27,8 @@ $lantoBuild = Join-Path $lantoSource 'build-lanto'
 if (-not $lantoHttpSource.Contains('lantocursor')) { throw 'Apply moonlight-cursor-shape.patch before building' }
 $lantoAudioSource = Get-Content -LiteralPath (Join-Path $lantoSource 'app/streaming/audio/audio.cpp') -Raw
 if (-not $lantoAudioSource.Contains('m_LantoAudioVolume.apply')) { throw 'Apply moonlight-audio-volume.patch before building' }
+$lantoPairSource = Get-Content -LiteralPath (Join-Path $lantoSource 'app/cli/pair.cpp') -Raw
+if (-not $lantoPairSource.Contains('LANTO_AUTOMATED_PAIR')) { throw 'Apply moonlight-auto-pair.patch before building' }
 $lantoCursorSource = Join-Path $lantoSource 'app/streaming/lanto'
 New-Item -ItemType Directory -Path $lantoCursorSource -Force | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'moonlight') -File | Copy-Item -Destination $lantoCursorSource
@@ -61,12 +63,15 @@ Copy-Item -LiteralPath (Join-Path $lantoSource 'LICENSE') -Destination $lantoOut
 Get-ChildItem -LiteralPath (Join-Path $lantoSource 'libs/windows/lib/x64') -Filter '*.dll' | Copy-Item -Destination $lantoOutput
 & (Join-Path $lantoQtBin 'windeployqt.exe') --release --qmldir (Join-Path $lantoSource 'app') (Join-Path $lantoOutput 'Moonlight.exe')
 if ($LASTEXITCODE -ne 0) { throw 'Qt deployment failed' }
+# Automated pairing uses Qt's offscreen platform and software Quick renderer.
+Copy-Item -LiteralPath (Join-Path $lantoQtBin '../plugins/platforms/qoffscreen.dll') -Destination (Join-Path $lantoOutput 'platforms/qoffscreen.dll')
 $lantoQtVersion = & (Join-Path $lantoQtBin 'qmake.exe') -query QT_VERSION
 @{
   localCursorProtocol = 1
   cursorShapeProtocol = 1
   h264SpsPreservationProtocol = 1
   audioVolumeProtocol = 1
+  automatedPairProtocol = 1
   brand = 'lanto'
   moonlightCommit = 'de2467e433821664cdd2224aad8c89a625be1ad9'
   qtVersion = $lantoQtVersion.Trim()

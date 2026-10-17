@@ -6,7 +6,9 @@ function requireEncryption(): void {
     !safeStorage.isEncryptionAvailable() ||
     (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text')
   ) {
-    throw new Error('System secure storage is unavailable. Configure the system keychain before pairing')
+    throw new Error(
+      'Secure system storage is unavailable; configure the system keychain before pairing'
+    )
   }
 }
 

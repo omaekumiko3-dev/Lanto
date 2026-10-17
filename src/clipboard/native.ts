@@ -83,7 +83,7 @@ export class NativeClipboard implements DesktopClipboard {
       command = '/usr/bin/python3'
       args = ['-u', path]
     }
-    if (generation !== this.generation) throw new Error('Clipboard synchronization has stopped')
+    if (generation !== this.generation) throw new Error('Clipboard synchronization stopped')
     const child = spawn(command, args, { windowsHide: true, stdio: 'pipe' })
     this.child = child
     this.buffer = ''
@@ -110,7 +110,7 @@ export class NativeClipboard implements DesktopClipboard {
             if (message.result.content)
               message.result.content = nativeContentSchema.parse(message.result.content)
             waiter.resolve(message.result)
-          } else waiter.reject(new Error('Clipboard component returned invalid data'))
+          } else waiter.reject(new Error('The clipboard component returned invalid data'))
           this.waiter = undefined
         } catch (error) {
           this.waiter?.reject(error instanceof Error ? error : new Error('Invalid clipboard data'))
@@ -126,19 +126,21 @@ export class NativeClipboard implements DesktopClipboard {
   private failed(child: ChildProcessWithoutNullStreams): void {
     if (this.child !== child) return
     this.child = undefined
-    this.waiter?.reject(new Error('Desktop clipboard component is unavailable; make sure you are logged in to the desktop'))
+    this.waiter?.reject(
+      new Error('The desktop clipboard component is unavailable; sign in to the desktop')
+    )
     this.waiter = undefined
   }
   private request(input: object): Promise<ClipboardSnapshot> {
     const generation = this.generation
     return this.queue.run(async () => {
-      if (generation !== this.generation) throw new Error('Clipboard synchronization has stopped')
+      if (generation !== this.generation) throw new Error('Clipboard synchronization stopped')
       await this.start()
       return new Promise<ClipboardSnapshot>((resolve, reject) => {
         const id = ++this.sequence
         const timer = setTimeout(() => {
           this.close()
-          reject(new Error('Timed out reading the desktop clipboard'))
+          reject(new Error('Reading the desktop clipboard timed out'))
         }, 10000)
         this.waiter = {
           id,
@@ -169,7 +171,7 @@ export class NativeClipboard implements DesktopClipboard {
     this.generation++
     const child = this.child
     this.child = undefined
-    this.waiter?.reject(new Error('Clipboard synchronization has stopped'))
+    this.waiter?.reject(new Error('Clipboard synchronization stopped'))
     this.waiter = undefined
     child?.kill()
   }

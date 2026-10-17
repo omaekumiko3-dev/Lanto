@@ -7,7 +7,7 @@ export async function readJSON(file: string): Promise<unknown | undefined> {
     return JSON.parse(await readFile(file, 'utf8')) as unknown
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
-    throw new Error(`File could not be read; original file preserved: ${file}`)
+    throw new Error(`Cannot read the file; the original file was preserved: ${file}`)
   }
 }
 

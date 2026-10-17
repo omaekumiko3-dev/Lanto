@@ -24,6 +24,11 @@ const api: LantoAPI = {
   probe: (id) => invoke(channels.probe, id),
   discoverHosts: () => invoke(channels.discoverHosts),
   pairHost: (ticket) => invoke(channels.pairHost, ticket),
+  inspectDeployment: (input) => invoke(channels.inspectDeployment, input),
+  confirmSshHost: (accepted) => invoke(channels.confirmSshHost, accepted),
+  startDeployment: () => invoke(channels.startDeployment),
+  cancelDeployment: () => invoke(channels.cancelDeployment),
+  chooseSshKey: () => invoke(channels.chooseSshKey),
   openHelp: (topic) => invoke(channels.openHelp, topic),
   onState: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, state: AppState) => callback(state)

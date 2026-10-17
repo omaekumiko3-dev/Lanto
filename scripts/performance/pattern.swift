@@ -8,7 +8,7 @@ final class PatternView: NSView {
         let x = (sin(elapsed * 2) + 1) * 0.5 * (bounds.width - 160)
         NSColor.systemCyan.setFill()
         NSBezierPath(roundedRect: NSRect(x: x, y: 130, width: 160, height: 160), xRadius: 20, yRadius: 20).fill()
-        let text = "Lanto Performance Test · Automatic Exit\nFixed animation for comparing the video pipeline\n\(Int(elapsed * 60))"
+        let text = "Lanto performance test · Ends automatically\nFixed animation for comparing video pipelines\n\(Int(elapsed * 60))"
         text.draw(at: NSPoint(x: 35, y: bounds.height - 110), withAttributes: [
             .font: NSFont.monospacedSystemFont(ofSize: 22, weight: .medium),
             .foregroundColor: NSColor.white
@@ -19,7 +19,7 @@ final class PatternView: NSView {
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 500), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-window.title = "Lanto Performance Test — Automatic Exit"
+window.title = "Lanto performance test — Ends automatically"
 window.isReleasedWhenClosed = false
 let view = PatternView(frame: window.contentView!.bounds)
 window.contentView = view

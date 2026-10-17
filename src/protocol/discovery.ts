@@ -52,7 +52,8 @@ export function discoverHosts(duration = 2000): Promise<DiscoveredHost[]> {
       finished = true
       clearTimeout(timer)
       bonjour?.destroy()
-      if (error) reject(new Error('LAN discovery is unavailable. You can paste Host pairing credentials directly'))
+      if (error)
+        reject(new Error('LAN discovery unavailable; paste a Host pairing ticket to connect'))
       else resolve([...found.values()])
     }
     try {

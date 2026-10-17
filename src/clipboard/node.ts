@@ -18,9 +18,9 @@ export class ClipboardNode {
   async read(files: boolean): Promise<ClipboardState> {
     const generation = this.generation
     return this.queue.run(async () => {
-      if (generation !== this.generation) throw new Error('Clipboard synchronization has stopped')
+      if (generation !== this.generation) throw new Error('Clipboard synchronization stopped')
       const snapshot = await this.native.read(this.revision)
-      if (generation !== this.generation) throw new Error('Clipboard synchronization has stopped')
+      if (generation !== this.generation) throw new Error('Clipboard synchronization stopped')
       const initial = this.revision === undefined
       this.revision = snapshot.revision
       if (snapshot.content) {
@@ -30,7 +30,8 @@ export class ClipboardNode {
           if (snapshot.content.kind === 'files') {
             if (files) {
               const offer = await createOffer(randomUUID(), snapshot.content.paths)
-              if (generation !== this.generation) throw new Error('Clipboard synchronization has stopped')
+              if (generation !== this.generation)
+                throw new Error('Clipboard synchronization stopped')
               this.offer = offer
               this.event = this.offer.event
             }
@@ -52,7 +53,7 @@ export class ClipboardNode {
   ): Promise<void> {
     const generation = this.generation
     await this.queue.run(async () => {
-      if (generation !== this.generation) throw new Error('Clipboard synchronization has stopped')
+      if (generation !== this.generation) throw new Error('Clipboard synchronization stopped')
       signal?.throwIfAborted()
       const content: NativeContent =
         event.kind === 'files'
@@ -71,15 +72,15 @@ export class ClipboardNode {
           if (entry.kind === 'file') {
             const source = generated.sources.get(indices.get(entry.path) ?? -1)
             if (!source || source.size.toString() !== entry.size)
-              throw new Error('Received file list does not match')
+              throw new Error('The received file manifest does not match')
             sources.set(index, source)
           }
         offer = { event, sources }
       }
-      if (generation !== this.generation) throw new Error('Clipboard synchronization has stopped')
+      if (generation !== this.generation) throw new Error('Clipboard synchronization stopped')
       signal?.throwIfAborted()
       const revision = await this.native.write(content, expected)
-      if (generation !== this.generation) throw new Error('Clipboard synchronization has stopped')
+      if (generation !== this.generation) throw new Error('Clipboard synchronization stopped')
       this.revision = revision
       this.event = event
       this.offer = offer
@@ -87,7 +88,7 @@ export class ClipboardNode {
   }
   source(id: string, index: number): SharedFile {
     const source = this.offer?.event.id === id ? this.offer.sources.get(index) : undefined
-    if (!source) throw new Error('Copied content has expired; copy it again')
+    if (!source) throw new Error('The copied content expired; copy it again')
     return source
   }
   stop(): void {

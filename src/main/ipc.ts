@@ -17,7 +17,7 @@ export function registerIPC(window: () => BrowserWindow | null, workbench: Workb
         event.sender !== current.webContents ||
         event.senderFrame !== current.webContents.mainFrame
       )
-        return { ok: false, error: 'Disallowed call origin' }
+        return { ok: false, error: 'Unauthorized invocation source' }
       try {
         return { ok: true, value: await action(input) }
       } catch (error) {
@@ -48,7 +48,7 @@ export function registerIPC(window: () => BrowserWindow | null, workbench: Workb
     const path = join(workbench.snapshot().runtime.configDirectory, 'clipboard', 'received')
     await mkdir(path, { recursive: true, mode: 0o700 })
     const error = await shell.openPath(path)
-    if (error) throw new Error('Unable to open the file receiving directory')
+    if (error) throw new Error('Cannot open the received files directory')
   })
   handle(channels.openMoonlight, () => workbench.openMoonlight())
   handle(channels.connect, (input) => workbench.connect(input))
@@ -56,11 +56,24 @@ export function registerIPC(window: () => BrowserWindow | null, workbench: Workb
   handle(channels.probe, (input) => workbench.probe(input))
   handle(channels.discoverHosts, () => workbench.discoverHosts())
   handle(channels.pairHost, (input) => workbench.pairHost(input))
+  handle(channels.inspectDeployment, (input) => workbench.deployment.inspect(input))
+  handle(channels.confirmSshHost, (input) => workbench.deployment.confirmHostKey(input))
+  handle(channels.startDeployment, () => workbench.deployment.deploy())
+  handle(channels.cancelDeployment, () => workbench.deployment.cancel())
+  handle(channels.chooseSshKey, async () => {
+    const current = window()
+    if (!current) return null
+    const result = await dialog.showOpenDialog(current, {
+      title: 'Select SSH private key',
+      properties: ['openFile']
+    })
+    return result.canceled ? null : result.filePaths[0] || null
+  })
   handle(channels.chooseMoonlight, async () => {
     const current = window()
     if (!current) return null
     const result = await dialog.showOpenDialog(current, {
-      title: 'Select the Moonlight executable',
+      title: 'Select Moonlight executable',
       properties: ['openFile'],
       ...(process.platform === 'win32'
         ? { filters: [{ name: 'Moonlight', extensions: ['exe'] }] }

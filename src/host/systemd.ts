@@ -1,5 +1,6 @@
 function quote(value: string): string {
-  if (/[\u0000-\u001f\u007f]/.test(value)) throw new Error('Service path must not contain control characters')
+  if (/[\u0000-\u001f\u007f]/.test(value))
+    throw new Error('Service paths cannot contain control characters')
   return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/%/g, '%%').replace(/\$/g, '$$$$')}"`
 }
 

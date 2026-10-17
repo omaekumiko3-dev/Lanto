@@ -7,7 +7,7 @@ export async function probeSunshine(host: string, port = 47989): Promise<ProbeRe
   return {
     reachable,
     message: reachable
-      ? `${port} Port is reachable; pairing and streaming still need to be confirmed in Moonlight`
-      : `${port} Port is temporarily unreachable. Check the device address, Sunshine, and firewall`
+      ? `${port} port is reachable; pairing and streaming still need confirmation in Moonlight`
+      : `${port} port is unreachable; check the device address, Sunshine, and firewall`
   }
 }

@@ -1,5 +1,6 @@
 import type { DiscoveredHost, TrustedHostView } from '../protocol/host.ts'
 import type { ClipboardView } from '../protocol/clipboard.ts'
+import type { DeploymentView, SshConnectionInput } from '../protocol/deployment.ts'
 export type Platform = 'linux' | 'macos' | 'windows'
 
 export interface DeviceAudio {
@@ -59,6 +60,7 @@ export interface AppState {
   config: Config
   session: SessionState
   clipboard: ClipboardView
+  deployment: DeploymentView
   runtime: {
     version: string
     platform: string
@@ -94,6 +96,11 @@ export interface LantoAPI {
   probe(id: string): Promise<ProbeResult>
   discoverHosts(): Promise<DiscoveredHost[]>
   pairHost(ticket: string): Promise<AppState>
+  inspectDeployment(input: SshConnectionInput): Promise<void>
+  confirmSshHost(accepted: boolean): Promise<void>
+  startDeployment(): Promise<void>
+  cancelDeployment(): Promise<void>
+  chooseSshKey(): Promise<string | null>
   openHelp(topic: 'moonlight' | 'sunshine'): Promise<void>
   onState(callback: (state: AppState) => void): () => void
 }
@@ -115,6 +122,11 @@ export const channels = {
   probe: 'lanto:probe',
   discoverHosts: 'lanto:discover-hosts',
   pairHost: 'lanto:pair-host',
+  inspectDeployment: 'lanto:inspect-deployment',
+  confirmSshHost: 'lanto:confirm-ssh-host',
+  startDeployment: 'lanto:start-deployment',
+  cancelDeployment: 'lanto:cancel-deployment',
+  chooseSshKey: 'lanto:choose-ssh-key',
   openHelp: 'lanto:open-help'
 } as const
 

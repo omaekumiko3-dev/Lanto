@@ -39,7 +39,7 @@ test('TCP probe describes reachability without claiming a paired or authenticate
   try {
     const result = await probeSunshine('127.0.0.1', address.port)
     assert.equal(result.reachable, true)
-    assert.match(result.message, /pairing and streaming still require/)
+    assert.match(result.message, /pairing and streaming still need/)
   } finally {
     await new Promise<void>((resolve, reject) =>
       server.close((error) => (error ? reject(error) : resolve()))
@@ -59,7 +59,10 @@ test('native adapter stops its own child and reports a missing executable', asyn
   } finally {
     await child.stop()
   }
-  await assert.rejects(launchMedia('C:/lanto-nonexistent-test-fixture/absent.exe', []), /unable to start/)
+  await assert.rejects(
+    launchMedia('C:/lanto-nonexistent-test-fixture/absent.exe', []),
+    /Cannot start/
+  )
 })
 
 test('native renderer overrides reach only the owned child and leave its parent unchanged', async () => {

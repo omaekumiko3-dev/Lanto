@@ -23,7 +23,7 @@ export function hostRequestOptions(endpoint: HostEndpoint): RequestOptions {
     checkServerIdentity: (_host, peer) =>
       peer.fingerprint256 === expected
         ? undefined
-        : new Error('Host certificate does not match. Confirm the device identity again')
+        : new Error('Host certificate mismatch; verify the device identity again')
   }
 }
 
@@ -69,14 +69,15 @@ export async function hostRequest(
         response.once('end', () => {
           if (response.statusCode !== 200) {
             const messages: Record<number, string> = {
-              401: 'Host authorization is invalid or has been revoked',
+              401: 'Host authorization is invalid or revoked',
               403: 'Host rejected this operation',
-              409: 'Pairing credentials are invalid, expired, or already used',
-              429: 'Too many requests. Try again later'
+              409: 'Pairing ticket is invalid, expired, or already used',
+              429: 'Too many requests; retry later'
             }
             reject(
               new HostRequestError(
-                messages[response.statusCode || 0] || `Host request failed (${response.statusCode}）`,
+                messages[response.statusCode || 0] ||
+                  `Host request failed (${response.statusCode}）`,
                 response.statusCode || 0
               )
             )
@@ -91,7 +92,7 @@ export async function hostRequest(
       }
     )
     const deadline = setTimeout(
-      () => request_.destroy(new Error('Host request timed out. Check the address and network')),
+      () => request_.destroy(new Error('Host request timed out; check the address and network')),
       options.timeout ?? 5000
     )
     request_.once('close', () => clearTimeout(deadline))

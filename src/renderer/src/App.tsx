@@ -6,9 +6,12 @@ import { DeviceDialog } from './components/DeviceDialog.tsx'
 import { SettingsDialog } from './components/SettingsDialog.tsx'
 import { PairHostDialog } from './components/PairHostDialog.tsx'
 import { WorkspaceControls } from './components/WorkspaceControls.tsx'
+import { useState } from 'react'
+import { DeployDialog } from './components/DeployDialog.tsx'
 
 export function App() {
   const model = useWorkbench()
+  const [deployOpen, setDeployOpen] = useState(false)
   const {
     state,
     settings,
@@ -40,7 +43,7 @@ export function App() {
   const feedback = notice ? (
     <div className="notice" role="alert">
       <span>{notice}</span>
-      <button className="icon-button" aria-label="Close Tip" onClick={() => setNotice('')}>
+      <button className="icon-button" aria-label="Dismiss notice" onClick={() => setNotice('')}>
         <Icon name="close" size={16} />
       </button>
     </div>
@@ -51,7 +54,7 @@ export function App() {
       <main className="workspace">
         <div className="page-heading">
           <h1>
-            Device <span>{state.config.devices.length}</span>
+            Devices <span>{state.config.devices.length}</span>
           </h1>
           <div className="heading-actions">
             <WorkspaceControls
@@ -73,15 +76,19 @@ export function App() {
               onClick={() => setPairOpen(true)}
             >
               <Icon name="link" size={16} />
-              Connect to Host
+              Connect Host
             </button>
-            <button className="button primary" onClick={newDevice}>
+            <button
+              className="button primary"
+              disabled={active}
+              onClick={() => setDeployOpen(true)}
+            >
               <Icon name="plus" size={16} />
-              Add Device
+              Add device
             </button>
           </div>
         </div>
-        {!settingsOpen && !editing && !pairOpen && feedback}
+        {!settingsOpen && !editing && !pairOpen && !deployOpen && feedback}
         {!settingsOpen &&
           !editing &&
           !pairOpen &&
@@ -93,9 +100,9 @@ export function App() {
           )}
         {!state.runtime.shortcutRegistered && (
           <div className="notice" role="alert">
-            <span>Return shortcut is unavailable. Choose another key combination.</span>
+            <span>The return shortcut is unavailable; choose another combination.</span>
             <button className="text-button" onClick={() => setSettingsOpen(true)}>
-              Go to Settings
+              Open settings
             </button>
           </div>
         )}
@@ -124,6 +131,24 @@ export function App() {
               })
             )
               setPairOpen(false)
+          }}
+        />
+      )}
+      {deployOpen && (
+        <DeployDialog
+          view={state.deployment}
+          api={api}
+          close={() => {
+            void run('deploy-close', () => api.cancelDeployment())
+            setDeployOpen(false)
+          }}
+          manual={() => {
+            setDeployOpen(false)
+            newDevice()
+          }}
+          connect={(id) => {
+            setDeployOpen(false)
+            void run('connect', () => api.connect(id))
           }}
         />
       )}

@@ -27,7 +27,7 @@ export function ClipboardStatus({
       <div className="clipboard-heading">
         <span className="clipboard-peer-count">
           <span className={`status-dot ${ready ? 'online' : ''}`} />
-          {ready} / {state.peers.length} devices online
+          {ready} / {state.peers.length} online
         </span>
         <div>
           {state.files && (
@@ -62,7 +62,7 @@ export function ClipboardStatus({
               {transfer.phase === 'complete'
                 ? 'Ready to paste'
                 : transfer.phase === 'cancelled'
-                  ? 'Canceled'
+                  ? 'Cancelled'
                   : transfer.phase === 'failed'
                     ? transfer.error || 'Transfer failed'
                     : `${bytes(transfer.bytes)} / ${bytes(transfer.total)}`}
@@ -70,7 +70,7 @@ export function ClipboardStatus({
           </div>
           {transfer.phase === 'transferring' && (
             <progress
-              aria-label={`Send to ${transfer.device}`}
+              aria-label={`Transfer to ${transfer.device}`}
               max={Number(transfer.total) || 1}
               value={Number(transfer.bytes)}
             />

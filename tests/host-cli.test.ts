@@ -46,5 +46,8 @@ test('systemd service generation quotes paths and does not allow injected direct
   assert.ok(unit.includes('"/home/dev/Lanto Host/cli.js"'))
   assert.ok(unit.includes('"/home/dev/a%%b$$root"'))
   assert.ok(unit.includes('WantedBy=default.target'))
-  assert.throws(() => systemdUnit('/usr/bin/node', 'bad\nExecStart=other', '/tmp/host'), /control characters/)
+  assert.throws(
+    () => systemdUnit('/usr/bin/node', 'bad\nExecStart=other', '/tmp/host'),
+    /control characters/
+  )
 })

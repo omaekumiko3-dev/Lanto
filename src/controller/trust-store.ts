@@ -62,7 +62,7 @@ export class TrustStore {
 
   connection(id: string): { endpoint: HostEndpoint; token: string } {
     const host = this.hosts.find((entry) => entry.id === id)
-    if (!host) throw new Error('This Host has not been paired')
+    if (!host) throw new Error('This Host is not paired')
     return {
       endpoint: { address: host.address, port: host.port, certificate: host.certificate },
       token: this.vault.decrypt(host.encryptedToken)
@@ -85,7 +85,7 @@ export class TrustStore {
 
   async updateAddress(id: string, address: string): Promise<void> {
     const existing = this.hosts.find((entry) => entry.id === id)
-    if (!existing) throw new Error('This Host has not been paired')
+    if (!existing) throw new Error('This Host is not paired')
     if (existing.address === address) return
     const updated = recordSchema.parse({ ...existing, address })
     await this.persist(this.hosts.map((entry) => (entry.id === id ? updated : entry)))

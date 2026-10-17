@@ -49,12 +49,13 @@ export function validateEntries(entries: FileEntry[]): string[] {
       entry.path.startsWith('/') ||
       (entry.kind === 'directory' && entry.size !== '0')
     )
-      throw new Error('File list contains an invalid path')
+      throw new Error('The file manifest contains an invalid path')
     const key = entry.path.normalize('NFC').toLowerCase()
-    if (paths.has(key)) throw new Error('File list contains a duplicate path')
+    if (paths.has(key)) throw new Error('The file manifest contains duplicate paths')
     if (parts.length > 1) {
       const parent = parts.slice(0, -1).join('/').normalize('NFC').toLowerCase()
-      if (paths.get(parent)?.kind !== 'directory') throw new Error('File list is missing a parent directory')
+      if (paths.get(parent)?.kind !== 'directory')
+        throw new Error('The file manifest is missing a parent directory')
     }
     paths.set(key, entry)
     roots.add(parts[0]!)
@@ -66,13 +67,16 @@ export async function createOffer(id: string, paths: string[]): Promise<FileOffe
   const sources = new Map<number, SharedFile>()
   const names = new Set<string>()
   async function add(path: string, destination: string): Promise<void> {
-    if (entries.length >= 100000) throw new Error('More than 100000 files copied at once; copy them in batches')
+    if (entries.length >= 100000)
+      throw new Error('More than 100000 files were selected; copy them in smaller batches')
     const info = await lstat(path, { bigint: true })
     if (info.isSymbolicLink() || (!info.isFile() && !info.isDirectory()))
-      throw new Error('Shared files do not support symbolic links or special device files')
-    if ((await realpath(path)) !== path) throw new Error('Shared path contains a symbolic link; copy the actual file')
+      throw new Error('File sharing does not support symbolic links or special device files')
+    if ((await realpath(path)) !== path)
+      throw new Error('The shared path contains a symbolic link; copy the actual file')
     const key = destination.normalize('NFC').toLowerCase()
-    if (names.has(key)) throw new Error('File name is duplicated on the destination system; rename it first')
+    if (names.has(key))
+      throw new Error('File names collide on the destination system; rename them first')
     names.add(key)
     const index = entries.length
     entries.push({
@@ -94,7 +98,8 @@ export async function createOffer(id: string, paths: string[]): Promise<FileOffe
   }
   for (const path of paths) {
     const selected = resolve(path)
-    if ((await lstat(selected)).isSymbolicLink()) throw new Error('Shared files do not support symbolic links')
+    if ((await lstat(selected)).isSymbolicLink())
+      throw new Error('File sharing does not support symbolic links')
     // Windows packaged apps can redirect AppData, and macOS has standard directory aliases.
     // Resolve the selected root once, then pin every traversed entry to that physical path.
     await add(await realpath(selected), portableName(basename(selected)))
@@ -122,7 +127,7 @@ export class ByteMeter extends Transform {
   ) {
     this.bytes += BigInt(chunk.length)
     if (this.bytes > this.expected) {
-      callback(new Error('File size changed during transfer'))
+      callback(new Error('The file size changed during transfer'))
       return
     }
     this.hash.update(chunk)
@@ -130,14 +135,16 @@ export class ByteMeter extends Transform {
     callback(null, chunk)
   }
   override _flush(callback: (error?: Error | null) => void) {
-    callback(this.bytes === this.expected ? null : new Error('File was not transferred completely'))
+    callback(
+      this.bytes === this.expected ? null : new Error('The file was not transferred completely')
+    )
   }
   digest(): string {
     return this.hash.digest('hex')
   }
 }
 export async function openSharedFile(source: SharedFile): Promise<FileHandle> {
-  if ((await realpath(source.path)) !== source.path) throw new Error('Source file path has changed')
+  if ((await realpath(source.path)) !== source.path) throw new Error('The source file path changed')
   const file = await open(source.path, constants.O_RDONLY | (constants.O_NOFOLLOW || 0))
   try {
     await assertSource(file, source)
@@ -156,7 +163,7 @@ export async function assertSource(file: FileHandle, source: SharedFile): Promis
     now.ino !== source.ino ||
     now.dev !== source.dev
   )
-    throw new Error('Source file has changed; copy it again')
+    throw new Error('The source file changed; copy it again')
 }
 export async function streamSharedFile(
   source: SharedFile,
@@ -195,7 +202,8 @@ export class IncomingFiles {
     validateEntries(event.entries)
     await mkdir(base, { recursive: true, mode: 0o700 })
     const disk = await statfs(base, { bigint: true })
-    if (totalSize(event) > disk.bavail * disk.bsize) throw new Error('Receiving device does not have enough disk space')
+    if (totalSize(event) > disk.bavail * disk.bsize)
+      throw new Error('The receiving device has insufficient disk space')
     const directory = await realpath(await mkdtemp(join(base, 'copy-')))
     const incoming = new IncomingFiles(event, expected, directory)
     try {
@@ -210,7 +218,8 @@ export class IncomingFiles {
   private path(entry: FileEntry): string {
     const path = resolve(this.directory, ...entry.path.split('/'))
     const child = relative(this.directory, path)
-    if (!child || child.startsWith('..' + sep) || child === '..') throw new Error('Invalid destination path')
+    if (!child || child.startsWith('..' + sep) || child === '..')
+      throw new Error('Invalid receiving path')
     return path
   }
   async receive(
@@ -244,7 +253,7 @@ export class IncomingFiles {
       this.pending.size ||
       this.completed.size !== this.event.entries.filter((entry) => entry.kind === 'file').length
     )
-      throw new Error('File transfer is not yet complete')
+      throw new Error('Not all files have finished transferring')
     return validateEntries(this.event.entries).map((root) => join(this.directory, root))
   }
   finish(): void {

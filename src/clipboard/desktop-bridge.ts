@@ -64,11 +64,15 @@ export class DesktopBridge {
             resolve()
           })
           response.on('error', reject)
-          response.on('aborted', () => reject(new Error('Desktop clipboard component connection disconnected')))
+          response.on('aborted', () =>
+            reject(new Error('The desktop clipboard component disconnected'))
+          )
         }
       )
       this.requests.add(req)
-      req.setTimeout(30000, () => req.destroy(new Error('Desktop clipboard component connection timed out')))
+      req.setTimeout(30000, () =>
+        req.destroy(new Error('The desktop clipboard component connection timed out'))
+      )
       req.once('error', reject)
       req.once('close', () => this.requests.delete(req))
       input.once('aborted', () => req.destroy())
@@ -158,7 +162,8 @@ export async function startDesktopBridge(directory: string) {
     server.listen(0, '127.0.0.1', resolve)
   })
   const address = server.address()
-  if (!address || typeof address === 'string') throw new Error('Clipboard component could not start')
+  if (!address || typeof address === 'string')
+    throw new Error('The clipboard component could not start')
   await writeJSON(file, { port: address.port, token })
   return {
     async close() {

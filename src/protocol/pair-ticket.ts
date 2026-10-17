@@ -10,18 +10,20 @@ export function encodeTicket(ticket: PairTicket): string {
 
 export function decodeTicket(input: string, now = Date.now()): PairTicket {
   const value = input.trim()
-  if (!value.startsWith(prefix) || value.length > 16000) throw new Error('Invalid pairing credential format')
+  if (!value.startsWith(prefix) || value.length > 16000)
+    throw new Error('Invalid pairing ticket format')
   try {
     const ticket = pairTicketSchema.parse(
       JSON.parse(Buffer.from(value.slice(prefix.length), 'base64url').toString('utf8'))
     )
     const certificate = new X509Certificate(ticket.certificate)
-    if (now >= Date.parse(ticket.expiresAt)) throw new Error('Pairing credentials have expired. Generate new ones on the Host')
+    if (now >= Date.parse(ticket.expiresAt))
+      throw new Error('Pairing ticket expired; generate a new one on the Host')
     if (Date.parse(certificate.validTo) <= now || Date.parse(certificate.validFrom) > now)
       throw new Error('Host certificate is outside its validity period')
     return ticket
   } catch (error) {
     if (error instanceof Error && /expired|validity period/.test(error.message)) throw error
-    throw new Error('Invalid pairing credential format')
+    throw new Error('Invalid pairing ticket format')
   }
 }

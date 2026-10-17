@@ -33,7 +33,7 @@ test('real TLS pairing, restart persistence, token hashing and revocation work e
     const again = await initializeHost(directory, { name: 'Do not overwrite' })
     assert.equal(again.identity.id, config.identity.id)
     assert.equal(again.identity.name, 'Test Host')
-    await assert.rejects(hostRequest(endpoint, '/v1/status'), /invalid authorization/)
+    await assert.rejects(hostRequest(endpoint, '/v1/status'), /authorization is invalid/)
     await assert.rejects(
       hostRequest(endpoint, '/admin/pair', {
         method: 'POST',
@@ -59,7 +59,7 @@ test('real TLS pairing, restart persistence, token hashing and revocation work e
     const restoredClient = new HostClient(restored)
     assert.equal((await restoredClient.refresh(paired.id)).status?.identity.id, paired.id)
     await restoredClient.unpair(paired.id)
-    await assert.rejects(hostRequest(endpoint, '/v1/status', { token }), /invalid authorization/)
+    await assert.rejects(hostRequest(endpoint, '/v1/status', { token }), /authorization is invalid/)
     assert.deepEqual(restoredClient.list(), [])
     assert.deepEqual(
       await hostRequest(endpoint, '/admin/controllers', { token: config.adminToken }),

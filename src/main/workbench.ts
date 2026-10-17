@@ -21,6 +21,8 @@ import { systemVault } from './secret-vault.ts'
 import { SessionManager } from './session-manager.ts'
 import { ReturnShortcut } from './shortcuts.ts'
 import { ClipboardSync } from './clipboard-sync.ts'
+import { DeploymentManager } from '../deploy/manager.ts'
+import { decodeTicket } from '../protocol/pair-ticket.ts'
 
 export class Workbench {
   private config: Config = defaultConfig()
@@ -32,6 +34,7 @@ export class Workbench {
   private readonly session: SessionManager
   private readonly shortcut: ReturnShortcut
   private readonly clipboard: ClipboardSync
+  readonly deployment: DeploymentManager
   private readonly activity: Activity[] = []
   private readonly directory: string
   private readonly version: string
@@ -46,6 +49,7 @@ export class Workbench {
     version: string
     changed: () => void
     focusLocal: () => void
+    deploymentResources: string
   }) {
     this.directory = options.directory
     this.version = options.version
@@ -55,6 +59,26 @@ export class Workbench {
     this.trust = new TrustStore(this.directory, systemVault)
     this.hosts = new HostClient(this.trust)
     this.clipboard = new ClipboardSync(this.trust, this.directory, this.changed)
+    this.deployment = new DeploymentManager({
+      directory: this.directory,
+      resources: options.deploymentResources,
+      changed: this.changed,
+      available: () => !this.closing && this.session.state.pid === null,
+      media: () => findMoonlight(this.config.settings.moonlightPath),
+      pair: async (ticket) => {
+        const id = decodeTicket(ticket).hostId
+        const state = await this.pairHost(ticket)
+        const device = state.config.devices.find((entry) => entry.hostId === id)
+        if (!device) throw new Error('Failed to add device')
+        const trusted = state.trustedHosts.find((entry) => entry.id === id)
+        if (!trusted?.status) throw new Error(trusted?.error || 'Cannot connect to Host')
+        await this.clipboard.configure({
+          enabled: this.config.settings.shareClipboard,
+          files: this.config.settings.shareFiles
+        })
+        return device.id
+      }
+    })
     this.adapter = new MoonlightAdapter(join(this.directory, 'media-logs'))
     this.session = new SessionManager(this.adapter, this.changed, (message, error) =>
       this.log(message, error)
@@ -79,8 +103,12 @@ export class Workbench {
       enabled: this.config.settings.shareClipboard,
       files: this.config.settings.shareFiles
     })
-    this.log('Local workbench is ready')
-    if (!this.shortcut.registered) this.log('Failed to register the return shortcut. Change the key combination in Settings', true)
+    this.log('Local workspace ready')
+    if (!this.shortcut.registered)
+      this.log(
+        'The return shortcut could not be registered; choose another combination in settings',
+        true
+      )
   }
 
   snapshot(): AppState {
@@ -88,6 +116,7 @@ export class Workbench {
       config: this.config,
       session: this.session.state,
       clipboard: this.clipboard.snapshot(),
+      deployment: this.deployment.snapshot(),
       trustedHosts: this.hosts.list(),
       runtime: {
         version: this.version,
@@ -121,7 +150,7 @@ export class Workbench {
   private device(input: unknown): Device {
     const id = deviceIdSchema.parse(input)
     const device = this.config.devices.find((entry) => entry.id === id)
-    if (!device) throw new Error('Device does not exist. Refresh and try again')
+    if (!device) throw new Error('Device not found; refresh and retry')
     return device
   }
 
@@ -129,10 +158,14 @@ export class Workbench {
     return this.queue.run(async () => {
       const value = deviceInputSchema.parse(input)
       const previous = value.id ? this.device(value.id) : undefined
-      if (previous?.hostId !== value.hostId) throw new Error('Host identity can only be established through pairing')
+      if (previous?.hostId !== value.hostId)
+        throw new Error('Host identity can only be established through pairing')
       if (previous?.hostId && previous.platform !== value.platform)
-        throw new Error('The Host identity manages the system for a paired device. Pair again after changing the system')
-      if (previous?.hostId && !value.host) throw new Error('Enter an IP address or hostname for the paired device')
+        throw new Error(
+          'The system of a paired device is managed by its Host identity; pair again after changing systems'
+        )
+      if (previous?.hostId && !value.host)
+        throw new Error('Paired devices require an IP address or hostname')
       const device = {
         ...value,
         id: value.id || randomUUID(),
@@ -195,7 +228,7 @@ export class Workbench {
     return this.queue.run(async () => {
       const settings = settingsSchema.parse(input)
       if (settings.moonlightPath && !isAbsolute(settings.moonlightPath))
-        throw new Error('Moonlight path must be an absolute path')
+        throw new Error('The Moonlight path must be absolute')
       if (settings.moonlightPath && !(await findMoonlight(settings.moonlightPath)))
         throw new Error('The selected Moonlight file does not exist or is not executable')
       await this.shortcut.update(settings.returnShortcut, () =>
@@ -211,16 +244,25 @@ export class Workbench {
   }
 
   connect(input: unknown): Promise<void> {
+    if (
+      ['connecting', 'host-key', 'inspecting', 'deploying'].includes(
+        this.deployment.snapshot().phase
+      )
+    )
+      return Promise.reject(new Error('Wait for device deployment to finish or cancel it first'))
     const epoch = this.epoch
     return this.queue.run(async () => {
       if (this.closing || epoch !== this.epoch) return
-      if (!this.shortcut.registered) throw new Error('Register an available return shortcut in Settings first')
+      if (!this.shortcut.registered)
+        throw new Error('Register an available return shortcut in settings first')
       const device = this.device(input)
       if (device.hostId) {
         const host = await this.hosts.refresh(device.hostId)
         this.changed()
         if (!host.status || !host.status.sunshineReachable)
-          throw new Error(host.error || 'Host is connected, but Sunshine has not started or its port is unreachable')
+          throw new Error(
+            host.error || 'Host is connected but Sunshine is not running or its port is unreachable'
+          )
       }
       if (this.closing || epoch !== this.epoch) return
       await this.session.connect(device, this.config.settings)
@@ -239,7 +281,7 @@ export class Workbench {
       if (this.session.state.pid !== null)
         throw new Error('Disconnect before opening the Moonlight pairing window')
       await this.adapter.open(this.config.settings)
-      this.log('Moonlight opened. Complete streaming pairing there')
+      this.log('Moonlight opened; complete streaming pairing there')
     })
   }
 
@@ -253,8 +295,8 @@ export class Workbench {
       message:
         host.error ||
         (host.status?.sunshineReachable
-          ? 'Host is connected and the Sunshine port is reachable; streaming pairing still needs to be confirmed in Moonlight'
-          : 'Host is connected, but Sunshine has not started or its port is unreachable')
+          ? 'Host connected and Sunshine port reachable; confirm streaming pairing in Moonlight'
+          : 'Host connected; Sunshine is not running or its port is unreachable')
     }
   }
 
@@ -264,7 +306,7 @@ export class Workbench {
 
   pairHost(input: unknown): Promise<AppState> {
     return this.queue.run(async () => {
-      if (this.session.state.pid !== null) throw new Error('Disconnect before pairing with the Host')
+      if (this.session.state.pid !== null) throw new Error('Disconnect before pairing Host')
       const ticket = z.string().max(16000).parse(input)
       const host = await this.hosts.pair(ticket)
       const existing = this.config.devices.find((entry) => entry.hostId === host.id)
@@ -282,13 +324,14 @@ export class Workbench {
         ? this.config.devices.map((entry) => (entry.id === device.id ? device : entry))
         : [...this.config.devices, device]
       await this.persist({ ...this.config, devices })
-      this.log(`${host.name} Host pairing for the device is complete; Moonlight pairing is still required for the first stream`)
+      this.log(`${host.name} Host pairing completed`)
       return this.snapshot()
     })
   }
 
   async close(): Promise<void> {
     this.closing = true
+    this.deployment.cancel()
     this.epoch++
     this.shortcut.close()
     await this.queue.drain()

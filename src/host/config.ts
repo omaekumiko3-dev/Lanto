@@ -31,7 +31,7 @@ export function localAddress(): string {
 
 export async function loadHostConfig(directory: string): Promise<HostConfig> {
   const input = await readJSON(join(directory, 'host.json'))
-  if (input === undefined) throw new Error('Host is not initialized. Run host init first')
+  if (input === undefined) throw new Error('Host is not initialized; run host init first')
   return hostConfigSchema.parse(input)
 }
 

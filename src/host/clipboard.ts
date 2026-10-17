@@ -90,7 +90,8 @@ export class HostClipboard {
         send(response, {
           revision: '',
           event: null,
-          error: 'Desktop clipboard is unavailable. Make sure you are logged into the desktop and the clipboard component is running'
+          error:
+            'Desktop clipboard unavailable; sign in to the desktop and make sure the clipboard component is running'
         })
       }
       return

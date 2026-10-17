@@ -17,7 +17,9 @@ export class ConfigStore {
     try {
       return configSchema.parse(contents)
     } catch {
-      throw new Error(`Unable to read the configuration file; the original file has been kept. Check or back it up, then move it: ${this.file}`)
+      throw new Error(
+        `Cannot read the configuration; the original file was preserved. Inspect it or back it up before moving it: ${this.file}`
+      )
     }
   }
 

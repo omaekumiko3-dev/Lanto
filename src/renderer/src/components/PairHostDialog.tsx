@@ -38,7 +38,7 @@ export function PairHostDialog({
   }
 
   return (
-    <Modal notice={notice} title="Connect to Lanto Host" busy={busy || searching} close={close}>
+    <Modal notice={notice} title="Connect Lanto Host" busy={busy || searching} close={close}>
       <form
         onSubmit={(event) => {
           event.preventDefault()
@@ -49,7 +49,7 @@ export function PairHostDialog({
           <div className="discovery-heading">
             <div>
               <h3>LAN devices</h3>
-              <small>After discovering a device, you still need pairing credentials from the Host.</small>
+              <small>Discovered devices still require a pairing ticket from the Host.</small>
             </div>
             <button
               className="button secondary small"
@@ -79,7 +79,8 @@ export function PairHostDialog({
           )}
           {searched && found.length === 0 && (
             <p className="settings-footnote">
-              No devices found yet. You can paste pairing credentials to connect directly. Check that the Host is running and the devices are on the same LAN.
+              No devices found. Paste a pairing ticket to connect directly. Check that Host is
+              running and both devices are on the same LAN.
             </p>
           )}
           {error && (
@@ -88,26 +89,27 @@ export function PairHostDialog({
             </p>
           )}
           <label>
-            Host Pairing Credentials
+            Host pairing ticket
             <textarea
               autoFocus
               required
               value={ticket}
               onChange={(event) => setTicket(event.target.value)}
-              placeholder="Paste one-time pairing credentials beginning with LANTO1."
+              placeholder="Paste a single-use pairing ticket starting with LANTO1."
               maxLength={16000}
               rows={5}
               spellCheck={false}
             />
             <small>
-              On the controlled device, run npm run host -- pair
-              to generate them. Credentials are valid for five minutes; copy them using a method you trust.
+              Run npm run host -- pair in a terminal on the host to generate a ticket. It is valid
+              for five minutes; transfer it using a trusted method.
             </small>
           </label>
           <div className="form-note">
             <Icon name="key" size={17} />
             <span>
-              After pairing, you can view Host status. The first time you open the remote display, you also need to complete Moonlight streaming pairing.
+              Pairing lets you view Host status. Complete Moonlight streaming pairing before opening
+              the remote display for the first time.
             </span>
           </div>
         </div>
@@ -126,7 +128,7 @@ export function PairHostDialog({
             type="submit"
             disabled={busy || searching || !ticket.trim()}
           >
-            {busy ? 'Pairing…' : 'Pair and Add'}
+            {busy ? 'Pairing…' : 'Pair and add'}
           </button>
         </footer>
       </form>

@@ -8,6 +8,8 @@ import electronExecutable from 'electron'
 import { initializeHost } from '../src/host/config.ts'
 import { startHost } from '../src/host/service.ts'
 import { defaultConfig } from '../src/shared/model.ts'
+import ssh2 from 'ssh2'
+import { generateKeyPairSync } from 'node:crypto'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const testData = await mkdtemp(join(tmpdir(), 'lanto-ui-'))
@@ -21,6 +23,7 @@ await writeFile(join(testData, 'config.json'), JSON.stringify(initialConfig))
 let application
 const errors = []
 let hostService
+let sshServer
 
 async function launch() {
   application = await electron.launch({
@@ -32,7 +35,7 @@ async function launch() {
   })
   const page = await application.firstWindow()
   page.on('pageerror', (error) => errors.push(error.message))
-  await page.getByRole('heading', { name: /^device/ }).waitFor()
+  await page.getByRole('heading', { name: /^Devices/ }).waitFor()
   return page
 }
 
@@ -76,24 +79,30 @@ try {
   assert.equal(windowBounds.outer.height, windowBounds.inner.height)
   assert.deepEqual((await page.evaluate(() => window.lanto.getState())).config.devices, [])
   assert.equal(await page.locator('.device-card').count(), 0)
-  await page.getByRole('button', { name: 'Add First Device', exact: true }).waitFor()
+  await page.getByRole('button', { name: 'Add your first device', exact: true }).waitFor()
   assert.equal(await page.getByRole('switch').count(), 2)
-  const sharedClipboard = page.getByRole('switch', { name: 'Share Clipboard', exact: true })
-  const performanceOverlay = page.getByRole('switch', { name: 'Show Performance Data', exact: true })
+  const sharedClipboard = page.getByRole('switch', { name: 'Shared clipboard', exact: true })
+  const performanceOverlay = page.getByRole('switch', {
+    name: 'Show performance data',
+    exact: true
+  })
   assert.equal(await sharedClipboard.isChecked(), false)
   assert.equal(await performanceOverlay.isChecked(), false)
   assert.equal(await page.locator('.workspace > .clipboard-status').count(), 0)
-  await page.getByRole('button', { name: 'Clipboard Options', exact: true }).click()
+  await page.getByRole('button', { name: 'Clipboard options', exact: true }).click()
   await page.getByRole('dialog', { name: 'Clipboard', exact: true }).waitFor()
-  assert.equal(await page.getByRole('switch', { name: 'Share Files', exact: true }).isDisabled(), true)
+  assert.equal(
+    await page.getByRole('switch', { name: 'Share files', exact: true }).isDisabled(),
+    true
+  )
   await page.keyboard.press('Escape')
   await page.getByRole('dialog', { name: 'Clipboard', exact: true }).waitFor({ state: 'hidden' })
   await sharedClipboard.click()
   await page.waitForFunction(
     async () => (await window.lanto.getState()).config.settings.shareClipboard
   )
-  await page.getByRole('button', { name: 'Clipboard Options', exact: true }).click()
-  await page.getByRole('switch', { name: 'Share Files', exact: true }).click()
+  await page.getByRole('button', { name: 'Clipboard options', exact: true }).click()
+  await page.getByRole('switch', { name: 'Share files', exact: true }).click()
   await page.waitForFunction(async () => (await window.lanto.getState()).config.settings.shareFiles)
   await page.screenshot({ path: join(artifacts, 'clipboard-options.png') })
   await page.keyboard.press('Escape')
@@ -109,7 +118,10 @@ try {
   await page.waitForFunction(
     async () => !(await window.lanto.getState()).config.settings.showPerformanceOverlay
   )
-  assert.equal(await page.getByRole('button', { name: 'Return to This Machine', exact: true }).count(), 0)
+  assert.equal(
+    await page.getByRole('button', { name: 'Return to this computer', exact: true }).count(),
+    0
+  )
   await page.screenshot({ path: join(artifacts, 'workbench.png'), fullPage: true })
   await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].setSize(680, 480)
@@ -127,18 +139,18 @@ try {
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
   assert.equal(await resolution.inputValue(), '1920x1080')
-  await page.getByRole('button', { name: 'Save Settings', exact: true }).focus()
+  await page.getByRole('button', { name: 'Save settings', exact: true }).focus()
   await page.keyboard.press('Tab')
   assert.equal(
     await page
-      .getByRole('button', { name: 'Close Dialog', exact: true })
+      .getByRole('button', { name: 'Close dialog', exact: true })
       .evaluate((node) => node === document.activeElement),
     true
   )
   await page.keyboard.press('Shift+Tab')
   assert.equal(
     await page
-      .getByRole('button', { name: 'Save Settings', exact: true })
+      .getByRole('button', { name: 'Save settings', exact: true })
       .evaluate((node) => node === document.activeElement),
     true
   )
@@ -149,8 +161,8 @@ try {
   }))
   assert.equal(layout.overflow, false)
   assert.ok(layout.footerBottom <= layout.height)
-  await page.locator('summary').filter({ hasText: 'Advanced Settings' }).click()
-  await page.getByLabel('Moonlight Executable').scrollIntoViewIfNeeded()
+  await page.locator('summary').filter({ hasText: 'Advanced settings' }).click()
+  await page.getByLabel('Moonlight executable').scrollIntoViewIfNeeded()
   await page.screenshot({ path: join(artifacts, 'settings-compact.png') })
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   assert.equal(
@@ -163,21 +175,54 @@ try {
     BrowserWindow.getAllWindows()[0].setSize(900, 620)
   )
 
-  await page.getByRole('main').getByRole('button', { name: 'Add Device', exact: true }).click()
+  let sshAuthenticationAttempts = 0
+  const sshKey = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({
+    type: 'pkcs1',
+    format: 'pem'
+  })
+  sshServer = new ssh2.Server({ hostKeys: [sshKey] }, (client) => {
+    client.on('error', () => {})
+    client.on('authentication', (context) => {
+      sshAuthenticationAttempts++
+      context.reject()
+    })
+  })
+  await new Promise((resolve) => sshServer.listen(0, '127.0.0.1', resolve))
+  await page.getByRole('main').getByRole('button', { name: 'Add device', exact: true }).click()
+  await page.getByLabel('Device name', { exact: true }).fill('SSH test')
+  await page.getByLabel('SSH username', { exact: true }).fill('desktop')
+  await page.getByLabel('IP address or hostname', { exact: true }).fill('127.0.0.1')
+  await page.getByLabel('Port', { exact: true }).fill(String(sshServer.address().port))
+  await page.getByLabel('SSH password', { exact: true }).fill('do-not-persist-this-secret')
+  await page.getByRole('button', { name: 'Connect and inspect', exact: true }).click()
+  await page.getByRole('button', { name: 'Trust this device and continue', exact: true }).waitFor()
+  const pendingSsh = await page.evaluate(() => window.lanto.getState())
+  assert.equal(pendingSsh.deployment.phase, 'host-key')
+  assert.equal(JSON.stringify(pendingSsh).includes('do-not-persist-this-secret'), false)
+  await page.getByRole('button', { name: 'Cancel deployment', exact: true }).click()
+  await page.getByRole('button', { name: 'Reconnect', exact: true }).waitFor()
+  assert.equal((await page.evaluate(() => window.lanto.getState())).deployment.phase, 'cancelled')
+  assert.equal(sshAuthenticationAttempts, 0)
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await new Promise((resolve) => sshServer.close(resolve))
+  sshServer = undefined
+  await page.getByRole('main').getByRole('button', { name: 'Add device', exact: true }).click()
+  await page.getByRole('button', { name: 'Add manually', exact: true }).click()
   await page.getByLabel('Device name').fill('Test Linux')
-  await page.getByLabel('IP or Hostname').fill('linux1.local')
-  await page.getByRole('button', { name: 'Save Device', exact: true }).click()
+  await page.getByLabel('IP address or hostname').fill('linux1.local')
+  await page.getByRole('button', { name: 'Save device', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
   assert.equal(
     (await page.evaluate(() => window.lanto.getState())).config.devices[0].host,
     'linux1.local'
   )
 
-  await page.getByRole('main').getByRole('button', { name: 'Add Device', exact: true }).click()
+  await page.getByRole('main').getByRole('button', { name: 'Add device', exact: true }).click()
+  await page.getByRole('button', { name: 'Add manually', exact: true }).click()
   await page.getByLabel('Device name').fill('Test Windows')
-  await page.getByLabel('Operating System').selectOption('windows')
-  await page.getByLabel('IP or Hostname').fill('192.0.2.10')
-  await page.getByRole('button', { name: 'Save Device', exact: true }).click()
+  await page.getByLabel('Operating system').selectOption('windows')
+  await page.getByLabel('IP address or hostname').fill('192.0.2.10')
+  await page.getByRole('button', { name: 'Save device', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
   assert.equal((await page.evaluate(() => window.lanto.getState())).config.devices.length, 2)
 
@@ -191,11 +236,11 @@ try {
       { name, volume, muted }
     )
   }
-  await page.getByRole('slider', { name: 'Test Linux Volume', exact: true }).fill('37')
+  await page.getByRole('slider', { name: 'Test Linux volume', exact: true }).fill('37')
   await savedAudio('Test Linux', 37, false)
   await page.getByRole('button', { name: 'Mute Test Linux', exact: true }).click()
   await savedAudio('Test Linux', 37, true)
-  await page.getByRole('slider', { name: 'Test Windows Volume', exact: true }).fill('82')
+  await page.getByRole('slider', { name: 'Test Windows volume', exact: true }).fill('82')
   await savedAudio('Test Windows', 82, false)
   await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].setSize(680, 480)
@@ -207,10 +252,10 @@ try {
   )
 
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await page.getByLabel('Disconnect Hotkey').fill('Control+Alt+Shift+F11')
+  await page.getByLabel('Disconnect shortcut').fill('Control+Alt+Shift+F11')
   await page.getByLabel('Bitrate (Mbps)').fill('35')
-  await page.getByLabel('Show Cursor').selectOption('true')
-  await page.getByRole('button', { name: 'Save Settings', exact: true }).click()
+  await page.getByLabel('Cursor display').selectOption('true')
+  await page.getByRole('button', { name: 'Save settings', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
   assert.equal((await page.evaluate(() => window.lanto.getState())).config.settings.bitrateMbps, 35)
   assert.equal(
@@ -238,15 +283,15 @@ try {
   )
 
   await page.getByRole('button', { name: 'Edit Test Windows', exact: true }).click()
-  await page.getByLabel('IP or Hostname').fill('--help')
-  await page.getByRole('button', { name: 'Save Device', exact: true }).click()
-  await page.getByRole('alert').filter({ hasText: 'Address should be' }).waitFor()
+  await page.getByLabel('IP address or hostname').fill('--help')
+  await page.getByRole('button', { name: 'Save device', exact: true }).click()
+  await page.getByRole('alert').filter({ hasText: 'Address must be' }).waitFor()
   assert.equal(
     (await page.evaluate(() => window.lanto.getState())).config.devices.at(-1).host,
     '192.0.2.10'
   )
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
-  await page.getByRole('button', { name: 'Close Tip', exact: true }).click()
+  await page.getByRole('button', { name: 'Dismiss notice', exact: true }).click()
 
   const rejection = await page.evaluate(async () => {
     try {
@@ -311,7 +356,9 @@ setInterval(() => {}, 1000);
     if (phase === 'running') {
       const { config, session } = await page.evaluate(() => window.lanto.getState())
       const name = config.devices.find((device) => device.id === session.deviceId).name
-      await page.getByRole('switch', { name: `${name} Connectivity`, exact: true, checked: true }).waitFor()
+      await page
+        .getByRole('switch', { name: `${name} connection`, exact: true, checked: true })
+        .waitFor()
     } else if (phase === 'idle' || phase === 'failed') {
       await page.waitForFunction(
         () =>
@@ -344,7 +391,7 @@ setInterval(() => {}, 1000);
     }
     throw new Error(`Audio gain did not reach ${expected}`)
   }
-  const linuxSwitch = page.getByRole('switch', { name: 'Connect to Test Linux', exact: true })
+  const linuxSwitch = page.getByRole('switch', { name: 'Test Linux connection', exact: true })
   assert.equal(await linuxSwitch.isChecked(), false)
   await linuxSwitch.click()
   await waitPhase('running', 'Test Linux')
@@ -355,7 +402,7 @@ setInterval(() => {}, 1000);
   await page.getByRole('button', { name: 'Unmute Test Linux', exact: true }).click()
   await savedAudio('Test Linux', 37, false)
   await appliedVolume(running.pid, 37)
-  const volumeSlider = page.getByRole('slider', { name: 'Test Linux Volume', exact: true })
+  const volumeSlider = page.getByRole('slider', { name: 'Test Linux volume', exact: true })
   await volumeSlider.fill('10')
   await volumeSlider.fill('22')
   await volumeSlider.fill('47')
@@ -382,26 +429,29 @@ setInterval(() => {}, 1000);
     await rmdir(audioConfigFile)
     await rename(`${audioConfigFile}.held`, audioConfigFile)
   }
-  await page.getByRole('slider', { name: 'Test Windows Volume', exact: true }).fill('81')
+  await page.getByRole('slider', { name: 'Test Windows volume', exact: true }).fill('81')
   await savedAudio('Test Windows', 81, false)
   await appliedVolume(running.pid, 48)
   await page.getByRole('button', { name: 'Mute Test Linux', exact: true }).click()
   await savedAudio('Test Linux', 48, true)
   await appliedVolume(running.pid, 0)
   await page.getByRole('button', { name: 'Edit Test Linux', exact: true }).click()
-  assert.equal(await page.getByRole('button', { name: 'Remove Device', exact: true }).isDisabled(), true)
+  assert.equal(
+    await page.getByRole('button', { name: 'Remove device', exact: true }).isDisabled(),
+    true
+  )
   await page.getByLabel('Device name').fill('Build Linux')
-  await page.getByLabel('IP or Hostname').fill('192.0.2.21')
-  await page.getByLabel('Sunshine Application Name').fill('Next Desktop')
-  await page.getByRole('button', { name: 'Save Device', exact: true }).click()
+  await page.getByLabel('IP address or hostname').fill('192.0.2.21')
+  await page.getByLabel('Sunshine application name').fill('Next Desktop')
+  await page.getByRole('button', { name: 'Save device', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
   assert.equal(
-    await page.getByRole('switch', { name: 'Connect to Build Linux', exact: true }).isChecked(),
+    await page.getByRole('switch', { name: 'Build Linux connection', exact: true }).isChecked(),
     true
   )
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByLabel('Bitrate (Mbps)').fill('36')
-  await page.getByRole('button', { name: 'Save Settings', exact: true }).click()
+  await page.getByRole('button', { name: 'Save settings', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
   assert.equal((await page.evaluate(() => window.lanto.getState())).session.pid, running.pid)
   assert.equal(
@@ -417,12 +467,12 @@ setInterval(() => {}, 1000);
   )
   await page.screenshot({ path: join(artifacts, 'connection-switch.png') })
 
-  const windowsSwitch = page.getByRole('switch', { name: 'Connect to Test Windows', exact: true })
+  const windowsSwitch = page.getByRole('switch', { name: 'Test Windows connection', exact: true })
   await windowsSwitch.click()
   await waitPhase('running', 'Test Windows')
   assert.equal(await windowsSwitch.isChecked(), true)
   assert.equal(
-    await page.getByRole('switch', { name: 'Connect to Build Linux', exact: true }).isChecked(),
+    await page.getByRole('switch', { name: 'Build Linux connection', exact: true }).isChecked(),
     false
   )
   await launches(2)
@@ -432,7 +482,7 @@ setInterval(() => {}, 1000);
   await waitPhase('idle')
   assert.equal(await windowsSwitch.isChecked(), false)
 
-  await page.getByRole('switch', { name: 'Connect to Build Linux', exact: true }).click()
+  await page.getByRole('switch', { name: 'Build Linux connection', exact: true }).click()
   await waitPhase('running')
   const records = await launches(3)
   assert.equal(records[0].args[1], 'Desktop')
@@ -447,10 +497,10 @@ setInterval(() => {}, 1000);
     await page.locator('.device-cards').getByRole('switch', { checked: true }).count(),
     0
   )
-  await page.getByRole('alert').filter({ hasText: 'Moonlight Has Exited' }).waitFor()
-  await page.getByRole('switch', { name: 'Connect to Build Linux', exact: true }).click()
+  await page.getByRole('alert').filter({ hasText: 'Moonlight exited' }).waitFor()
+  await page.getByRole('switch', { name: 'Build Linux connection', exact: true }).click()
   await waitPhase('running')
-  await page.getByRole('switch', { name: 'Connect to Build Linux', exact: true }).click()
+  await page.getByRole('switch', { name: 'Build Linux connection', exact: true }).click()
   await waitPhase('idle')
   await page.evaluate((settings) => window.lanto.saveSettings(settings), mediaSettings)
 
@@ -469,8 +519,8 @@ setInterval(() => {}, 1000);
   assert.equal(persisted.config.settings.showPerformanceOverlay, false)
   assert.equal(persisted.session.phase, 'idle')
   await page.getByRole('button', { name: 'Edit Test Windows', exact: true }).click()
-  await page.getByRole('button', { name: 'Remove Device', exact: true }).click()
-  await page.getByRole('button', { name: 'Confirm Device Removal', exact: true }).click()
+  await page.getByRole('button', { name: 'Remove device', exact: true }).click()
+  await page.getByRole('button', { name: 'Confirm device removal', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
   assert.equal((await page.evaluate(() => window.lanto.getState())).config.devices.length, 1)
   const disk = JSON.parse(await readFile(join(testData, 'config.json'), 'utf8'))
@@ -483,9 +533,9 @@ setInterval(() => {}, 1000);
     port: 0
   })
   hostService = await startHost(hostConfig, join(testData, 'host'), { discovery: false })
-  await page.getByRole('button', { name: 'Connect to Host', exact: true }).click()
-  await page.getByLabel('Host Pairing Credentials').fill(hostService.createTicket())
-  await page.getByRole('button', { name: 'Pair and Add', exact: true }).click()
+  await page.getByRole('button', { name: 'Connect Host', exact: true }).click()
+  await page.getByLabel('Host pairing ticket').fill(hostService.createTicket())
+  await page.getByRole('button', { name: 'Pair and add', exact: true }).click()
   await Promise.race([
     page.getByRole('dialog').waitFor({ state: 'hidden' }),
     page
@@ -512,12 +562,12 @@ setInterval(() => {}, 1000);
     true
   )
   await page.getByRole('button', { name: 'Edit Smoke Host', exact: true }).click()
-  assert.equal(await page.getByLabel('IP or Hostname').isEditable(), true)
-  assert.equal(await page.getByLabel('Operating System').isDisabled(), true)
+  assert.equal(await page.getByLabel('IP address or hostname').isEditable(), true)
+  assert.equal(await page.getByLabel('Operating system').isDisabled(), true)
   await page.getByLabel('Device name').fill('My Host')
-  await page.getByLabel('IP or Hostname').fill('127.0.0.2')
+  await page.getByLabel('IP address or hostname').fill('127.0.0.2')
   await page.screenshot({ path: join(artifacts, 'edit-host-address.png') })
-  await page.getByRole('button', { name: 'Save Device', exact: true }).click()
+  await page.getByRole('button', { name: 'Save device', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
   const updated = await page.evaluate(() => window.lanto.getState())
   const updatedDevice = updated.config.devices.find(
@@ -574,13 +624,13 @@ setInterval(() => {}, 1000);
     hostConfig.identity.id
   )
   await page.getByRole('button', { name: 'Edit My Host', exact: true }).click()
-  await page.getByRole('button', { name: 'Remove Device', exact: true }).click()
-  await page.getByRole('button', { name: 'Confirm Device Removal', exact: true }).click()
+  await page.getByRole('button', { name: 'Remove device', exact: true }).click()
+  await page.getByRole('button', { name: 'Confirm device removal', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
   assert.deepEqual((await page.evaluate(() => window.lanto.getState())).trustedHosts, [])
   assert.deepEqual(errors, [])
   const closed = application.waitForEvent('close')
-  await page.getByRole('button', { name: 'Close Window', exact: true }).click()
+  await page.getByRole('button', { name: 'Close window', exact: true }).click()
   await closed
   application = null
   console.log(
@@ -596,6 +646,7 @@ setInterval(() => {}, 1000);
 } finally {
   await application?.close()
   await hostService?.close()
+  if (sshServer) await new Promise((resolve) => sshServer.close(resolve))
   assert.equal(dirname(resolve(testData)), resolve(tmpdir()))
   assert.ok(basename(testData).startsWith('lanto-ui-'))
   await rm(testData, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })

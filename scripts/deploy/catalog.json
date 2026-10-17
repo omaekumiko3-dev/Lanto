@@ -1,0 +1,86 @@
+{
+  "sunshineVersion": "2026.914.233613",
+  "nodeVersion": "24.22.0",
+  "assets": [
+    {
+      "name": "Sunshine-macOS-arm64.dmg",
+      "url": "https://github.com/LizardByte/Sunshine/releases/download/v2026.914.233613/Sunshine-macOS-arm64.dmg",
+      "sha256": "795f03a389c5726f9a7b15f501dc1ddf204b442cae565859ac83aae027a9e07c"
+    },
+    {
+      "name": "Sunshine-macOS-x86_64.dmg",
+      "url": "https://github.com/LizardByte/Sunshine/releases/download/v2026.914.233613/Sunshine-macOS-x86_64.dmg",
+      "sha256": "764b11674babac0cd838c2883359207a481c462f355ccbfd1ec91f6d44672101"
+    },
+    {
+      "name": "Sunshine-Windows-AMD64-installer.msi",
+      "url": "https://github.com/LizardByte/Sunshine/releases/download/v2026.914.233613/Sunshine-Windows-AMD64-installer.msi",
+      "sha256": "1d7fed8beecd5889dc7ff14cf9f42d6d38f37c3066c13c6c2a5f4e91847e0ccf"
+    },
+    {
+      "name": "Sunshine-Windows-ARM64-installer.msi",
+      "url": "https://github.com/LizardByte/Sunshine/releases/download/v2026.914.233613/Sunshine-Windows-ARM64-installer.msi",
+      "sha256": "1e211404b924fcf421657c71e1aaa95cf1f76e172cacf8ff8430beacc0e30e4a"
+    },
+    {
+      "name": "sunshine_2026.914.233613-1+ubuntu22.04_amd64.deb",
+      "url": "https://github.com/LizardByte/Sunshine/releases/download/v2026.914.233613/sunshine_2026.914.233613-1%2Bubuntu22.04_amd64.deb",
+      "sha256": "c7645396027b0601a09d49de89674b80b3c9ac7a3dffe0d52703738dab072f1c"
+    },
+    {
+      "name": "sunshine_2026.914.233613-1+ubuntu22.04_arm64.deb",
+      "url": "https://github.com/LizardByte/Sunshine/releases/download/v2026.914.233613/sunshine_2026.914.233613-1%2Bubuntu22.04_arm64.deb",
+      "sha256": "4c1aa45bf17a8fe5bb73d7dbe4399a349be057f87884cdec75952362d5c6b437"
+    },
+    {
+      "name": "sunshine_2026.914.233613-1+ubuntu24.04_amd64.deb",
+      "url": "https://github.com/LizardByte/Sunshine/releases/download/v2026.914.233613/sunshine_2026.914.233613-1%2Bubuntu24.04_amd64.deb",
+      "sha256": "c38e9c705f650f8705f61702717e99bec34044c5028fcb8f23a08fe041292c21"
+    },
+    {
+      "name": "sunshine_2026.914.233613-1+ubuntu24.04_arm64.deb",
+      "url": "https://github.com/LizardByte/Sunshine/releases/download/v2026.914.233613/sunshine_2026.914.233613-1%2Bubuntu24.04_arm64.deb",
+      "sha256": "5751c22cf0b9253b459d7f42103f1c422594363a5881e21bd1ce845218226888"
+    },
+    {
+      "name": "sunshine_2026.914.233613-1+ubuntu26.04_amd64.deb",
+      "url": "https://github.com/LizardByte/Sunshine/releases/download/v2026.914.233613/sunshine_2026.914.233613-1%2Bubuntu26.04_amd64.deb",
+      "sha256": "b8a8ceeeb2b3f30a18a994ad268c94e0c91170f33a864c7aad31eed927ad7d47"
+    },
+    {
+      "name": "sunshine_2026.914.233613-1+ubuntu26.04_arm64.deb",
+      "url": "https://github.com/LizardByte/Sunshine/releases/download/v2026.914.233613/sunshine_2026.914.233613-1%2Bubuntu26.04_arm64.deb",
+      "sha256": "174fa9123362c93eac164554a0651ecab17d64d9525fccd9974964fceec553af"
+    },
+    {
+      "name": "node-v24.22.0-darwin-arm64.tar.gz",
+      "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-darwin-arm64.tar.gz",
+      "sha256": "6a9724d9b50a5f22b4816cded441b5a8d9ddae546191a5e5b7efa5a5e2ee26d5"
+    },
+    {
+      "name": "node-v24.22.0-darwin-x64.tar.gz",
+      "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-darwin-x64.tar.gz",
+      "sha256": "495e3f273c645f3c4677d438304cdfc701729ea5dec5728f5c8e76a2dece4b91"
+    },
+    {
+      "name": "node-v24.22.0-linux-arm64.tar.gz",
+      "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-linux-arm64.tar.gz",
+      "sha256": "b7e7991d5407815adfa74a2a9cd4db683552c8ce32ff4a295c22e972849c3f5d"
+    },
+    {
+      "name": "node-v24.22.0-linux-x64.tar.gz",
+      "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-linux-x64.tar.gz",
+      "sha256": "28ea0a438de9a13bd7891fd758eee6c7819ee8af5442dfd8d45bd65e56d4228c"
+    },
+    {
+      "name": "node-v24.22.0-win-arm64.zip",
+      "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-win-arm64.zip",
+      "sha256": "3a5c209a5bc59e65b3bc0fa13ed5e166a26bd3d55332847f498b76b037408d61"
+    },
+    {
+      "name": "node-v24.22.0-win-x64.zip",
+      "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-win-x64.zip",
+      "sha256": "f9683a19877e12a9b167305c8db71040d812876359de21f0d2e97c3f321f80c3"
+    }
+  ]
+}

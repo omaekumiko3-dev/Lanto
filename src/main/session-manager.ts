@@ -56,7 +56,7 @@ export class SessionManager {
 
   connect(device: Device, settings: Settings): Promise<void> {
     return this.enqueue(async () => {
-      if (!device.host) throw new Error('Enter this device’s IP address or hostname first')
+      if (!device.host) throw new Error('Enter the IP address or hostname of this device first')
       if (this.active?.device.id === device.id && !this.active.stopping) return
       await this.stopActive()
       this.set({ ...idle(), phase: 'launching', deviceId: device.id })
@@ -71,20 +71,22 @@ export class SessionManager {
           startedAt: new Date().toISOString(),
           error: null
         })
-        this.onActivity(`${device.name} Moonlight client has started; check its window for streaming status`)
+        this.onActivity(
+          `${device.name} Moonlight client started; see its window for streaming status`
+        )
         void handle.closed.then(({ code, signal }) => {
           if (this.active !== active) return
           this.active = null
           if (active.stopping || code === 0) {
             this.set(idle())
           } else {
-            const error = `Moonlight exited (${signal || code || 'unknown reason'}), check pairing, host address, and Sunshine status`
+            const error = `Moonlight exited (${signal || code || 'unknown reason'}); check pairing, host address, and Sunshine status`
             this.set({ ...this.state, phase: 'failed', pid: null, error })
             this.onActivity(error, true)
           }
         })
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Client failed to start'
+        const message = error instanceof Error ? error.message : 'Client startup failed'
         this.set({ ...idle(), phase: 'failed', deviceId: device.id, error: message })
         this.onActivity(message, true)
         throw error
@@ -103,7 +105,9 @@ export class SessionManager {
     return this.enqueue(async () => {
       if (!this.active || this.active.device.id !== id || this.active.stopping) return
       if (!this.active.handle.setAudio)
-        throw new Error('The current player does not support volume control. Select a newer Lanto player in Settings, then reconnect')
+        throw new Error(
+          'The current player does not support volume control; select the latest Lanto player in settings and reconnect'
+        )
       await this.active.handle.setAudio(audio)
     })
   }
@@ -117,9 +121,9 @@ export class SessionManager {
       await active.handle.stop()
       if (this.active === active) this.active = null
       this.set(idle())
-      this.onActivity(`Ended ${active.device.name} local streaming client`)
+      this.onActivity(`Stopped ${active.device.name} local streaming client`)
     } catch (error) {
-      const message = 'Client failed to exit. Disconnect manually in Moonlight and try again'
+      const message = 'The client could not exit; disconnect manually in Moonlight and retry'
       this.set({ ...this.state, phase: 'failed', error: message })
       this.onActivity(message, true)
       throw error

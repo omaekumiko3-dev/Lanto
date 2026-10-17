@@ -9,21 +9,21 @@ import { startHost } from './service.ts'
 import { systemdUnit } from './systemd.ts'
 import { startDesktopBridge } from '../clipboard/desktop-bridge.ts'
 
-const help = `Lanto Host · Headless LAN-controlled endpoint
+const help = `Lanto Host · Headless LAN host
 
 npm run host -- init --name Linux1 --address 192.168.1.20
 npm run host -- start
 npm run host -- pair
 npm run host -- status
 npm run host -- controllers
-npm run host -- revoke <Controller UUID>
+npm run host -- revoke <controller UUID>
 npm run host -- service-file
 npm run host -- clipboard-agent
 
-All commands can specify --data-dir <Local directory>。
-init supports --listen <Bind address>、--port <Port>; existing identity will not be overwritten.
-start supports --no-discovery. pair generates a one-time credential valid for five minutes; give it only to your controller.
-service-file outputs a systemd user service file on Linux; it does not install it or modify the system by itself.`
+All commands accept --data-dir <local-directory>.
+init supports --listen <bind-address> and --port <port>; existing identities are preserved.
+start supports --no-discovery. pair generates a single-use ticket valid for five minutes; share it only with your controller.
+service-file prints a Linux systemd user service file without installing it or modifying the system.`
 
 async function main() {
   const { values, positionals } = parseArgs({
@@ -53,11 +53,12 @@ async function main() {
     }
     process.once('SIGINT', stop)
     process.once('SIGTERM', stop)
-    console.log('Lanto desktop clipboard component has started')
+    console.log('Lanto desktop clipboard component started')
     return
   }
   if (command === 'service-file') {
-    if (process.platform !== 'linux') throw new Error('systemd user service is for Linux only')
+    if (process.platform !== 'linux')
+      throw new Error('systemd user services are only supported on Linux')
     console.log(systemdUnit(process.execPath, fileURLToPath(import.meta.url), directory))
     return
   }
@@ -73,7 +74,7 @@ async function main() {
       port
     })
     console.log(
-      `Host initialized: ${config.identity.name} (${config.identity.id})\nLocal directory: ${directory}\nPlease run npm run host -- start`
+      `Host initialized: ${config.identity.name} (${config.identity.id})\nLocal directory: ${directory}\nRun npm run host -- start`
     )
     return
   }
@@ -81,10 +82,13 @@ async function main() {
   if (command === 'start') {
     const service = await startHost(config, directory, {
       discovery: !values['no-discovery'],
-      onDiscoveryError: () => console.error('LAN announcements are unavailable; you can still connect using pairing credentials')
+      onDiscoveryError: () =>
+        console.error(
+          'LAN announcements are unavailable; pairing tickets can still be used to connect'
+        )
     })
     console.log(
-      `Lanto Host has started: ${config.identity.name} · ${config.listen}:${service.port}\nRun npm run host -- pair in another terminal to generate pairing credentials.`
+      `Lanto Host started: ${config.identity.name} · ${config.listen}:${service.port}\nRun npm run host -- pair in another terminal to generate a pairing ticket.`
     )
     let stopping = false
     const stop = () => {
@@ -108,7 +112,9 @@ async function main() {
     const result = z
       .object({ ticket: z.string() })
       .parse(await hostRequest(endpoint, '/admin/pair', { method: 'POST', token }))
-    console.log(`One-time pairing credentials (valid for five minutes; paste into the Lanto controller):\n${result.ticket}`)
+    console.log(
+      `Single-use pairing ticket (valid for five minutes; paste into the Lanto controller):\n${result.ticket}`
+    )
   } else if (command === 'status')
     console.log(JSON.stringify(await hostRequest(endpoint, '/admin/status', { token }), null, 2))
   else if (command === 'controllers')
@@ -119,7 +125,7 @@ async function main() {
     const id = z.uuid().parse(positionals[1])
     await hostRequest(endpoint, '/admin/revoke', { method: 'POST', token, body: { id } })
     console.log('Controller authorization revoked')
-  } else throw new Error('Unknown command. Use --help to view usage')
+  } else throw new Error('Unknown command; use --help for usage')
 }
 
 void main().catch((error: unknown) => {

@@ -172,7 +172,7 @@ test('volume only targets the current device and unsupported clients report fail
   await unsupported.connect(first, defaults.settings)
   await assert.rejects(
     unsupported.setAudio(first.id, { volume: 40, muted: false }),
-    /volume control is not supported/
+    /does not support volume control/
   )
   await unsupported.disconnect()
 })

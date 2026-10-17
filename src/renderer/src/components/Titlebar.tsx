@@ -10,7 +10,7 @@ export function Titlebar({
   error: (text: string) => void
 }) {
   function control(action: WindowAction) {
-    void window.lanto.controlWindow(action).catch(() => error('Window operation failed. Try again.'))
+    void window.lanto.controlWindow(action).catch(() => error('Window operation failed; retry.'))
   }
   return (
     <header className="titlebar">
@@ -46,8 +46,8 @@ export function Titlebar({
         </button>
         <button
           className="window-button window-close"
-          aria-label="Close Window"
-          title="Close Window"
+          aria-label="Close window"
+          title="Close window"
           onClick={() => control('close')}
         >
           <Icon name="close" size={17} />

@@ -21,14 +21,16 @@ export async function nativeEnvironment(
   if (localCursor) {
     const supported = await hasMediaFeature(executable, 'localCursorProtocol')
     if (!supported)
-      throw new Error('Local cursor requires the Lanto native version of Moonlight. Select the companion app or turn off the local cursor in Settings')
+      throw new Error(
+        'The local cursor requires the Lanto native Moonlight build; select the bundled program or disable the local cursor in settings'
+      )
   }
   return environment
 }
 
 export async function hasMediaFeature(
   executable: string,
-  feature: 'localCursorProtocol' | 'audioVolumeProtocol'
+  feature: 'localCursorProtocol' | 'audioVolumeProtocol' | 'automatedPairProtocol'
 ): Promise<boolean> {
   try {
     const path = join(dirname(executable), 'lanto-media.json')

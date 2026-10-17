@@ -145,7 +145,8 @@ export class ClipboardSync {
             )
               changes.push({ event: state.event })
           } catch {
-            if (generation === this.generation) this.error = 'Local clipboard is temporarily unavailable. Make sure you are logged into the desktop'
+            if (generation === this.generation)
+              this.error = 'The local clipboard is unavailable; sign in to the desktop'
           }
         })(),
         ...[...this.peers.values()].map(async (peer) => {
@@ -174,7 +175,7 @@ export class ClipboardSync {
             peer.error =
               error instanceof HostRequestError && error.status === 404
                 ? 'Update Lanto Host on this device'
-                : 'Device is offline or the desktop clipboard is temporarily unavailable'
+                : 'The device is offline or its desktop clipboard is unavailable'
           }
         })
       ])
@@ -239,8 +240,8 @@ export class ClipboardSync {
       transfer.error = /[\u4e00-\u9fff]/.test(message)
         ? message
         : /ENOSPC/.test(message)
-          ? 'Receiving device does not have enough disk space'
-          : 'Connection interrupted; file transfer incomplete. Copy again to retry'
+          ? 'The receiving device has insufficient disk space'
+          : 'Connection interrupted before file transfer finished; copy again to retry'
     }
     this.notify(true)
   }
@@ -251,11 +252,11 @@ export class ClipboardSync {
     const localExpected = this.local?.revision
     void (async () => {
       if (source && !this.last?.localApplied) {
-        if (!localExpected) throw new Error('Local clipboard is not ready yet')
+        if (!localExpected) throw new Error('The local clipboard is not ready')
         if (event.kind === 'files') {
           const peer = this.peers.get(source)
-          if (!peer) throw new Error('Source device disconnected')
-          const transfer = this.transfer('Local machine', event)
+          if (!peer) throw new Error('The source device disconnected')
+          const transfer = this.transfer('This computer', event)
           let incoming: IncomingFiles | undefined
           try {
             incoming = await IncomingFiles.create(
@@ -306,7 +307,8 @@ export class ClipboardSync {
                 peer.delivered = event.id
               } catch {
                 if (!signal.aborted) {
-                  peer.error = 'Sync incomplete; there may be new copied content'
+                  peer.error =
+                    'Synchronization is incomplete; newer copied content may be available'
                   peer.delivered = event.id
                 }
               }
@@ -344,8 +346,8 @@ export class ClipboardSync {
         if (!signal.aborted && this.last?.event.id === event.id) {
           this.error =
             error instanceof Error && error.message === 'CLIPBOARD_CHANGED'
-              ? 'New copied content is already on this device; it has been kept'
-              : 'Sync incomplete. Copy again'
+              ? 'Newer local clipboard content was preserved'
+              : 'Synchronization is incomplete; copy again'
           this.last = undefined
         }
       })

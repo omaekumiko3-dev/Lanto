@@ -54,6 +54,6 @@ export async function updateWindowBranding(
     if (
       !shell.writeShortcutLink(link, 'update', { ...current, icon, iconIndex: 0, appUserModelId })
     )
-      throw new Error('Unable to update the Lanto shortcut icon')
+      throw new Error('Cannot update the Lanto shortcut icon')
   }
 }

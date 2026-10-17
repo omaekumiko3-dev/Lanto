@@ -63,12 +63,16 @@ export class ClipboardPeer {
           : { 'Content-Type': 'application/octet-stream', 'Content-Length': size.toString() })
       }
     })
-    req.setTimeout(30000, () => req.destroy(new Error('File transfer interrupted: network has not responded for more than 30 seconds')))
+    req.setTimeout(30000, () =>
+      req.destroy(new Error('File transfer interrupted: no network response for over 30 seconds'))
+    )
     const response = new Promise<IncomingMessage>((resolve, reject) => {
       req.once('response', (res) => {
         if (res.statusCode !== 200) {
           res.resume()
-          reject(new HostRequestError(`File transfer failed (${res.statusCode}）`, res.statusCode || 0))
+          reject(
+            new HostRequestError(`File transfer failed (${res.statusCode}）`, res.statusCode || 0)
+          )
           req.destroy()
           return
         }
@@ -91,7 +95,8 @@ export class ClipboardPeer {
     try {
       const res = await response
       const hash = await incoming.receive(index, res, signal, progress)
-      if (res.trailers['x-lanto-sha256'] !== hash) throw new Error('File verification failed; copy it again')
+      if (res.trailers['x-lanto-sha256'] !== hash)
+        throw new Error('File verification failed; copy it again')
     } catch (error) {
       req.destroy()
       throw error

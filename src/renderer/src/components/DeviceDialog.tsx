@@ -29,7 +29,12 @@ export function DeviceDialog({
     void save(draft)
   }
   return (
-    <Modal notice={notice} title={device.id ? 'Edit device' : 'Add Device'} close={close} busy={busy}>
+    <Modal
+      notice={notice}
+      title={device.id ? 'Edit device' : 'Add device'}
+      close={close}
+      busy={busy}
+    >
       <form onSubmit={submit}>
         <div className="form-body">
           <label>
@@ -40,14 +45,14 @@ export function DeviceDialog({
               maxLength={50}
               value={draft.name}
               onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-              placeholder="For example, Linux1"
+              placeholder="e.g. Linux1"
             />
           </label>
           <div className="form-columns">
             <label>
-              Operating System
+              Operating system
               <select
-                aria-label="Operating System"
+                aria-label="Operating system"
                 value={draft.platform}
                 disabled={Boolean(device.hostId)}
                 onChange={(event) =>
@@ -60,19 +65,19 @@ export function DeviceDialog({
               </select>
             </label>
             <label>
-              IP or Hostname
+              IP address or hostname
               <input
                 required={Boolean(device.hostId)}
                 value={draft.host}
                 onChange={(event) => setDraft({ ...draft, host: event.target.value })}
-                placeholder="For example, 192.168.1.20"
+                placeholder="e.g. 192.168.1.20"
                 maxLength={253}
                 spellCheck={false}
               />
             </label>
           </div>
           <label>
-            Sunshine Application Name
+            Sunshine application name
             <input
               required
               maxLength={120}
@@ -86,10 +91,10 @@ export function DeviceDialog({
             <Icon name="link" size={17} />
             <span>
               {active
-                ? 'Name updates immediately; connection settings take effect the next time you connect.'
+                ? 'The name updates immediately; connection settings apply on the next connection.'
                 : device.hostId
-                  ? 'Changing the address keeps the pairing and takes effect the next time you connect.'
-                  : 'You can enter the address later. Before connecting for the first time, add this host in Moonlight and complete pairing.'}
+                  ? 'Address changes preserve pairing and apply on the next connection.'
+                  : 'You can enter the address later. Before the first connection, add and pair this host in Moonlight.'}
             </span>
           </div>
         </div>
@@ -99,10 +104,10 @@ export function DeviceDialog({
               className={`text-button danger ${confirmRemove ? 'confirm' : ''}`}
               type="button"
               disabled={busy || active}
-              title={active ? 'Turn off the connection toggle before removing the device' : undefined}
+              title={active ? 'Turn off the connection before removing the device' : undefined}
               onClick={() => (confirmRemove ? void remove() : setConfirmRemove(true))}
             >
-              {confirmRemove ? 'Confirm Device Removal' : 'Remove Device'}
+              {confirmRemove ? 'Confirm device removal' : 'Remove device'}
             </button>
           )}
           <div className="footer-spacer" />
@@ -110,7 +115,7 @@ export function DeviceDialog({
             Cancel
           </button>
           <button className="button primary" type="submit" disabled={busy}>
-            {busy ? 'Saving…' : 'Save Device'}
+            {busy ? 'Saving…' : 'Save device'}
           </button>
         </footer>
       </form>

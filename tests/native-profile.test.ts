@@ -16,7 +16,7 @@ test('stock media remains usable and cursor mode cannot silently target an unsup
     assert.equal(normal.LANTO_LOCAL_CURSOR, '0')
     assert.equal(normal.D3D11VA_FORCE_BIND, undefined)
     settings.localCursor = true
-    await assert.rejects(nativeEnvironment(executable, settings, 'macos'), /Lanto native version/)
+    await assert.rejects(nativeEnvironment(executable, settings, 'macos'), /Lanto native/)
     for (const host of ['linux', 'windows'] as const) {
       const compatible = await nativeEnvironment(executable, settings, host, 'win32')
       assert.equal(compatible.LANTO_LOCAL_CURSOR, '0')
@@ -24,7 +24,7 @@ test('stock media remains usable and cursor mode cannot silently target an unsup
     assert.equal(settings.localCursor, true)
     const manifest = join(directory, 'lanto-media.json')
     await writeFile(manifest, '{"localCursorProtocol":2}')
-    await assert.rejects(nativeEnvironment(executable, settings, 'macos'), /Lanto native version/)
+    await assert.rejects(nativeEnvironment(executable, settings, 'macos'), /Lanto native/)
     await writeFile(manifest, '{"localCursorProtocol":1}')
     settings.windowsPipeline = 'shared-bind'
     const native = await nativeEnvironment(executable, settings, 'macos', 'win32')
@@ -36,7 +36,7 @@ test('stock media remains usable and cursor mode cannot silently target an unsup
       undefined
     )
     await writeFile(manifest, 'invalid json')
-    await assert.rejects(nativeEnvironment(executable, settings, 'macos'), /Lanto native version/)
+    await assert.rejects(nativeEnvironment(executable, settings, 'macos'), /Lanto native/)
   } finally {
     await removeTestDirectory(directory, 'lanto-native-profile-')
   }

@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { mkdir, open, stat } from 'node:fs/promises'
-import { delimiter, extname, isAbsolute, join } from 'node:path'
+import { delimiter, dirname, extname, isAbsolute, join } from 'node:path'
 import type { Device, Settings } from '../shared/model.ts'
 import type { MediaAdapter, MediaExit, MediaHandle } from './session-manager.ts'
 import { hasMediaFeature, nativeEnvironment } from './native-profile.ts'
@@ -44,6 +44,7 @@ export async function findMoonlight(configured: string): Promise<string | null> 
   const candidates =
     process.platform === 'win32'
       ? [
+          join(dirname(process.execPath), 'resources', 'media', 'Moonlight.exe'),
           join(
             process.env.ProgramFiles || 'C:\\Program Files',
             'Moonlight Game Streaming',
@@ -90,7 +91,7 @@ export class MoonlightAdapter implements MediaAdapter {
 
   async start(device: Device, settings: Settings): Promise<MediaHandle> {
     const executable = await findMoonlight(settings.moonlightPath)
-    if (!executable) throw new Error('Moonlight not found. Select the Moonlight executable in Settings')
+    if (!executable) throw new Error('Moonlight was not found; select its executable in settings')
     let logFile: string | undefined
     if (settings.showPerformanceOverlay) {
       await mkdir(this.logDirectory, { recursive: true, mode: 0o700 })
@@ -99,7 +100,9 @@ export class MoonlightAdapter implements MediaAdapter {
     const environmentOverrides = await nativeEnvironment(executable, settings, device.platform)
     const audioSupported = await hasMediaFeature(executable, 'audioVolumeProtocol')
     if (!audioSupported && (device.volume !== 100 || device.muted))
-      throw new Error('Device volume settings require a newer Lanto player. Select the companion app in Settings')
+      throw new Error(
+        'Device volume controls require the latest Lanto player; select the bundled program in settings'
+      )
     const control = audioSupported
       ? await createAudioControl(join(this.logDirectory, '..', 'media-controls'), device)
       : undefined
@@ -123,7 +126,7 @@ export class MoonlightAdapter implements MediaAdapter {
 
   async open(settings: Settings): Promise<void> {
     const executable = await findMoonlight(settings.moonlightPath)
-    if (!executable) throw new Error('Install Moonlight first, or select its executable in Settings')
+    if (!executable) throw new Error('Install Moonlight or select its executable in settings')
     const handle = await launchMedia(executable, [])
     // The setup window is user-owned; only stream processes are managed by SessionManager.
     void handle.closed
@@ -158,7 +161,7 @@ export async function launchMedia(
       child.once('error', () => {
         ended = true
         resolveClosed({ code: -1, signal: null })
-        reject(new Error('Unable to start Moonlight. Check the selected app and file permissions'))
+        reject(new Error('Cannot start Moonlight; check the selected program and file permissions'))
       })
     })
     return {
@@ -193,7 +196,8 @@ export async function launchMedia(
         child.kill('SIGTERM')
         if (await waitForExit(closed, 1500)) return
         child.kill('SIGKILL')
-        if (!(await waitForExit(closed, 1500))) throw new Error('Moonlight process did not exit')
+        if (!(await waitForExit(closed, 1500)))
+          throw new Error('The Moonlight process did not exit')
       }
     }
   } finally {

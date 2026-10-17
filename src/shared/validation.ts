@@ -7,7 +7,7 @@ const cleanText = (max: number) =>
     .trim()
     .min(1)
     .max(max)
-    .refine((value) => !/[\u0000-\u001f\u007f]/.test(value), 'Must not contain control characters')
+    .refine((value) => !/[\u0000-\u001f\u007f]/.test(value), 'Cannot contain control characters')
 
 export const deviceInputSchema = z
   .object({
@@ -24,10 +24,13 @@ export const deviceInputSchema = z
           /^(?=.{1,253}$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.?$/.test(
             value
           ),
-        'Address must be an IP address or hostname; do not include a protocol, port, or command-line arguments'
+        'Address must be an IP address or hostname without a protocol, port, or command arguments'
       ),
     platform: z.enum(['linux', 'macos', 'windows']),
-    appName: cleanText(120).refine((value) => !value.startsWith('-'), 'App name must not start with a hyphen'),
+    appName: cleanText(120).refine(
+      (value) => !value.startsWith('-'),
+      'Application name cannot start with a hyphen'
+    ),
     hostId: z.uuid().optional(),
     volume: z.number().int().min(0).max(100).default(100),
     muted: z.boolean().default(false)
@@ -82,7 +85,7 @@ export const deviceAudioSchema = z
 export function readableError(error: unknown): string {
   if (error instanceof z.ZodError) {
     const issue = error.issues[0]
-    return `Invalid configuration: ${issue?.path.join('.') || 'Input'} · ${issue?.message || 'Please check the input'}`
+    return `Invalid configuration: ${issue?.path.join('.') || 'Input'} · ${issue?.message || 'Check the input'}`
   }
-  return error instanceof Error ? error.message : 'Operation incomplete. Try again'
+  return error instanceof Error ? error.message : 'Operation incomplete; retry'
 }

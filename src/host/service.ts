@@ -51,7 +51,8 @@ export async function startHost(
     })
   })
   const address = server.address()
-  if (!address || typeof address === 'string') throw new Error('Host failed to listen on the network port')
+  if (!address || typeof address === 'string')
+    throw new Error('Host could not listen on the network port')
   port = address.port
   let stopDiscovery: (() => void) | undefined
   if (options.discovery !== false && !['127.0.0.1', '::1'].includes(config.listen)) {

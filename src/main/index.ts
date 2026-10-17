@@ -6,6 +6,7 @@ import { registerIPC } from './ipc.ts'
 import { Workbench } from './workbench.ts'
 import { createWindow, focusWindow, loadWindow } from './window.ts'
 import { appUserModelId, updateWindowBranding } from './branding.ts'
+import { join } from 'node:path'
 
 const smoke = !app.isPackaged && process.argv.includes('--lanto-smoke-test')
 app.setName('Lanto')
@@ -23,6 +24,7 @@ async function boot() {
   workbench = new Workbench({
     directory: app.getPath('userData'),
     version: app.getVersion(),
+    deploymentResources: join(app.getAppPath(), 'out', 'deploy'),
     focusLocal: () => focusWindow(window),
     changed: () => {
       if (window && !window.isDestroyed())
@@ -63,7 +65,7 @@ else {
       })
   })
   void boot().catch((error: unknown) => {
-    dialog.showErrorBox('Lanto failed to start', readableError(error))
+    dialog.showErrorBox('Lanto could not start', readableError(error))
     closed = true
     app.quit()
   })

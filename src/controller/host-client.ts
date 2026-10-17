@@ -31,22 +31,25 @@ export class HostClient {
         }
       })
     )
-    if (response.identity.id !== ticket.hostId) throw new Error('Host identity does not match the pairing credentials')
+    if (response.identity.id !== ticket.hostId)
+      throw new Error('Host identity does not match the pairing ticket')
     await this.trust.put(response.identity, endpoint, response.token)
     return this.refresh(response.identity.id)
   }
 
   async refresh(id: string): Promise<TrustedHostView> {
     const existing = this.trust.list().find((entry) => entry.id === id)
-    if (!existing) throw new Error('This Host has not been paired')
+    if (!existing) throw new Error('This Host is not paired')
     let state: Pick<TrustedHostView, 'status' | 'error'>
     try {
       const { endpoint, token } = this.trust.connection(id)
       const status = hostStatusSchema.parse(await hostRequest(endpoint, '/v1/status', { token }))
-      if (status.identity.id !== id) throw new Error('Host identity has changed; pair again')
+      if (status.identity.id !== id) throw new Error('Host identity changed; pair it again')
       state = { status }
     } catch {
-      state = { error: 'Host is temporarily unreachable or authorization has expired; check the network and Host status' }
+      state = {
+        error: 'Host is unreachable or authorization expired; check the network and Host status'
+      }
     }
     if (this.trust.list().some((entry) => entry.id === id && entry.address === existing.address))
       this.states.set(id, state)

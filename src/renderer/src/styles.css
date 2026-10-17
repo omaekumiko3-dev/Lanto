@@ -1160,3 +1160,135 @@ select option::checkmark {
     animation: none !important;
   }
 }
+
+.deploy-form,
+.deploy-status {
+  gap: 16px;
+}
+.form-intro {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+  font-size: 13px;
+}
+.deploy-address {
+  grid-template-columns: minmax(0, 1fr) 110px;
+}
+.input-action {
+  display: flex;
+  gap: 8px;
+}
+.input-action input {
+  min-width: 0;
+  flex: 1;
+}
+.deploy-advanced summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+.deploy-advanced label {
+  margin-top: 12px;
+}
+.deploy-target {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.deploy-target strong {
+  font-size: 17px;
+}
+.deploy-target span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.host-key-review {
+  display: grid;
+  gap: 14px;
+}
+.host-key-review p {
+  margin: 0;
+  line-height: 1.6;
+}
+.host-key-review code {
+  display: block;
+  overflow-wrap: anywhere;
+  padding: 12px;
+  background: var(--field);
+  border-radius: 8px;
+  font-size: 12px;
+  user-select: text;
+}
+.deploy-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.deploy-steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.deploy-step-marker {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-size: 12px;
+  color: var(--muted);
+}
+.deploy-steps li[data-phase='complete'] .deploy-step-marker {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.deploy-steps li[data-phase='running'] .deploy-step-marker {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.deploy-steps li > div {
+  display: grid;
+  gap: 5px;
+  flex: 1;
+}
+.deploy-steps strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.deploy-steps small,
+.deploy-step-state {
+  color: var(--muted);
+  font-size: 11px;
+}
+.deploy-steps li[data-phase='running'] .deploy-step-state {
+  color: var(--accent);
+}
+.deploy-warning {
+  border-left: 2px solid var(--accent);
+  padding-left: 12px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.deploy-progress {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+}
+.deploy-progress progress {
+  width: 100%;
+  height: 6px;
+  accent-color: var(--accent);
+}
+.footer-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}

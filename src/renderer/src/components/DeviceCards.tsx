@@ -30,7 +30,7 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
                 type="button"
                 className="connection-switch"
                 role="switch"
-                aria-label={`${device.name} Connectivity`}
+                aria-label={`${device.name} connection`}
                 aria-checked={inUse}
                 aria-busy={inUse && waiting}
                 title={inUse ? 'Disconnect' : 'Connect device'}
@@ -65,7 +65,7 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
                         ? 'Unreachable'
                         : host
                           ? 'Paired'
-                          : 'Pending check'}
+                          : 'Not checked'}
               </span>
               <div className="device-tools">
                 <button
@@ -106,7 +106,7 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
       {state.config.devices.length === 0 && (
         <button className="empty-device" onClick={newDevice}>
           <Icon name="plus" size={24} />
-          <span>Add First Device</span>
+          <span>Add your first device</span>
         </button>
       )}
     </section>

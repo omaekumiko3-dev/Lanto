@@ -104,9 +104,9 @@ export function SettingsDialog({
           </div>
           <div className="form-columns">
             <label>
-              Show Cursor
+              Cursor display
               <select
-                aria-label="Show Cursor"
+                aria-label="Cursor display"
                 value={String(draft.localCursor)}
                 onChange={(event) =>
                   setDraft({ ...draft, localCursor: event.target.value === 'true' })
@@ -115,25 +115,28 @@ export function SettingsDialog({
                 <option value="false">Remote cursor</option>
                 <option value="true">Local cursor</option>
               </select>
-              <small>Local cursor is for the companion Mac; Linux and Windows use the remote cursor automatically.</small>
+              <small>
+                The local cursor is supported on the configured Mac; Linux and Windows use the
+                remote cursor automatically.
+              </small>
             </label>
             <label>
-              Latency strategy
+              Latency policy
               <select
-                aria-label="Latency strategy"
+                aria-label="Latency policy"
                 value={String(draft.lowLatency)}
                 onChange={(event) =>
                   setDraft({ ...draft, lowLatency: event.target.value === 'true' })
                 }
               >
                 <option value="false">Default</option>
-                <option value="true">Prioritize responsiveness</option>
+                <option value="true">Prioritize response</option>
               </select>
-              <small>Prioritizing responsiveness disables vertical sync and may cause tearing.</small>
+              <small>Prioritize response disables VSync and may cause tearing.</small>
             </label>
           </div>
           <label>
-            Disconnect Hotkey
+            Disconnect shortcut
             <input
               required
               maxLength={80}
@@ -141,13 +144,16 @@ export function SettingsDialog({
               onChange={(event) => setDraft({ ...draft, returnShortcut: event.target.value })}
               spellCheck={false}
             />
-            <small>Keep the connection when switching windows with Alt + Tab. Display settings take effect the next time you connect.</small>
+            <small>
+              Alt + Tab keeps the connection active when switching windows. Display settings apply
+              on the next connection.
+            </small>
           </label>
           <details className="advanced-settings">
-            <summary>Advanced Settings</summary>
+            <summary>Advanced settings</summary>
             <div className="advanced-body">
               <label>
-                Moonlight Executable
+                Moonlight executable
                 <div className="file-input">
                   <input
                     value={draft.moonlightPath}
@@ -184,16 +190,18 @@ export function SettingsDialog({
                       })
                     }
                   >
-                    <option value="auto">Automatic</option>
+                    <option value="auto">Auto</option>
                     <option value="shared-bind">Shared device and textures (experimental)</option>
                   </select>
                 </label>
                 <p className="settings-footnote">
-                  Audio plays on both the target machine and this device. Volume and mute on the device card affect this device only.
+                  Audio plays on both the target and this computer. Device card volume and mute
+                  affect only local playback.
                 </p>
               </div>
               <p className="settings-footnote">
-                Shared textures may affect compatibility with some graphics cards or VRR. Settings take effect the next time you connect.
+                Shared textures may affect compatibility with some GPUs or VRR. Changes apply on the
+                next connection.
                 <span>{configDirectory}</span>
               </p>
               <div className="settings-help">
@@ -218,7 +226,7 @@ export function SettingsDialog({
                       .catch((error: unknown) => setPickerError(errorText(error)))
                   }
                 >
-                  Configure controlled device
+                  Configure host
                   <Icon name="external" size={12} />
                 </button>
               </div>
@@ -236,7 +244,7 @@ export function SettingsDialog({
             Cancel
           </button>
           <button className="button primary" type="submit" disabled={busy || choosing}>
-            {busy ? 'Saving…' : 'Save Settings'}
+            {busy ? 'Saving…' : 'Save settings'}
           </button>
         </footer>
       </form>

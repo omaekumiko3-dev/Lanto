@@ -74,7 +74,7 @@ export function DeviceVolume({
         type="button"
         aria-label={`${silent ? 'Unmute' : 'Mute'} ${device.name}`}
         aria-pressed={silent}
-        title={silent ? 'Restore stream audio' : 'Mute stream audio'}
+        title={silent ? 'Unmute stream' : 'Mute stream'}
         disabled={disabled}
         onClick={() =>
           update(silent ? { volume: audio.volume || 100, muted: false } : { ...audio, muted: true })
@@ -89,9 +89,9 @@ export function DeviceVolume({
         max="100"
         step="1"
         value={audio.volume}
-        aria-label={`${device.name} Volume`}
+        aria-label={`${device.name} volume`}
         aria-valuetext={`${audio.volume}%${audio.muted ? ', muted' : ''}`}
-        title="Adjust the stream volume for this device"
+        title="Adjust streaming volume for this device"
         disabled={disabled}
         style={{ '--volume': `${audio.volume}%` } as CSSProperties}
         onChange={(event) => update({ volume: Number(event.target.value), muted: false })}

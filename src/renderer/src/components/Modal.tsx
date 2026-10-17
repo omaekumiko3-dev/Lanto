@@ -63,7 +63,7 @@ export function Modal({
           <div>
             <h2 id="dialog-title">{title}</h2>
           </div>
-          <button className="icon-button" disabled={busy} aria-label="Close Dialog" onClick={close}>
+          <button className="icon-button" disabled={busy} aria-label="Close dialog" onClick={close}>
             <Icon name="close" />
           </button>
         </header>

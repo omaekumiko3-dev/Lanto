@@ -26,15 +26,15 @@ export function WorkspaceControls({
         <button
           type="button"
           role="switch"
-          aria-label="Share Clipboard"
+          aria-label="Shared clipboard"
           aria-checked={settings.shareClipboard}
           disabled={busy}
           className="quick-switch"
-          title="Share newly copied content across all paired devices that are online"
+          title="Share newly copied content with all paired online devices"
           onClick={() => save({ ...settings, shareClipboard: !settings.shareClipboard })}
         >
           <Icon name="clipboard" size={15} />
-          <span>Share Clipboard</span>
+          <span>Shared clipboard</span>
           <span className="quick-switch-track">
             <span />
           </span>
@@ -43,10 +43,10 @@ export function WorkspaceControls({
           type="button"
           className="clipboard-menu-trigger"
           popoverTarget="clipboard-options"
-          aria-label="Clipboard Options"
+          aria-label="Clipboard options"
           aria-expanded={open}
           aria-controls="clipboard-options"
-          title="File sharing and transfer"
+          title="File sharing and transfers"
         >
           <Icon name="chevron" size={13} />
           {clipboard.transfers.some((transfer) => transfer.phase === 'transferring') && (
@@ -57,11 +57,11 @@ export function WorkspaceControls({
       <button
         type="button"
         role="switch"
-        aria-label="Show Performance Data"
+        aria-label="Show performance data"
         aria-checked={settings.showPerformanceOverlay}
         disabled={busy}
         className="quick-switch performance-switch"
-        title="Takes effect the next time you connect; toggle it for the current display with Ctrl + Alt + Shift + S"
+        title="Applies on the next connection; toggle in the current display with Ctrl + Alt + Shift + S"
         onClick={() =>
           save({ ...settings, showPerformanceOverlay: !settings.showPerformanceOverlay })
         }
@@ -94,13 +94,13 @@ export function WorkspaceControls({
         </header>
         <div className="setting-switch-row">
           <div>
-            <strong>Share Files</strong>
-            <small>Files and folders are transferred automatically and can be pasted when complete.</small>
+            <strong>Share files</strong>
+            <small>Files and folders transfer automatically and can be pasted when complete.</small>
           </div>
           <button
             type="button"
             role="switch"
-            aria-label="Share Files"
+            aria-label="Share files"
             aria-checked={settings.shareFiles}
             disabled={busy || !settings.shareClipboard}
             className="connection-switch"
@@ -110,10 +110,12 @@ export function WorkspaceControls({
           </button>
         </div>
         {!settings.shareClipboard && (
-          <p className="settings-footnote">With shared clipboard enabled, text, images, and files can be synced.</p>
+          <p className="settings-footnote">
+            Enable the shared clipboard to synchronize text, images, and files.
+          </p>
         )}
         <ClipboardStatus state={clipboard} cancel={cancel} openFiles={openFiles} />
-        <p className="popover-hint">No file size limit; limited by available disk space.</p>
+        <p className="popover-hint">No fixed file size limit; available disk space is the limit.</p>
       </section>
     </div>
   )

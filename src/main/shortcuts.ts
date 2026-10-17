@@ -26,7 +26,9 @@ export class ReturnShortcut {
     const previous = this.current
     const changed = previous !== value
     if (changed && !this.register(value))
-      throw new Error('Return shortcut is invalid or already in use. Choose another key combination; the original shortcut has been kept')
+      throw new Error(
+        'The return shortcut is invalid or already in use; choose another combination. The previous shortcut was preserved'
+      )
     try {
       await save()
     } catch (error) {

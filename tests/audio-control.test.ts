@@ -17,7 +17,7 @@ test('stream audio starts at the saved gain, stays isolated and cleans up on exi
     assert.equal(await readFile(first.environment.LANTO_VOLUME_FILE, 'utf8'), '37\n')
     assert.equal(await readFile(second.environment.LANTO_VOLUME_FILE, 'utf8'), '82\n')
     await first.close()
-    await assert.rejects(first.setAudio({ volume: 20, muted: false }), /streaming has ended/)
+    await assert.rejects(first.setAudio({ volume: 20, muted: false }), /stream ended/)
     await second.close()
     assert.deepEqual(await readdir(directory), [])
   } finally {

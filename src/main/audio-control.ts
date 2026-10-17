@@ -15,7 +15,7 @@ export async function createAudioControl(directory: string, audio: DeviceAudio) 
       LANTO_VOLUME: String(effectiveVolume(audio))
     },
     async setAudio(value: DeviceAudio): Promise<void> {
-      if (closed) throw new Error('Stream ended. Reconnect to adjust the volume')
+      if (closed) throw new Error('The stream ended; reconnect before adjusting volume')
       await writeJSON(file, effectiveVolume(value))
       // The process can exit while an atomic write is in progress.
       if (closed) await unlink(file).catch(() => {})
