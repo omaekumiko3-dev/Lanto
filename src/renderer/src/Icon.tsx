@@ -8,6 +8,9 @@ const paths = {
   volumeOff: 'M11 4L6 8H3v8h3l5 4z M16 9l6 6 M22 9l-6 6',
   plus: 'M12 5v14 M5 12h14',
   arrow: 'M5 12h14 M13 6l6 6-6 6',
+  chevron: 'M7 10l5 5 5-5',
+  clipboard: 'M9 4H5v17h14V4h-4 M9 3h6v4H9z M9 12h6 M9 16h4',
+  activity: 'M3 12h4l3-7 4 14 3-7h4',
   settings:
     'M4 7h9 M17 7h3 M4 17h3 M11 17h9 M17 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0 M11 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0',
   linux: 'M5 6l6 6-6 6 M13 18h6',

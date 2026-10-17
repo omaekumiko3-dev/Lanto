@@ -46,70 +46,12 @@ export function SettingsDialog({
         }}
       >
         <div className="form-body">
-          <div className="setting-switch-row">
-            <div>
-              <strong>Show Performance Data</strong>
-              <small>
-                Show data such as frame rate and latency in the upper left corner of the remote screen. Changes take effect on the next connection after saving; during streaming, press Ctrl + Alt +
-                Shift + S to toggle temporarily.
-              </small>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-label="Show Performance Data"
-              autoFocus
-              aria-checked={draft.showPerformanceOverlay}
-              className="connection-switch"
-              onClick={() =>
-                setDraft({ ...draft, showPerformanceOverlay: !draft.showPerformanceOverlay })
-              }
-            >
-              <span className="switch-thumb" />
-            </button>
-          </div>
-          <div className="sharing-settings">
-            <div className="setting-switch-row">
-              <div>
-                <strong>Share Clipboard</strong>
-                <small>Sync text and images between this machine and all paired devices that are online.</small>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-label="Share Clipboard"
-                aria-checked={draft.shareClipboard}
-                className="connection-switch"
-                onClick={() => setDraft({ ...draft, shareClipboard: !draft.shareClipboard })}
-              >
-                <span className="switch-thumb" />
-              </button>
-            </div>
-            <div className="setting-switch-row">
-              <div>
-                <strong>Share Files</strong>
-                <small>
-                  Files and folders are transferred automatically after being copied and can be pasted on other devices when complete. There is no file size limit; disk space limits still apply.
-                </small>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-label="Share Files"
-                aria-checked={draft.shareFiles}
-                disabled={!draft.shareClipboard}
-                className="connection-switch"
-                onClick={() => setDraft({ ...draft, shareFiles: !draft.shareFiles })}
-              >
-                <span className="switch-thumb" />
-              </button>
-            </div>
-            <small>Sync content copied after enabling this setting. Lanto only needs to remain running; there is no need to connect to a remote screen.</small>
-          </div>
           <div className="form-columns">
             <label>
               Resolution
               <select
+                autoFocus
+                aria-label="Resolution"
                 value={draft.resolution}
                 onChange={(event) =>
                   setDraft({ ...draft, resolution: event.target.value as Settings['resolution'] })
@@ -122,6 +64,7 @@ export function SettingsDialog({
             <label>
               Frame rate
               <select
+                aria-label="Frame rate"
                 value={draft.fps}
                 onChange={(event) => setDraft({ ...draft, fps: Number(event.target.value) })}
               >
@@ -148,6 +91,7 @@ export function SettingsDialog({
             <label>
               Window mode
               <select
+                aria-label="Window mode"
                 value={draft.windowMode}
                 onChange={(event) =>
                   setDraft({ ...draft, windowMode: event.target.value as Settings['windowMode'] })
@@ -162,6 +106,7 @@ export function SettingsDialog({
             <label>
               Show Cursor
               <select
+                aria-label="Show Cursor"
                 value={String(draft.localCursor)}
                 onChange={(event) =>
                   setDraft({ ...draft, localCursor: event.target.value === 'true' })
@@ -175,6 +120,7 @@ export function SettingsDialog({
             <label>
               Latency strategy
               <select
+                aria-label="Latency strategy"
                 value={String(draft.lowLatency)}
                 onChange={(event) =>
                   setDraft({ ...draft, lowLatency: event.target.value === 'true' })
@@ -229,6 +175,7 @@ export function SettingsDialog({
                 <label>
                   Windows graphics pipeline
                   <select
+                    aria-label="Windows graphics pipeline"
                     value={draft.windowsPipeline}
                     onChange={(event) =>
                       setDraft({

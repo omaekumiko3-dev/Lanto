@@ -47,6 +47,7 @@ export function DeviceDialog({
             <label>
               Operating System
               <select
+                aria-label="Operating System"
                 value={draft.platform}
                 disabled={Boolean(device.hostId)}
                 onChange={(event) =>

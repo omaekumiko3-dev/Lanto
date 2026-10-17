@@ -12,12 +12,10 @@ function bytes(value: string): string {
 }
 export function ClipboardStatus({
   state,
-  settings,
   cancel,
   openFiles
 }: {
   state: ClipboardView
-  settings: () => void
   cancel: () => void
   openFiles: () => void
 }) {
@@ -27,9 +25,10 @@ export function ClipboardStatus({
   return (
     <section className="clipboard-status" aria-label="Shared clipboard status">
       <div className="clipboard-heading">
-        <button className="text-button" onClick={settings}>
-          Shared Clipboard · {ready} / {state.peers.length} devices online
-        </button>
+        <span className="clipboard-peer-count">
+          <span className={`status-dot ${ready ? 'online' : ''}`} />
+          {ready} / {state.peers.length} devices online
+        </span>
         <div>
           {state.files && (
             <button className="text-button" onClick={openFiles}>

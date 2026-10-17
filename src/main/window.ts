@@ -18,7 +18,7 @@ export function createWindow(smoke: boolean, onRendererGone: () => void): Browse
     frame: false,
     icon: join(app.getAppPath(), 'assets/lanto.png'),
     show: false,
-    backgroundColor: '#121617',
+    backgroundColor: '#14171c',
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.cjs'),

@@ -5,7 +5,7 @@ import { DeviceCards } from './components/DeviceCards.tsx'
 import { DeviceDialog } from './components/DeviceDialog.tsx'
 import { SettingsDialog } from './components/SettingsDialog.tsx'
 import { PairHostDialog } from './components/PairHostDialog.tsx'
-import { ClipboardStatus } from './components/ClipboardStatus.tsx'
+import { WorkspaceControls } from './components/WorkspaceControls.tsx'
 
 export function App() {
   const model = useWorkbench()
@@ -54,6 +54,19 @@ export function App() {
             Device <span>{state.config.devices.length}</span>
           </h1>
           <div className="heading-actions">
+            <WorkspaceControls
+              settings={settings}
+              clipboard={state.clipboard}
+              busy={Boolean(busy)}
+              save={(input) =>
+                void run('quick-settings', async () => {
+                  setState(await api.saveSettings(input))
+                })
+              }
+              cancel={() => void run('clipboard-cancel', () => api.cancelClipboardTransfer())}
+              openFiles={() => void run('clipboard-files', () => api.openClipboardFiles())}
+            />
+            <span className="heading-divider" />
             <button
               className="button quiet"
               disabled={Boolean(busy) || active}
@@ -62,7 +75,7 @@ export function App() {
               <Icon name="link" size={16} />
               Connect to Host
             </button>
-            <button className="button secondary" onClick={newDevice}>
+            <button className="button primary" onClick={newDevice}>
               <Icon name="plus" size={16} />
               Add Device
             </button>
@@ -95,12 +108,6 @@ export function App() {
           </div>
         )}
         <DeviceCards model={view} />
-        <ClipboardStatus
-          state={state.clipboard}
-          settings={() => setSettingsOpen(true)}
-          cancel={() => void run('clipboard-cancel', () => api.cancelClipboardTransfer())}
-          openFiles={() => void run('clipboard-files', () => api.openClipboardFiles())}
-        />
       </main>
 
       {pairOpen && (

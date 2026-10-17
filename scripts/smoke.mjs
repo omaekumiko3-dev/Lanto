@@ -7,6 +7,7 @@ import { _electron as electron } from 'playwright'
 import electronExecutable from 'electron'
 import { initializeHost } from '../src/host/config.ts'
 import { startHost } from '../src/host/service.ts'
+import { defaultConfig } from '../src/shared/model.ts'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const testData = await mkdtemp(join(tmpdir(), 'lanto-ui-'))
@@ -14,6 +15,9 @@ const artifacts = join(root, 'test-results')
 const environment = { ...process.env, LANTO_TEST_DATA_DIR: testData }
 delete environment.ELECTRON_RUN_AS_NODE
 await mkdir(artifacts, { recursive: true })
+const initialConfig = defaultConfig()
+initialConfig.settings.returnShortcut = 'Control+Alt+Shift+F11'
+await writeFile(join(testData, 'config.json'), JSON.stringify(initialConfig))
 let application
 const errors = []
 let hostService
@@ -73,7 +77,38 @@ try {
   assert.deepEqual((await page.evaluate(() => window.lanto.getState())).config.devices, [])
   assert.equal(await page.locator('.device-card').count(), 0)
   await page.getByRole('button', { name: 'Add First Device', exact: true }).waitFor()
-  assert.equal(await page.getByRole('switch').count(), 0)
+  assert.equal(await page.getByRole('switch').count(), 2)
+  const sharedClipboard = page.getByRole('switch', { name: 'Share Clipboard', exact: true })
+  const performanceOverlay = page.getByRole('switch', { name: 'Show Performance Data', exact: true })
+  assert.equal(await sharedClipboard.isChecked(), false)
+  assert.equal(await performanceOverlay.isChecked(), false)
+  assert.equal(await page.locator('.workspace > .clipboard-status').count(), 0)
+  await page.getByRole('button', { name: 'Clipboard Options', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Clipboard', exact: true }).waitFor()
+  assert.equal(await page.getByRole('switch', { name: 'Share Files', exact: true }).isDisabled(), true)
+  await page.keyboard.press('Escape')
+  await page.getByRole('dialog', { name: 'Clipboard', exact: true }).waitFor({ state: 'hidden' })
+  await sharedClipboard.click()
+  await page.waitForFunction(
+    async () => (await window.lanto.getState()).config.settings.shareClipboard
+  )
+  await page.getByRole('button', { name: 'Clipboard Options', exact: true }).click()
+  await page.getByRole('switch', { name: 'Share Files', exact: true }).click()
+  await page.waitForFunction(async () => (await window.lanto.getState()).config.settings.shareFiles)
+  await page.screenshot({ path: join(artifacts, 'clipboard-options.png') })
+  await page.keyboard.press('Escape')
+  await sharedClipboard.click()
+  await page.waitForFunction(
+    async () => !(await window.lanto.getState()).config.settings.shareClipboard
+  )
+  await performanceOverlay.click()
+  await page.waitForFunction(
+    async () => (await window.lanto.getState()).config.settings.showPerformanceOverlay
+  )
+  await performanceOverlay.click()
+  await page.waitForFunction(
+    async () => !(await window.lanto.getState()).config.settings.showPerformanceOverlay
+  )
   assert.equal(await page.getByRole('button', { name: 'Return to This Machine', exact: true }).count(), 0)
   await page.screenshot({ path: join(artifacts, 'workbench.png'), fullPage: true })
   await application.evaluate(({ BrowserWindow }) =>
@@ -81,6 +116,32 @@ try {
   )
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByRole('dialog').waitFor()
+  const resolution = page.getByLabel('Resolution', { exact: true })
+  await resolution.click()
+  await page.waitForFunction(() => document.querySelector('select:open'))
+  await page.screenshot({ path: join(artifacts, 'select-compact.png') })
+  await page.keyboard.press('Escape')
+  assert.equal(await page.locator('select:open').count(), 0)
+  assert.equal(await page.getByRole('dialog', { name: 'Settings', exact: true }).isVisible(), true)
+  await resolution.press('Space')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  assert.equal(await resolution.inputValue(), '1920x1080')
+  await page.getByRole('button', { name: 'Save Settings', exact: true }).focus()
+  await page.keyboard.press('Tab')
+  assert.equal(
+    await page
+      .getByRole('button', { name: 'Close Dialog', exact: true })
+      .evaluate((node) => node === document.activeElement),
+    true
+  )
+  await page.keyboard.press('Shift+Tab')
+  assert.equal(
+    await page
+      .getByRole('button', { name: 'Save Settings', exact: true })
+      .evaluate((node) => node === document.activeElement),
+    true
+  )
   const layout = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > window.innerWidth,
     footerBottom: document.querySelector('.modal-footer').getBoundingClientRect().bottom,
@@ -92,6 +153,12 @@ try {
   await page.getByLabel('Moonlight Executable').scrollIntoViewIfNeeded()
   await page.screenshot({ path: join(artifacts, 'settings-compact.png') })
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  assert.equal(
+    await page
+      .getByRole('button', { name: 'Settings', exact: true })
+      .evaluate((node) => node === document.activeElement),
+    true
+  )
   await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].setSize(900, 620)
   )
@@ -247,7 +314,9 @@ setInterval(() => {}, 1000);
       await page.getByRole('switch', { name: `${name} Connectivity`, exact: true, checked: true }).waitFor()
     } else if (phase === 'idle' || phase === 'failed') {
       await page.waitForFunction(
-        () => document.querySelectorAll('[role="switch"][aria-checked="true"]').length === 0
+        () =>
+          document.querySelectorAll('.device-cards [role="switch"][aria-checked="true"]').length ===
+          0
       )
     }
   }
@@ -374,7 +443,10 @@ setInterval(() => {}, 1000);
   assert.equal(records[2].initialVolume, '0')
   process.kill(records[2].pid)
   await waitPhase('failed')
-  assert.equal(await page.getByRole('switch', { checked: true }).count(), 0)
+  assert.equal(
+    await page.locator('.device-cards').getByRole('switch', { checked: true }).count(),
+    0
+  )
   await page.getByRole('alert').filter({ hasText: 'Moonlight Has Exited' }).waitFor()
   await page.getByRole('switch', { name: 'Connect to Build Linux', exact: true }).click()
   await waitPhase('running')
@@ -392,6 +464,9 @@ setInterval(() => {}, 1000);
   assert.equal(persisted.config.devices[0].volume, 48)
   assert.equal(persisted.config.devices[0].muted, true)
   assert.equal(persisted.config.settings.bitrateMbps, 35)
+  assert.equal(persisted.config.settings.shareFiles, true)
+  assert.equal(persisted.config.settings.shareClipboard, false)
+  assert.equal(persisted.config.settings.showPerformanceOverlay, false)
   assert.equal(persisted.session.phase, 'idle')
   await page.getByRole('button', { name: 'Edit Test Windows', exact: true }).click()
   await page.getByRole('button', { name: 'Remove Device', exact: true }).click()
@@ -509,8 +584,15 @@ setInterval(() => {}, 1000);
   await closed
   application = null
   console.log(
-    'Electron smoke passed: per-device live volume/mute, audio rollback and persistence, editable paired IP, connection switches, Host TLS pairing and unpair; screenshots: test-results/'
+    'Electron smoke passed: quick settings and persistence, popover and select keyboard behavior, dialog focus, per-device volume/mute, connection switches, Host TLS pairing and unpair; screenshots: test-results/'
   )
+} catch (error) {
+  const page = application && (await application.firstWindow())
+  if (page) {
+    await page.screenshot({ path: join(artifacts, 'smoke-failure.png') }).catch(() => {})
+    console.error(await page.locator('[role="alert"]').allTextContents())
+  }
+  throw error
 } finally {
   await application?.close()
   await hostService?.close()

@@ -1,48 +1,48 @@
 # Shared Clipboard and Files
 
-Enable Shared Clipboard in Settings to sync newly copied text and images between this machine and all paired Hosts that are online and logged in to the desktop. Share Files is a separate toggle and requires Shared Clipboard to be enabled as well. Copied files and folders are transferred automatically. When the interface shows Ready to paste, you can paste them in the file manager on another device. The remote screen does not need to be open.
+Enable **Shared clipboard** at the top of the device page to synchronize newly copied text and images between this computer and all paired, online Hosts signed in to their desktops. The adjacent arrow opens the separate **Share files** switch, online count, transfer progress, cancellation, and received-files directory. The main page no longer has a permanent bottom status bar. File sharing also requires clipboard sharing. Copied files and folders transfer automatically; when the popover says **Ready to paste**, they can be pasted in another device's file manager. No remote display connection is needed.
 
-The controller acts as the sync hub and must remain running; files sent from one remote device to another pass through the controller, so both the controller and the receiving device need sufficient free disk space. Manually added streaming devices that have not been paired through Lanto Host do not participate in sharing. Both toggles are off by default; when first enabled, only the current state is sampled, and syncing starts with subsequent new copies. Turning sharing off stops sampling, revokes sessions, and cancels transfers; after Shared Files is turned off, text and images can still sync.
+The controller is the synchronization hub and must remain running. Remote-to-remote files pass through it, so both the controller and receiver need sufficient free disk space. Manually added streaming devices that are not paired through Lanto Host do not participate. Both switches default to off. Initial enablement samples current state but synchronizes only subsequent copies. Disabling sharing stops sampling, revokes leases, and cancels transfers. Disabling only file sharing leaves text and image synchronization available.
 
-## File Behavior
+## File behavior
 
-- There is no application-level limit on file bytes. Files use streaming reads and writes, backpressure, and SHA-256 verification, and are not loaded into memory all at once; sizes are calculated using decimal strings and BigInt. Disk capacity, the operating system, and the file system still impose practical limits.
-- Supports multiple regular files, folders, Chinese names, empty files, and empty folders. Each copy can contain up to 100,000 file/directory entries, and the manifest is also limited to 36 MiB of JSON; this is a manifest limit, not a per-file byte limit.
-- The destination clipboard is updated only after files are transferred and verified. If a source file changes, the destination receives new copied content, the connection is interrupted, or the transfer is canceled, submission is aborted and incomplete copies are cleaned up; partial files are not pasted. Copy again after a disconnection to retry; resumable transfers are not currently supported.
-- Each receive uses a separate directory and does not overwrite existing files. Characters disallowed in Windows names are converted to underscores; conflicts after case folding or normalization fail explicitly. Symbolic links and special device files are not shared, and file system metadata such as permissions, ACLs, and extended attributes is not preserved across devices.
-- Completed file caches are retained so that file paths in the clipboard do not immediately become invalid. Use the controller’s “Received Files” button to open the local receive directory; delete files yourself when they are no longer needed. Exiting or turning off the toggle does not delete completed files.
+- No application-level file-byte limit is imposed. Streaming reads/writes, backpressure, and SHA-256 verification avoid loading whole files into memory. Sizes use decimal strings and BigInt. Disk, operating-system, and filesystem limits still apply.
+- Multiple regular files, folders, Chinese filenames, empty files, and empty folders are supported. One copy allows up to 100,000 file/directory entries and a 36 MiB JSON manifest. These are manifest limits, not a per-file byte limit.
+- The target clipboard updates only after complete transfer and verification. Source changes, a newer target copy, connection loss, or cancellation abort commit and clean incomplete copies; partial files cannot be pasted. Copy again after a disconnection to retry. Resumable transfer is not implemented.
+- Each reception uses a separate directory without overwriting existing files. Windows-invalid filename characters become underscores; collisions after case folding or normalization fail explicitly. Symbolic links and special device files are excluded. Filesystem metadata such as permissions, ACLs, and extended attributes is not preserved across endpoints.
+- Completed files remain cached so clipboard file paths do not immediately become invalid. **Received files** opens the local receiving directory. Delete completed files manually once they are no longer needed; quitting or disabling sharing does not delete them.
 
-Images are transferred as PNG, with a limit of about 18 MiB for the compressed image; text is limited to 16 Mi UTF-16 code units and is also subject to the JSON request size limit. Rich text is extracted as plain text, and application-private formats are not transferred. When copying happens on multiple devices at once, the latest update observed by the controller takes precedence; clipboard history is not provided.
+Images transfer as PNG, with an approximately 18 MiB compressed-image limit. Text allows up to 16 Mi UTF-16 units and is also constrained by JSON request size. Rich text becomes plain text; application-private formats are not transferred. Simultaneous copies follow the last update observed by the controller. Clipboard history is not provided.
 
-## Desktop Components and Installation
+## Desktop components and installation
 
-The Host interface continues to use the existing TLS certificate pinning and pairing token; no public-facing service or anonymous file entry point has been added. Clipboard contents are not logged. The controller renews its lease every three seconds, with a twelve-second lease; after an abnormal exit, the Host automatically stops sampling and cleans up unfinished transfers.
+Host interfaces retain certificate pinning and pairing tokens without adding public services or anonymous file endpoints. Clipboard content does not enter logs. The controller renews leases every three seconds, with a twelve-second lifetime. After an abnormal exit, Host stops sampling and cleans unfinished transfers automatically.
 
-**Windows**: A LOCAL SERVICE Host cannot directly access the clipboard of the logged-in desktop, so the runtime package adds `install-windows-clipboard.ps1`. On a machine where the target desktop user is already logged in, run as administrator:
+**Windows:** A LOCAL SERVICE Host cannot directly access the signed-in desktop clipboard, so the runtime includes `install-windows-clipboard.ps1`. On the machine with the target desktop user already signed in, run as administrator:
 
 ```powershell
-& 'C:\Program Files\Lanto Host\<runtime directory>\install-windows-host.ps1' -Name MyWindows -Address <intranet IP>
-& 'C:\Program Files\Lanto Host\<runtime directory>\install-windows-clipboard.ps1'
+& 'C:\Program Files\Lanto Host\<runtime-directory>\install-windows-host.ps1' -Name MyWindows -Address <LAN-IP>
+& 'C:\Program Files\Lanto Host\<runtime-directory>\install-windows-clipboard.ps1'
 ```
 
-Step 2 creates a standard-privilege, desktop-user `Lanto Clipboard` Log in to the task. The main Host remains LOCAL SERVICE; only authenticated clipboard operations are forwarded to the local loopback proxy using a random token. The desktop user is granted read access to the runtime directory and `ProgramData\Lanto\Host\clipboard\desktop` Change the permissions; the Host identity and pairing secret retain their existing permissions. After rerunning the Host installer, run the clipboard installer again. The clipboard is unavailable when logging out of the desktop; the task automatically resumes after logging in.
+The second command creates the `Lanto Clipboard` login task running as the desktop user with ordinary privileges. The main Host remains LOCAL SERVICE and forwards only authenticated clipboard operations to a loopback desktop bridge protected by a random token. The desktop user receives runtime read access and modify access to `ProgramData\Lanto\Host\clipboard\desktop`; existing permissions on Host identity and pairing secrets remain unchanged. Rerun the clipboard installer after rerunning the Host installer. Clipboard access stops at logout and resumes automatically at login.
 
-**macOS**: The Host should run in the logged-in user’s LaunchAgent session. First use requires Xcode Command Line Tools’ `xcrun swiftc`, which compiles the AppKit component provided with the Host into a private cache directory; subsequent uses reuse it directly.
+**macOS:** Host should run in the signed-in user's LaunchAgent session. Initial use requires `xcrun swiftc` from Xcode Command Line Tools to compile the bundled AppKit helper into a private cache; later runs reuse it.
 
-**Linux**: The Host should run as a systemd user service for the graphical user. It requires Python 3, GTK 3, X11/Xwayland, and the correct `DISPLAY`／`XAUTHORITY` environment. This was verified using the existing Xwayland clipboard bridge on GNOME Wayland; not all compositors were covered, and a standalone pure Wayland data-control backend has not been implemented.
+**Linux:** Host should run as a graphical user's systemd user service. It requires Python 3, GTK 3, X11/Xwayland, and correct `DISPLAY`/`XAUTHORITY` variables. Verification used GNOME Wayland's existing Xwayland clipboard bridge. Other compositors are not comprehensively covered, and a standalone pure-Wayland data-control backend is not implemented.
 
-Receive directory:
+Receiving directories:
 
 | Endpoint | Default location |
 | --- | --- |
-| Controller | Under the Electron user directory `clipboard/received`, view Settings to find the actual user directory |
+| Controller | `clipboard/received` under the Electron user directory; Settings shows its actual location |
 | Windows Host | `%ProgramData%\Lanto\Host\clipboard\desktop\received` |
-| macOS／Linux Host | `~/.lanto/host/clipboard/received` |
+| macOS/Linux Host | `~/.lanto/host/clipboard/received` |
 
-## 2026-10-17 Hardware Validation
+## Physical verification on 2026-10-17
 
-With the Windows controller left running, the Mac, Linux, and Windows Hosts each served as a copy source: small files with Unicode/newline/emoji text and Chinese filenames were transferred to all endpoints and verified by comparing content SHA-256 hashes. Also verified that a 2×2 PNG sent from Mac to the Linux and Windows Hosts and the controller had identical byte digests.
+With the Windows controller running, Mac, Linux, and Windows Hosts each served as copy sources. Unicode/newline/emoji text and small files with Chinese filenames reached every endpoint and passed content SHA-256 comparison. A 2×2 PNG sent from Mac also had identical byte hashes on Linux, Windows Host, and the controller.
 
-Copied a folder from the controller containing a **4,294,967,312-byte (4 GiB + 16 bytes)** file, along with a file with a Chinese name, a zero-byte file, and an empty directory. All three Hosts read the entire contents and produced the same SHA-256:`1065e981d5a908a1b87d00e87a2d55d3c08ae6ffd91d1cceffb91bdd2f645770`, and the empty file and empty directory were also present. The controller main process working set was about 156 MiB during the transfer and did not allocate memory proportional to the total file size. The first Windows transfer encountered one TLS record verification failure and did not submit partial files; copying again completed successfully without lowering TLS verification requirements. The root cause of that network error has not been identified, so this does not support a claim that long-running transfer stability has been verified.
+A controller copy included a folder containing a **4,294,967,312-byte file (4 GiB + 16 bytes)**, a file with a Chinese filename, a zero-byte file, and an empty directory. All three Hosts fully read the same SHA-256: `1065e981d5a908a1b87d00e87a2d55d3c08ae6ffd91d1cceffb91bdd2f645770`; the empty file and directory also existed. The controller main-process working set was approximately 156 MiB during transfer, without allocating memory proportional to the whole file. The first Windows transfer encountered one TLS record verification failure and did not commit partial files. Copying again succeeded without weakening TLS verification. The network failure's root cause remains unknown, so this does not establish long-term transfer stability.
 
-After Shared Files was actually turned off, text still reached all three endpoints, while copying files did not trigger a transfer; after all sharing was turned off, newly copied local text did not change remote contents. A large-file transfer was canceled after about 85–252 MiB; all three retained their original image clipboard and cleaned up unfinished files. Automation also covers pairing authentication, the file toggle, source file changes, incomplete transfers, protection against new destination copies, invalidation of queued requests after sharing is turned off, forwarding across three endpoints, and duplicate event suppression.
+After file sharing was disabled on real machines, text still reached all three endpoints while file copies triggered no transfer. After all sharing was disabled, newly copied local text left remote contents unchanged. Cancelling large-file transfers after approximately 85–252 MiB preserved the prior image clipboard on all three Hosts and cleaned unfinished files. Automation also covers pairing authentication, file switches, source changes, incomplete transfers, newer target-copy protection, queued request invalidation after disablement, three-endpoint forwarding, and duplicate-event suppression.

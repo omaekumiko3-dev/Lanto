@@ -34,6 +34,12 @@ $lantoAssets = Join-Path $PSScriptRoot '../assets'
 Copy-Item -LiteralPath (Join-Path $lantoAssets 'lanto-stream.svg') -Destination (Join-Path $lantoSource 'app/res/moonlight.svg')
 Copy-Item -LiteralPath (Join-Path $lantoAssets 'lanto-stream.ico') -Destination (Join-Path $lantoSource 'app/moonlight.ico')
 New-Item -ItemType Directory -Path $lantoBuild -Force | Out-Null
+# qmake's generated RC rule does not depend on the ICO. Invalidate that source
+# on incremental builds so Explorer and the taskbar receive the current artwork.
+$lantoResource = Join-Path $lantoBuild 'app/Moonlight_resource.rc'
+if (Test-Path -LiteralPath $lantoResource) {
+  (Get-Item -LiteralPath $lantoResource).LastWriteTimeUtc = [DateTime]::UtcNow
+}
 $lantoCommand = Join-Path $lantoBuild 'build-lanto.cmd'
 @"
 @echo off
