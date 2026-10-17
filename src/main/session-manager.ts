@@ -1,4 +1,5 @@
 import type { Device, DeviceAudio, SessionState, Settings } from '../shared/model.ts'
+import type { MediaWindow } from './media-window.ts'
 
 export interface MediaExit {
   code: number | null
@@ -10,6 +11,7 @@ export interface MediaHandle {
   closed: Promise<MediaExit>
   stop(): Promise<void>
   setAudio?(audio: DeviceAudio): Promise<void>
+  window?: MediaWindow
 }
 
 export interface MediaAdapter {
@@ -109,6 +111,30 @@ export class SessionManager {
           'The current player does not support volume control; select the latest Lanto player in settings and reconnect'
         )
       await this.active.handle.setAudio(audio)
+    })
+  }
+
+  toggleWindow(): Promise<'local' | 'remote'> {
+    return this.enqueue(async () => {
+      if (!this.active || this.active.stopping) return 'local'
+      if (!this.active.handle.window)
+        throw new Error('Window switching requires the Windows controller')
+      return this.active.handle.window.toggle()
+    })
+  }
+
+  showWindow(): Promise<void> {
+    return this.enqueue(async () => {
+      if (!this.active || this.active.stopping) return
+      if (!this.active.handle.window)
+        throw new Error('Window switching requires the Windows controller')
+      await this.active.handle.window.show()
+    })
+  }
+
+  configureWindow(minimize: boolean): Promise<void> {
+    return this.enqueue(async () => {
+      if (this.active && !this.active.stopping) await this.active.handle.window?.configure(minimize)
     })
   }
 

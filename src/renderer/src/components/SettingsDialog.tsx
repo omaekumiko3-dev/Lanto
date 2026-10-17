@@ -146,17 +146,35 @@ export function SettingsDialog({
             </label>
           </div>
           <label>
-            Disconnect shortcut
+            Switch shortcut
             <input
               required
+              aria-label="Switch shortcut"
               maxLength={80}
               value={draft.returnShortcut}
               onChange={(event) => setDraft({ ...draft, returnShortcut: event.target.value })}
               spellCheck={false}
             />
             <small>
-              Alt + Tab keeps the connection active when switching windows. Display settings apply
-              on the next connection.
+              Ctrl + ` uses the key above Tab. Press again to return to the connected desktop. The
+              connection stays active. Display settings apply on the next connection.
+            </small>
+          </label>
+          <label>
+            Minimize remote window when switching away
+            <select
+              aria-label="Minimize remote window when switching away"
+              value={String(draft.minimizeOnBlur)}
+              onChange={(event) =>
+                setDraft({ ...draft, minimizeOnBlur: event.target.value === 'true' })
+              }
+            >
+              <option value="true">On (recommended)</option>
+              <option value="false">Off</option>
+            </select>
+            <small>
+              Applies immediately on Windows, including Alt + Tab. The remote desktop stays
+              connected.
             </small>
           </label>
           <details className="advanced-settings">

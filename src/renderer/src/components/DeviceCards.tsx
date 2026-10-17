@@ -75,6 +75,16 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
                           : 'Not checked'}
               </span>
               <div className="device-tools">
+                {inUse && (
+                  <button
+                    className="text-button"
+                    aria-label={`Show ${device.name}`}
+                    disabled={Boolean(busy) || waiting}
+                    onClick={() => void run(`show:${device.id}`, () => api.showRemote())}
+                  >
+                    Show
+                  </button>
+                )}
                 <button
                   className="icon-button"
                   title="Check connection"

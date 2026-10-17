@@ -21,6 +21,8 @@ npm run dev
 
 `build` produces Electron main/preload/renderer output, compiles the Host, cross-compiles tunnel helpers, and packages SSH deployment resources. Go dependencies and npm dependencies are pinned by their lockfiles.
 
+Windows window control uses Koffi 3.3.3 through Node-API. `npm ci` installs its matching optional platform binary. Controller packaging explicitly includes `koffi` and `@koromix/koffi-win32-<architecture>`, including their license files; the standalone Host does not need them.
+
 `npm run host -- --help` shows the Host CLI. See [Host setup](host.md) for its init, pairing, serving, and installation commands. A standalone Host runtime can be assembled into a new directory with:
 
 ```bash

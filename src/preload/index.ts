@@ -21,6 +21,7 @@ const api: LantoAPI = {
   openMoonlight: () => invoke(channels.openMoonlight),
   connect: (id) => invoke(channels.connect, id),
   returnLocal: () => invoke(channels.returnLocal),
+  showRemote: () => invoke(channels.showRemote),
   probe: (id) => invoke(channels.probe, id),
   discoverHosts: () => invoke(channels.discoverHosts),
   pairHost: (ticket) => invoke(channels.pairHost, ticket),

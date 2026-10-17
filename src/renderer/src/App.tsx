@@ -100,7 +100,7 @@ export function App() {
           )}
         {!state.runtime.shortcutRegistered && (
           <div className="notice" role="alert">
-            <span>The return shortcut is unavailable; choose another combination.</span>
+            <span>The switch shortcut is unavailable; choose another combination.</span>
             <button className="text-button" onClick={() => setSettingsOpen(true)}>
               Open settings
             </button>

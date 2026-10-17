@@ -10,6 +10,7 @@ Lanto is distributed with independently licensed software. The root MIT license 
 | React and React DOM | MIT; [source](https://github.com/facebook/react). Included in the renderer bundle. |
 | bonjour-service, selfsigned, ssh2, zod and transitive runtime dependencies | See each installed package's license and the generated licenses/npm/inventory.json in the release. Full license texts are included under licenses/npm/. |
 | Direct tunnel helper | WireGuard Go, gVisor, Go runtime, and Go modules; see [native/tunnel/THIRD_PARTY_NOTICES.md](native/tunnel/THIRD_PARTY_NOTICES.md). License copies and sources accompany the packaged helpers. |
+| Koffi and its Windows platform binary | MIT; [source](https://github.com/Koromix/koffi). Used only by the controller to call Win32 window APIs; license copies accompany the packaged runtime. |
 
 ## Native desktop player
 

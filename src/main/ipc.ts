@@ -53,6 +53,7 @@ export function registerIPC(window: () => BrowserWindow | null, workbench: Workb
   handle(channels.openMoonlight, () => workbench.openMoonlight())
   handle(channels.connect, (input) => workbench.connect(input))
   handle(channels.returnLocal, () => workbench.returnLocal())
+  handle(channels.showRemote, () => workbench.showRemote())
   handle(channels.probe, (input) => workbench.probe(input))
   handle(channels.discoverHosts, () => workbench.discoverHosts())
   handle(channels.pairHost, (input) => workbench.pairHost(input))

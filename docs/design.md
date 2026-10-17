@@ -79,7 +79,7 @@ Switching always follows this sequence:
 3. Activate the new target window and confirm focus; return to local Windows if this fails.
 4. Grant input ownership to the new session and discard queued events carrying the old session ID.
 
-Keep an emergency-return shortcut handled by the Windows console, with the goal of always being able to return locally. The current default is `Control+Alt+F12`; registration failure prevents startup. Streaming currently uses `--capture-system-keys never`. In the first version, returning locally closes the local media process and shows Lanto; it does not retain a connection for hot switching. System hooks, exclusive fullscreen, and game privilege levels still need testing. Device-switch shortcuts will follow. Initial tests use windowed or borderless games; leaving exclusive fullscreen, display-mode changes, and pause behavior need separate tests.
+Keep a switch shortcut handled by the Windows controller. The current default is Ctrl plus backtick (the key above Tab); registration failure prevents session startup. Streaming uses `--capture-system-keys never`. Switching now preserves the same stream, minimizes the remote window by default, and restores it on the next press. Automatic minimization can be disabled in Settings. Device switches and application shutdown still disconnect. System hooks, exclusive fullscreen, and game privilege levels need physical testing; leaving exclusive fullscreen, display-mode changes, and pause behavior require separate validation.
 
 When streaming already carries keyboard and mouse input, Deskflow/Lan Mouse must not inject the same input again. A future custom input backend will use the same lease management.
 

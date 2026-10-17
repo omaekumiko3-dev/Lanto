@@ -256,7 +256,16 @@ try {
   )
 
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await page.getByLabel('Disconnect shortcut').fill('Control+Alt+Shift+F11')
+  await page.getByLabel('Switch shortcut').fill('Control+Alt+Shift+F11')
+  assert.equal(
+    await page
+      .getByLabel('Minimize remote window when switching away', { exact: true })
+      .inputValue(),
+    'true'
+  )
+  await page
+    .getByLabel('Minimize remote window when switching away', { exact: true })
+    .selectOption('false')
   await page.getByLabel('Resolution', { exact: true }).selectOption('3840x2160')
   await page.getByLabel('Frame rate', { exact: true }).selectOption('30')
   await page.getByLabel('Bitrate (Mbps)', { exact: true }).fill('75')
@@ -267,6 +276,7 @@ try {
   assert.equal(savedVideo.resolution, '3840x2160')
   assert.equal(savedVideo.fps, 30)
   assert.equal(savedVideo.bitrateMbps, 75)
+  assert.equal(savedVideo.minimizeOnBlur, false)
   assert.equal(
     (await page.evaluate(() => window.lanto.getState())).config.settings.localCursor,
     true

@@ -5,6 +5,7 @@ import type { Device, Settings } from '../shared/model.ts'
 import type { MediaAdapter, MediaExit, MediaHandle } from './session-manager.ts'
 import { hasMediaFeature, nativeEnvironment } from './native-profile.ts'
 import { createAudioControl } from './audio-control.ts'
+import { createMediaWindow } from './media-window.ts'
 
 export function streamArguments(device: Device, settings: Settings): string[] {
   const args = [
@@ -116,6 +117,16 @@ export class MoonlightAdapter implements MediaAdapter {
       if (control) {
         handle.setAudio = (audio) => control.setAudio(audio)
         void handle.closed.then(() => control.close())
+      }
+      if (process.platform === 'win32') {
+        try {
+          const window = createMediaWindow(handle.pid, settings.minimizeOnBlur)
+          handle.window = window
+          void handle.closed.then(() => window.close())
+        } catch (error) {
+          await handle.stop()
+          throw error
+        }
       }
       return handle
     } catch (error) {

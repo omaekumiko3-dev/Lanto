@@ -47,7 +47,9 @@ The release includes a universal macOS clipboard helper. Source builds that omit
 
 ## Everyday use
 
-Use the switch on a device card to connect or disconnect. Only one stream can be active. **Ctrl+Alt+F12** ends the Lanto-owned stream and returns focus locally while remote applications keep running. **Alt+Tab** changes local focus without disconnecting.
+Use the switch on a device card to connect or disconnect. Only one stream can be active. On the Windows controller, **Ctrl + `** (the key above Tab) switches between the connected desktop and your local computer without disconnecting. Press it again, or click **Show** on the active card, to restore the same stream.
+
+**Minimize remote window when switching away** is enabled by default. It also applies when using **Alt+Tab**, and changes take effect immediately. Turning it off leaves the remote window open behind other windows. The old default shortcut migrates automatically; custom bindings stay as saved. Disconnect with the device card switch or by closing Lanto.
 
 Adjust each card's volume or mute independently. These settings change playback on your controller, not the target's system volume.
 
@@ -78,7 +80,7 @@ Choose **Encrypted direct tunnel** when you have a reachable endpoint. Provision
 | Clipboard is unavailable on Linux | Sign in to the graphical desktop, install required GTK/Xwayland dependencies, and use the latest Host runtime. |
 | File transfer stopped | Check free disk space and connectivity, then copy again. Interrupted transfers are not resumable. |
 | Tunnel fails | Confirm SSH setup completed and that the chosen UDP endpoint is reachable. LAN success does not establish internet reachability. |
-| Disconnect shortcut fails | Choose an unused combination in Settings; another application may own the shortcut. |
+| Switch shortcut fails | Choose an unused combination in Settings; another application may own the shortcut. |
 
 For more help, open an [issue](https://github.com/omaekumiko3-dev/Lanto/issues) with the release version, platforms, steps, and redacted logs.
 

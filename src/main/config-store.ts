@@ -15,7 +15,16 @@ export class ConfigStore {
     const contents = await readJSON(this.file)
     if (contents === undefined) return defaultConfig()
     try {
-      return configSchema.parse(contents)
+      const config = configSchema.parse(contents)
+      // Upgrade the old default once; preserve user-selected shortcuts and later edits.
+      const legacy = contents as { settings?: { minimizeOnBlur?: boolean } }
+      if (
+        legacy.settings?.minimizeOnBlur === undefined &&
+        config.settings.returnShortcut === 'Control+Alt+F12'
+      ) {
+        config.settings.returnShortcut = defaultConfig().settings.returnShortcut
+      }
+      return config
     } catch {
       throw new Error(
         `Cannot read the configuration; the original file was preserved. Inspect it or back it up before moving it: ${this.file}`

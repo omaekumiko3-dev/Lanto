@@ -60,12 +60,25 @@ for (const folder of ['main', 'preload', 'renderer', 'deploy'])
   await cp(join(root, 'out', folder), join(app, 'out', folder), { recursive: true })
 await cp(join(root, 'assets'), join(app, 'assets'), { recursive: true })
 const lock = JSON.parse(await readFile(join(root, 'package-lock.json'), 'utf8'))
-for (const [path] of runtimeDependencies(lock, ['bonjour-service', 'selfsigned', 'ssh2', 'zod'])) {
+const windowRuntime = `@koromix/koffi-win32-${process.arch}`
+for (const [path] of runtimeDependencies(lock, [
+  'bonjour-service',
+  'selfsigned',
+  'ssh2',
+  'zod',
+  'koffi',
+  windowRuntime
+])) {
   await mkdir(dirname(join(app, path)), { recursive: true })
   await cp(join(root, path), join(app, path), { recursive: true })
 }
 await cp(media, join(output, 'resources/media'), { recursive: true })
 await packageNotices(output, Object.keys(project.dependencies))
+// Koffi's optional binary package carries the same MIT license in its parent package.
+await cp(
+  join(root, 'node_modules/koffi/LICENSE.txt'),
+  join(app, 'node_modules', windowRuntime, 'LICENSE.txt')
+)
 await cp(join(root, 'native/patches'), join(output, 'resources/media/source/patches'), {
   recursive: true
 })

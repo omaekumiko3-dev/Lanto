@@ -176,3 +176,81 @@ test('volume only targets the current device and unsupported clients report fail
   )
   await unsupported.disconnect()
 })
+
+test('window switching retains the same stream, applies live preferences, and disconnect still stops it', async () => {
+  const commands: string[] = []
+  let remote = true
+  const player = Object.assign(handle(107), {
+    window: {
+      async toggle(): Promise<'local' | 'remote'> {
+        remote = !remote
+        commands.push('toggle')
+        return remote ? 'remote' : 'local'
+      },
+      async show() {
+        remote = true
+        commands.push('show')
+      },
+      async configure(minimize: boolean) {
+        commands.push(`minimize:${minimize}`)
+      },
+      close() {}
+    }
+  })
+  let starts = 0
+  const manager = new SessionManager(
+    {
+      async start() {
+        starts++
+        return player
+      }
+    },
+    () => {},
+    () => {}
+  )
+  assert.equal(await manager.toggleWindow(), 'local')
+  await manager.connect(first, defaults.settings)
+  const original = { ...manager.state }
+  assert.equal(await manager.toggleWindow(), 'local')
+  assert.equal(await manager.toggleWindow(), 'remote')
+  await manager.configureWindow(false)
+  await manager.showWindow()
+  assert.deepEqual(manager.state, original)
+  assert.equal(starts, 1)
+  assert.equal(player.stops, 0)
+  assert.deepEqual(commands, ['toggle', 'toggle', 'minimize:false', 'show'])
+  await manager.disconnect()
+  assert.equal(player.stops, 1)
+  await manager.showWindow()
+  await manager.configureWindow(true)
+  assert.equal(await manager.toggleWindow(), 'local')
+  assert.equal(commands.length, 4)
+})
+
+test('window control failure retains the stream and does not block disconnect', async () => {
+  const player = Object.assign(handle(108), {
+    window: {
+      async toggle(): Promise<'local' | 'remote'> {
+        throw new Error('window helper exited')
+      },
+      async show() {},
+      async configure() {},
+      close() {}
+    }
+  })
+  const manager = new SessionManager(
+    {
+      async start() {
+        return player
+      }
+    },
+    () => {},
+    () => {}
+  )
+  await manager.connect(first, defaults.settings)
+  await assert.rejects(manager.toggleWindow(), /window helper exited/)
+  assert.equal(manager.state.phase, 'running')
+  assert.equal(player.stops, 0)
+  await manager.disconnect()
+  assert.equal(player.stops, 1)
+})

@@ -25,6 +25,7 @@ export type DeviceInput = Omit<Device, 'id' | keyof DeviceAudio> &
 export interface Settings {
   moonlightPath: string
   returnShortcut: string
+  minimizeOnBlur: boolean
   resolution: '3840x2160' | '2560x1440' | '1920x1080'
   fps: number
   bitrateMbps: number
@@ -95,6 +96,7 @@ export interface LantoAPI {
   openMoonlight(): Promise<void>
   connect(id: string): Promise<void>
   returnLocal(): Promise<void>
+  showRemote(): Promise<void>
   probe(id: string): Promise<ProbeResult>
   discoverHosts(): Promise<DiscoveredHost[]>
   pairHost(ticket: string): Promise<AppState>
@@ -121,6 +123,7 @@ export const channels = {
   openMoonlight: 'lanto:open-moonlight',
   connect: 'lanto:connect',
   returnLocal: 'lanto:return-local',
+  showRemote: 'lanto:show-remote',
   probe: 'lanto:probe',
   discoverHosts: 'lanto:discover-hosts',
   pairHost: 'lanto:pair-host',
@@ -138,7 +141,8 @@ export function defaultConfig(): Config {
     devices: [],
     settings: {
       moonlightPath: '',
-      returnShortcut: 'Control+Alt+F12',
+      returnShortcut: 'Control+`',
+      minimizeOnBlur: true,
       resolution: '3840x2160',
       fps: 30,
       bitrateMbps: 60,

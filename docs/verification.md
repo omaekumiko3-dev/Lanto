@@ -203,3 +203,11 @@ Sunshine was configured to activate only the virtual monitor during a session an
 The first Windows connection after setup timed out during the control handshake. Subsequent connection and reconnection passed; the initial timeout was not treated as a successful sample. On macOS, the existing capture process initially retained stale display information; restarting it after the virtual display became ready resolved that condition. These are short functional checks, not a sustained stability or end-to-end latency benchmark. See [host display setup](host-display.md) for scope and rollback.
 
 The connection was restored with the performance overlay off. The target desktop resolution was not automatically changed. Build/type checking, formatting, all 39 behavior tests, Go tunnel tests, and Electron UI smoke tests passed.
+
+### Local/remote window switching
+
+Ctrl plus backtick now toggles the Windows remote window while preserving the streaming process. The default-on minimization setting applies to focus loss and can be changed during a session. An active device card also exposes **Show**; its connection switch still disconnects.
+
+All 44 behavior tests, Go tunnel tests, type checking, the production build, formatting, and Electron UI smoke tests passed. Coverage includes legacy shortcut migration, preserving custom bindings, saving the minimization preference, keeping the same session during focus switches, failed window actions leaving the stream alive, and Win32 process-handle cleanup. The Windows tests exercise the real FFI against isolated child processes and verify that a missing window cannot target another application.
+
+Global-shortcut behavior and window restoration inside exclusive-fullscreen games remain a manual acceptance check. Automated key injection did not trigger the binding in the active fullscreen environment; this is not recorded as a successful physical shortcut test.

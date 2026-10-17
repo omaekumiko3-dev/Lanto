@@ -94,7 +94,7 @@ export class Workbench {
       this.log(message, error)
     )
     this.shortcut = new ReturnShortcut(() => {
-      void this.returnLocal().catch((error: unknown) => this.log(readableError(error), true))
+      void this.toggleRemote().catch((error: unknown) => this.log(readableError(error), true))
     })
   }
 
@@ -127,7 +127,7 @@ export class Workbench {
     this.log('Local workspace ready')
     if (!this.shortcut.registered)
       this.log(
-        'The return shortcut could not be registered; choose another combination in settings',
+        'The switch shortcut could not be registered; choose another combination in settings',
         true
       )
   }
@@ -257,9 +257,16 @@ export class Workbench {
         throw new Error('The Moonlight path must be absolute')
       if (settings.moonlightPath && !(await findMoonlight(settings.moonlightPath)))
         throw new Error('The selected Moonlight file does not exist or is not executable')
-      await this.shortcut.update(settings.returnShortcut, () =>
-        this.persist({ ...this.config, settings })
-      )
+      const previousMinimize = this.config.settings.minimizeOnBlur
+      await this.shortcut.update(settings.returnShortcut, async () => {
+        await this.session.configureWindow(settings.minimizeOnBlur)
+        try {
+          await this.persist({ ...this.config, settings })
+        } catch (error) {
+          await this.session.configureWindow(previousMinimize).catch(() => {})
+          throw error
+        }
+      })
       await this.clipboard.configure({
         enabled: settings.shareClipboard,
         files: settings.shareFiles
@@ -280,7 +287,7 @@ export class Workbench {
     return this.queue.run(async () => {
       if (this.closing || epoch !== this.epoch) return
       if (!this.shortcut.registered)
-        throw new Error('Register an available return shortcut in settings first')
+        throw new Error('Register an available switch shortcut in settings first')
       const device = this.device(input)
       if (device.tunnel && device.hostId) {
         await this.tunnels.start(device.hostId, device.tunnel)
@@ -304,6 +311,19 @@ export class Workbench {
     this.focusLocal()
     await this.session.disconnect()
     this.focusLocal()
+  }
+
+  private async toggleRemote(): Promise<void> {
+    if (this.closing) return
+    if (this.session.state.pid === null || process.platform !== 'win32') {
+      await this.returnLocal()
+      return
+    }
+    if ((await this.session.toggleWindow()) === 'local') this.focusLocal()
+  }
+
+  async showRemote(): Promise<void> {
+    if (!this.closing) await this.session.showWindow()
   }
 
   openMoonlight(): Promise<void> {
