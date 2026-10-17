@@ -31,6 +31,8 @@ The second command creates the `Lanto Clipboard` login task running as the deskt
 
 **Linux:** Host should run as a graphical user's systemd user service. It requires Python 3, GTK 3, X11/Xwayland, and correct `DISPLAY`/`XAUTHORITY` variables. Verification used GNOME Wayland's existing Xwayland clipboard bridge. Other compositors are not comprehensively covered, and a standalone pure-Wayland data-control backend is not implemented.
 
+The clipboard helper refreshes its desktop variables from the current systemd user session whenever it starts. This lets a Host started before graphical login connect to the desktop later, and refreshes Xwayland authorization after a new login. Only desktop session variables are imported; the Host's process environment remains unchanged. Older Host installations need the updated runtime. Restarting an older Host after signing in restores access for that session.
+
 Receiving directories:
 
 | Endpoint | Default location |

@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { z } from 'zod'
 import { SerialQueue } from '../common/serial-queue.ts'
 import { linuxClipboard, macClipboard, windowsClipboard } from './native-sources.ts'
+import { linuxClipboardEnvironment } from './linux-session.ts'
 
 export const nativeContentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('empty') }).strict(),
@@ -83,8 +84,10 @@ export class NativeClipboard implements DesktopClipboard {
       command = '/usr/bin/python3'
       args = ['-u', path]
     }
+    const env =
+      process.platform === 'linux' ? await linuxClipboardEnvironment(process.env) : process.env
     if (generation !== this.generation) throw new Error('Clipboard synchronization stopped')
-    const child = spawn(command, args, { windowsHide: true, stdio: 'pipe' })
+    const child = spawn(command, args, { env, windowsHide: true, stdio: 'pipe' })
     this.child = child
     this.buffer = ''
     child.stdout.setEncoding('utf8')
