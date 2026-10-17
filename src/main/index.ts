@@ -5,10 +5,11 @@ import { readableError } from '../shared/validation.ts'
 import { registerIPC } from './ipc.ts'
 import { Workbench } from './workbench.ts'
 import { createWindow, focusWindow, loadWindow } from './window.ts'
+import { appUserModelId, updateWindowBranding } from './branding.ts'
 
 const smoke = !app.isPackaged && process.argv.includes('--lanto-smoke-test')
 app.setName('Lanto')
-if (process.platform === 'win32') app.setAppUserModelId('dev.lanto.controller')
+if (process.platform === 'win32') app.setAppUserModelId(appUserModelId)
 if (smoke && process.env.LANTO_TEST_DATA_DIR)
   app.setPath('userData', process.env.LANTO_TEST_DATA_DIR)
 let window: BrowserWindow | null = null
@@ -35,6 +36,9 @@ async function boot() {
       ?.returnLocal()
       .catch((error: unknown) => workbench?.log(readableError(error), true))
   })
+  await updateWindowBranding(window, !smoke).catch((error: unknown) =>
+    workbench?.log(readableError(error), true)
+  )
   window.on('closed', () => {
     window = null
   })

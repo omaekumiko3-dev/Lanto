@@ -47,7 +47,7 @@ pwsh -File native/build-moonlight.ps1 -Source C:/build/moonlight-qt -QtBin C:/Qt
 
 The output directory must be a new directory. The script copies the `native/moonlight/` source files into the upstream `app/streaming/lanto/`, compiles, deploys dependencies, and writes the `lanto-media.json` capability manifest; this file only describes features and is not a security signature. In Lanto, select the output `Moonlight.exe`for «Moonlight executable». The capability manifest is not required when the local cursor is disabled by default; the original version can still be used.
 
-The build entry point copies the repository’s `assets/lanto-stream.svg` and `.ico` Copy the icon assets to the upstream working copy, then bundle them into the window, taskbar, and executable. These branded assets share a source with the mint green console icon and use purple to distinguish the remote screen; they do not change the app pairing identity. This machine currently uses `Moonlight-Lanto-native-5`。
+The build entry point copies the repository’s `assets/lanto-stream.svg` and `.ico` to the icon resources in the upstream working copy, then embeds it in the window, taskbar, and executable. This branded resource uses the same geometric shape as the controller, with a mist-blue background to distinguish it from the remote image; it does not change the application pairing identity. This machine currently uses `Moonlight-Lanto-native-7`. Incremental builds also refresh Windows RC resources to avoid retaining the old EXE icon.
 
 ## Per-device stream volume
 
