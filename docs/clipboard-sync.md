@@ -27,7 +27,7 @@ Host interfaces retain certificate pinning and pairing tokens without adding pub
 
 The second command creates the `Lanto Clipboard` login task running as the desktop user with ordinary privileges. The main Host remains LOCAL SERVICE and forwards only authenticated clipboard operations to a loopback desktop bridge protected by a random token. The desktop user receives runtime read access and modify access to `ProgramData\Lanto\Host\clipboard\desktop`; existing permissions on Host identity and pairing secrets remain unchanged. Rerun the clipboard installer after rerunning the Host installer. Clipboard access stops at logout and resumes automatically at login.
 
-**macOS:** Host should run in the signed-in user's LaunchAgent session. Initial use requires `xcrun swiftc` from Xcode Command Line Tools to compile the bundled AppKit helper into a private cache; later runs reuse it.
+**macOS:** Host should run in the signed-in user's LaunchAgent session. The release includes a universal AppKit helper. Source builds without that binary require `xcrun swiftc` from Xcode Command Line Tools on first use; the helper is then cached locally.
 
 **Linux:** Host should run as a graphical user's systemd user service. It requires Python 3, GTK 3, X11/Xwayland, and correct `DISPLAY`/`XAUTHORITY` variables. Verification used GNOME Wayland's existing Xwayland clipboard bridge. Other compositors are not comprehensively covered, and a standalone pure-Wayland data-control backend is not implemented.
 

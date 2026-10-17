@@ -1,16 +1,16 @@
 {
   "name": "lanto",
   "productName": "Lanto",
-  "version": "0.3.0",
-  "description": "A personal LAN remote workspace.",
+  "version": "0.3.1",
+  "description": "An open-source remote workspace for your computers.",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "main": "out/main/index.cjs",
-  "author": "omaekumiko2-create",
+  "author": "Lanto contributors",
   "repository": {
     "type": "git",
-    "url": "https://github.com/omaekumiko2-create/Lanto.git"
+    "url": "https://github.com/omaekumiko3-dev/Lanto.git"
   },
   "engines": {
     "node": ">=24.12.0"

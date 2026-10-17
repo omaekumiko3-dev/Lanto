@@ -65,6 +65,11 @@ Get-ChildItem -LiteralPath (Join-Path $lantoSource 'libs/windows/lib/x64') -Filt
 if ($LASTEXITCODE -ne 0) { throw 'Qt deployment failed' }
 # Automated pairing uses Qt's offscreen platform and software Quick renderer.
 Copy-Item -LiteralPath (Join-Path $lantoQtBin '../plugins/platforms/qoffscreen.dll') -Destination (Join-Path $lantoOutput 'platforms/qoffscreen.dll')
+# Moonlight does not read PDF images. Some Qt distributions deploy this plugin
+# from a separately versioned QtWebEngine package; keep it outside our runtime.
+$lantoPdfPlugin = Join-Path $lantoOutput 'imageformats/qpdf.dll'
+if (Test-Path -LiteralPath $lantoPdfPlugin) { Remove-Item -LiteralPath $lantoPdfPlugin }
+& (Join-Path $PSScriptRoot 'complete-windows-runtime.ps1') -Media $lantoOutput -QtBin $lantoQtBin
 $lantoQtVersion = & (Join-Path $lantoQtBin 'qmake.exe') -query QT_VERSION
 @{
   localCursorProtocol = 1

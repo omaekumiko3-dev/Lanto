@@ -1,0 +1,26 @@
+{
+  "mode": "built-in image_gen",
+  "created": "2026-10-17",
+  "assets": [
+    {
+      "output": "hero.png",
+      "input": "screenshots/devices.png",
+      "prompt": "Use case: compositing.\nAsset type: hero image for the open-source Lanto GitHub README, landscape 16:9.\nPrimary request: Create a polished editorial product hero using the attached REAL Lanto application screenshot as the central product image.\nInput image 1 is the exact UI insert; preserve its geometry, labels, device cards, icons, colors and all text exactly. Do not redesign the UI or invent connected status. Keep the screenshot front-facing, crisp, and large, inside one subtle rounded frame.\nScene/backdrop: deep graphite studio background with a restrained mist-blue luminous arc connecting three small abstract desktop silhouettes. Elegant, quiet, precise, no busy ornaments. Use the same pale blue accent as the screenshot.\nComposition: compact title area across the top-left, screenshot dominates lower center and right; balanced whitespace, subtle edge light and soft shadow. No photographic room or people.\nText (verbatim), large and readable: \"Lanto\" then \"Your computers. One workspace.\" A small bottom caption: \"Windows controller · macOS / Linux / Windows hosts\". No other added text.\nConstraints: this is a real open-source remote workspace application, not a fictional dashboard. No invented feature panels, no watermarks, no extra logos, no claims about speed or encryption. Preserve actual UI faithfully."
+    },
+    {
+      "output": "setup.png",
+      "input": "screenshots/ssh-setup.png",
+      "prompt": "Use case: compositing. Create a landscape 16:9 editorial product illustration for Lanto's English README. Input image is an ACTUAL SSH setup screen, use it as a large crisp front-facing insert on the right. Preserve every UI label, field, value, button, spacing, and icon exactly; do not invent a different interface. Dark graphite backdrop, pale mist-blue accents, subtle soft glass edges and a quiet thin path connecting three small numbered points on the left. Large text exactly: \"From SSH to desktop.\" Left-hand step captions exactly: \"01  Connect\", \"02  Verify\", \"03  Deploy\". Small text exactly: \"Guided setup for your own computers\". The supplied screenshot contains illustrative example data and no password; preserve that. No extra text, decorative logos, people, or fictional status. Consistent with a refined dark desktop application."
+    },
+    {
+      "output": "clipboard.png",
+      "input": "screenshots/clipboard.png",
+      "prompt": "Use case: compositing. Create a landscape 16:9 editorial illustration for Lanto's English README about shared clipboard and files. Input image is the REAL Lanto clipboard controls; preserve the actual screen layout, all labels, example device data and off/on states exactly as a front-facing readable screenshot in the lower-right two thirds. Deep graphite backdrop, pale mist-blue accent. On the left show three tasteful floating objects: a short generic text card, a tiny landscape photo tile, and a blue folder, linked by a delicate bidirectional curved path to abstract desktop silhouettes. These are external explanatory illustrations, never add them to the screenshot UI. Large heading exactly: \"Copy here. Continue there.\" Small caption exactly: \"Text · Images · Files · Folders\". Add a small footer exactly: \"Opt in. Share with paired online hosts.\" No invented speed, sync completion, encryption, or connection claims. No other added text or watermarks."
+    },
+    {
+      "output": "tunnel.png",
+      "input": "screenshots/direct-tunnel.png",
+      "prompt": "Use case: compositing. Create a landscape 16:9 editorial product illustration for Lanto's English README. Use the attached ACTUAL direct-tunnel setup screenshot as a large crisp front-facing insert on the right, preserving all UI geometry, labels, values and controls exactly. Deep graphite and restrained pale mist-blue color palette consistent with the Lanto interface. On the left, two minimal desktop silhouettes connected by one luminous continuous path passing through a small shield outline; no cloud, server, satellite, router mesh or intermediary nodes. Large heading exactly: \"A direct path to your desktop.\" Smaller caption exactly: \"No account. No relay.\" Clearly readable footer exactly: \"Requires reachable SSH and a UDP endpoint\". This depicts optional direct encrypted transport. Do not imply universal NAT traversal, guaranteed internet connectivity or additional product features. No other added text, branding or watermarks."
+    }
+  ]
+}

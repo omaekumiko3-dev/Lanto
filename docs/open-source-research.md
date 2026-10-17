@@ -42,7 +42,7 @@ This matters for computer use: if the agent operates Linux1's existing GNOME/KDE
 
 Mac video streaming and automation use separate adapters. Sunshine/RustDesk provide a human remote desktop; SSH handles scripts/builds; Peekaboo supplies accessibility inspection, screenshots, and GUI operations. SSH calls to Peekaboo must reach an authorized GUI Bridge. Permission on a CLI process does not imply permission on another capture process. [Peekaboo Quickstart](https://peekaboo.sh/quickstart.html).
 
-Credentials follow the existing KRU tool contract, never passwords from source repositories, NAS documents, or chat. Linux SSH/HTTP injection and Mac field autofill execute in different places; the latter requires verification of a Mac-local executor. KRU is an existing integration and is not represented as having a verified open-source license in this inventory. Touch ID, MFA, startup unlocking, and system permissions require separate handling.
+Credentials follow the existing the local credential manager tool contract, never passwords from source repositories, NAS documents, or chat. Linux SSH/HTTP injection and Mac field autofill execute in different places; the latter requires verification of a Mac-local executor. the local credential manager is an existing integration and is not represented as having a verified open-source license in this inventory. Touch ID, MFA, startup unlocking, and system permissions require separate handling.
 
 ## Selections affected by licensing and maintenance
 

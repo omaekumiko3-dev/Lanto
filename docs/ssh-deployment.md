@@ -42,6 +42,6 @@ On a Mac with Xcode command line tools, run `node scripts/build-mac-clipboard.mj
 node scripts/package-controller.mjs C:\path\to\native-player
 ```
 
-Output is `out/release/Lanto-0.3.0-win-x64/` and a matching ZIP. It contains Electron, runtime dependencies, the player, Host archive, pinned component catalog, native patches, and build instructions. Launch `Lanto.exe`; no separate Node.js or Moonlight installation is required on the controller. User configuration is stored outside the release folder. The packaging script requires a new output directory and refuses to overwrite an existing one.
+Output is `out/release/Lanto-0.3.1-win-x64/` and a matching ZIP. It contains Electron, runtime dependencies, the player, Host archive, pinned component catalog, native patches, and build instructions. Launch `Lanto.exe`; no separate Node.js or Moonlight installation is required on the controller. User configuration is stored outside the release folder. The packaging script requires a new output directory and refuses to overwrite an existing one.
 
 Components are pinned to Node.js 24.22.0 and Sunshine v2026.914.233613. Digests come from the [official Node.js checksums](https://nodejs.org/dist/v24.22.0/SHASUMS256.txt) and [official Sunshine release](https://github.com/LizardByte/Sunshine/releases/tag/v2026.914.233613). Installation follows the [Sunshine documentation](https://docs.lizardbyte.dev/projects/sunshine/latest/md_docs_2getting__started.html). Version changes require updates to `scripts/deploy/catalog.json` and renewed verification.

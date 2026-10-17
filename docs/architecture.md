@@ -1,6 +1,6 @@
 # Lanto Client Architecture
 
-Selected on 2026-10-16. The controller uses Electron + React + TypeScript; Host uses headless Node.js + TypeScript. See [Responsibilities](roles.md) for their contract. Actual Mac, Ubuntu Linux, and Windows hosts have working pairing, authorization, status, and independent media sessions. Each deployment record defines its platform's input-validation scope. Linux1 agent and NAS deployment continue according to the [device roles](design.md).
+Selected on 2026-10-16. The controller uses Electron + React + TypeScript; Host uses headless Node.js + TypeScript. See [Responsibilities](roles.md) for their contract. Actual Mac, Ubuntu Linux, and Windows hosts have working pairing, authorization, status, and independent media sessions. Each deployment record defines its platform's input-validation scope. Agent orchestration and NAS integration are exploratory ideas outside the released feature set.
 
 ## Module boundaries
 

@@ -60,7 +60,7 @@ Each device card now has a keyboard-operable connection switch at the upper righ
 
 All 19 tests, type checking, production build, formatting, and Electron smoke testing passed. New isolated smoke tests with real local child processes cover connection/disconnection/device switching, Space activation, rename/settings changes without PID changes, rejection of current-device removal, new arguments on the next startup, and automatic switch reset/reconnection after client crashes. These local process tests are not network-stream acceptance.
 
-The local app restarted and established a real connection through the new KumikoMac switch. Logs confirmed 2560×1440, 60fps, HEVC, D3D11VA, local cursor, and first video/audio packets. Manual screenshot inspection confirmed only the real Mac card, its upper-right sliding switch, and a usable edit entry.
+The local app restarted and established a real connection through the new StudioMac switch. Logs confirmed 2560×1440, 60fps, HEVC, D3D11VA, local cursor, and first video/audio packets. Manual screenshot inspection confirmed only the real Mac card, its upper-right sliding switch, and a usable edit entry.
 
 ## Mac cursor-shape and hotspot synchronization
 
@@ -74,7 +74,7 @@ All 19 controller tests, type checking, production build, formatting, and real E
 
 ## Full Mac restart and automatic login
 
-Two full restarts completed on 2026-10-16. The first confirmed existing LaunchAgents start after user login. The user then explicitly authorized disabling FileVault and setting automatic login with system tools in the GUI session. The second boot was at 12:09:14 (Asia/Shanghai). Without another login or manual app launch, the target desktop, Host, native Sunshine, and KRU resumed. Windows reused pairing, and host logs confirmed HEVC 2560×1440, local cursor, and system audio. Media components were not rebuilt or changed, and Screen Recording/Accessibility permissions were not requested again.
+Two full restart checks completed on 2026-10-16. Host and native Sunshine resumed after graphical login. A separate test used an owner-configured automatic-login desktop and reconnected with existing pairing, HEVC 2560x1440 video, local cursor, and system audio. Lanto did not implement login or disk-encryption configuration. These checks do not establish pre-login desktop access.
 
 Startup items and storage were also inventoried read-only, without deleting files or disabling other apps. Restart released about 10.7 GB of swap. Observed internal APFS capacity was about 245.1 GB, with 93.6 GB used and 151.5 GB free; these values vary with runtime activity. Storage details are in local ignored `work/maintenance/mac-2026-10-16.html`, without committing personal project inventories.
 
@@ -120,7 +120,7 @@ All 23 core tests, Host TypeScript build, formatting, PowerShell parsing, and wh
 
 ## Real volume regression on three host platforms
 
-On 2026-10-17, KumikoMac, KumikoLinux, and KumikoWindows were connected individually at the user's request. Each existing desktop session played a low-amplitude tone. Device-card sliders and mute buttons were operated, and the controller read the corresponding Moonlight WASAPI session. Results below use each host's stable 100% output as baseline; percentages describe PCM peak ratios, not perceived loudness.
+On 2026-10-17, StudioMac, LinuxWorkstation, and WindowsDesktop were connected individually at the user's request. Each existing desktop session played a low-amplitude tone. Device-card sliders and mute buttons were operated, and the controller read the corresponding Moonlight WASAPI session. Results below use each host's stable 100% output as baseline; percentages describe PCM peak ratios, not perceived loudness.
 
 | Host | Measured output at 50% | At 25% | Zero volume / mute | Unmute back to 25% | Restore 37% after reconnect |
 | --- | ---: | ---: | --- | ---: | ---: |

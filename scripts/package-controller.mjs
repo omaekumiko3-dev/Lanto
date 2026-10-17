@@ -2,6 +2,7 @@ import { cp, mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
 import { dirname, join, resolve } from 'node:path'
 import { runtimeDependencies } from './runtime-dependencies.mjs'
+import { packageNotices } from './package-notices.mjs'
 
 if (process.platform !== 'win32')
   throw new Error('This release script packages the Windows controller')
@@ -48,6 +49,7 @@ await writeFile(
       name: project.name,
       productName: project.productName,
       version: project.version,
+      license: project.license,
       main: project.main
     },
     null,
@@ -63,6 +65,7 @@ for (const [path] of runtimeDependencies(lock, ['bonjour-service', 'selfsigned',
   await cp(join(root, path), join(app, path), { recursive: true })
 }
 await cp(media, join(output, 'resources/media'), { recursive: true })
+await packageNotices(output, Object.keys(project.dependencies))
 await cp(join(root, 'native/patches'), join(output, 'resources/media/source/patches'), {
   recursive: true
 })
@@ -74,11 +77,15 @@ await cp(
   join(output, 'resources/media/source/build-moonlight.ps1')
 )
 await cp(join(root, 'native/README.md'), join(output, 'resources/media/source/README.md'))
+await cp(
+  join(root, 'native/complete-windows-runtime.ps1'),
+  join(output, 'resources/media/source/complete-windows-runtime.ps1')
+)
 await writeFile(
   join(output, 'resources/media/source/UPSTREAM.txt'),
   'Moonlight Qt source: https://github.com/moonlight-stream/moonlight-qt/tree/' +
     features.moonlightCommit +
-    '\nLanto changes and build instructions: https://github.com/omaekumiko2-create/Lanto/tree/main/native\nMoonlight is GPL-3.0; see ../LICENSE.\n'
+    `\nLanto changes and build instructions: https://github.com/omaekumiko3-dev/Lanto/tree/v${project.version}/native\nCorresponding native and Qt source archives: https://github.com/omaekumiko3-dev/Lanto/releases/tag/v${project.version}\nMoonlight is GPL-3.0; see ../LICENSE.\n`
 )
 await writeFile(
   join(output, 'Getting Started.txt'),

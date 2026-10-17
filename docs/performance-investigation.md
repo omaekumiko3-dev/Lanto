@@ -68,11 +68,11 @@ The local Windows configuration has the shared-device experiment enabled, retain
 Close any existing Lanto instance before running the developer tool. It reads saved devices and credentials without printing credentials. Device names must be unique; UUIDs are also accepted. Media processes run sequentially, and the normal connection with original settings is restored afterward.
 
 ```powershell
-node scripts/performance/compare.mjs --device KumikoMac --seconds 28
-node scripts/performance/compare.mjs --device KumikoMac --seconds 28 --repeat-shared
+node scripts/performance/compare.mjs --device StudioMac --seconds 28
+node scripts/performance/compare.mjs --device StudioMac --seconds 28 --repeat-shared
 ```
 
-Raw data is written to ignored `test-results/performance/`. `scripts/performance/pattern.swift` compiles on the Mac as an AppKit test window and exits after 240 seconds. This run built it through KRU at `~/.lanto/perf/LantoPattern.app`. Confirm the animation is running before sampling and covers the entire interval. Standardize window motion, resolution, bitrate, network, overlay, and concurrent load to avoid the startup confound seen here.
+Raw data is written to ignored `test-results/performance/`. `scripts/performance/pattern.swift` compiles on the Mac as an AppKit test window and exits after 240 seconds. This run built it through the local credential manager at `~/.lanto/perf/LantoPattern.app`. Confirm the animation is running before sampling and covers the entire interval. Standardize window motion, resolution, bitrate, network, overlay, and concurrent load to avoid the startup confound seen here.
 
 ## Technical route selection
 

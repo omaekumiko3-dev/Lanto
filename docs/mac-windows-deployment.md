@@ -1,6 +1,8 @@
 # Initial Windows → Mac Deployment Record
 
-Date: 2026-10-16. Deployed source: `3cfa8522c589665d8c6fbf1f4d68869f9a9cef61`. SSH and file transfer used KRU's `Kumiko_mac` project without reading or copying its hidden credentials.
+> Historical hardware verification. Addresses and device labels are anonymized examples; this is not a universal setup guarantee.
+
+Date: 2026-10-16. Deployed source: `3cfa8522c589665d8c6fbf1f4d68869f9a9cef61`. SSH and file transfer used the local credential manager's `macOS test host` project without reading or copying its hidden credentials.
 
 ## Deployed components
 
@@ -12,7 +14,7 @@ Date: 2026-10-16. Deployed source: `3cfa8522c589665d8c6fbf1f4d68869f9a9cef61`. S
 | Mac | Node.js 24.22.0 arm64 | `~/.lanto/runtime/node-v24.22.0-darwin-arm64`; existing system Node retained |
 | Mac | Sunshine 2026.914.233613 arm64 | `~/Applications/Sunshine.app` |
 
-The Mac was running macOS 26.3.1 with a logged-in graphical desktop and an LG UltraFine display. Deployment used Mac Ethernet address `192.168.31.27` and Windows address `192.168.31.43`. These were observations at the time, not proof of DHCP reservations; reserve leases by adapter MAC address on the router afterward.
+The Mac was running macOS 26.3.1 with a logged-in graphical desktop and an LG UltraFine display. Deployment used Mac Ethernet address `192.0.2.10` and Windows address `192.0.2.1`. These were observations at the time, not proof of DHCP reservations; reserve leases by adapter MAC address on the router afterward.
 
 ## Startup after login
 
@@ -54,7 +56,7 @@ After restart, Sunshine initialized screen capture and found H.264/HEVC VideoToo
 
 At this stage, management access, media pairing, handshake, and encoder startup passed. The user saw the desktop and confirmed basic input; response improvements follow below. Stable frame rate, complete Chinese-input compatibility, and dedicated shortcuts still need separate acceptance. `sunshineReachable: true` means only that the local TCP port is reachable, not that video works.
 
-On Windows, open desktop Lanto and enable the upper-right connection switch on the KumikoMac card. The initial connection used 2560×1440, 30fps, and 20Mbps; the local setup now uses the response configuration below. `Ctrl + Alt + F12` returns locally by closing the local streaming client. Video uses a separate Moonlight window; native Windows `Alt + Tab` switches windows while retaining the session without remapping system shortcuts.
+On Windows, open desktop Lanto and enable the upper-right connection switch on the StudioMac card. The initial connection used 2560×1440, 30fps, and 20Mbps; the local setup now uses the response configuration below. `Ctrl + Alt + F12` returns locally by closing the local streaming client. Video uses a separate Moonlight window; native Windows `Alt + Tab` switches windows while retaining the session without remapping system shortcuts.
 
 ## Response improvements
 
@@ -97,73 +99,9 @@ Old and new Mac apps have identical designated signing requirements and passed s
 
 ## Unattended startup acceptance
 
-On 2026-10-16, the entire Mac was restarted at the user's request. The first boot was at 11:59 (Asia/Shanghai). With FileVault enabled, SSH returned first while the machine remained at graphical login. The user explicitly selected disabling FileVault through `fdesetup`. After the user logged into the desktop, `sysadminctl -autologin` configured automatic login for the current account from that GUI session. KRU injected authentication without writing passwords to the project or logs. An `autoLoginUser` preference alone does not prove success; check the system tool's state and actually restart.
+The tested Mac resumed its Host and native Sunshine after graphical login. A second reboot test used a desktop account already configured for automatic login by the machine owner. The existing controller pairing was reused; HEVC video, system audio, and local cursor resumed without another application launch or permission prompt.
 
-The second boot was at 12:09:14. Without another user login, the console user became the target account. The system reported FileVault Off and the automatic-login account configured. `dev.lanto.host`, native Sunshine, and KRU started automatically; Host and media HTTPS ports were available. Windows reused existing pairings. The Mac logged CLIENT CONNECTED, established a 2560×1440 HEVC VideoToolbox session with local cursor, and initialized system audio and Opus.
-
-The current flow is boot → automatic desktop login → Host/Sunshine autostart → Windows connection. Automatic login enters the account desktop at startup; the user chose this behavior. Sleep, screen lock, and other applications' startup settings were unchanged, and automatic power-on after an outage was not configured. The two existing Lanto LaunchAgents required no changes.
-
-## Development environment rebuild with macOS retained
-
-On 2026-10-16, the user chose to keep macOS and the account while cleaning and redeploying the development environment. Source, keychain, signing identities, SSH, and Lanto pairings were retained; no disk erase or macOS reinstall occurred. Git metadata was removed from 19 project locations, including `.git` pointers in recovered worktrees. Those projects remained ordinary source directories without local commit history; Windows repositories and GitHub remotes were unaffected.
-
-Old `node_modules`, virtual environments, Cargo package caches, Xcode DerivedData, device-support caches, old simulator devices, native build outputs, and duplicate installers were cleaned. Rust 1.88, Node 22, Go 1.25, JDK 17, and old uv Python versions were removed. Targeted deleted directories totaled about 17.36 GiB according to pre-cleanup `du`, not net APFS space recovered. Rebuilt tools and simulators also consume space.
-
-Native Sunshine was redeployed at the same path as a Developer ID-signed app with bundled runtime libraries. Host moved to `~/.lanto/releases/d0bd3fd`, reusing the independent Node 24.22.0 runtime and preserving identity. The same KRU executable and browser extension moved to `~/.local/share/kru-runtime`; its LaunchAgent was updated so the old project `target` could be cleaned. Active runtime and recovery packages were separated. Earlier temporary native `.app` backups described above were deleted.
-
-New terminals use `~/.config/lanto/development.zsh` for tool paths:
-
-| Tool | Verified version/configuration |
-| --- | --- |
-| Node / npm | 24.21.0 LTS / 11.19.0, Homebrew `node@24` |
-| Rust | stable 1.99.1 with rustfmt, clippy, macOS arm64, iOS arm64, and iOS Simulator arm64 targets |
-| Python / uv | 3.13.16 / 0.12.24; separate project virtual environments, system Python retained |
-| Xcode | 26.6 (17F113), working app retained and old build state cleaned |
-| CMake / Ninja / pkgconf | 4.4.4 / 1.13.2 / 3.0.7 |
-| Godot | 4.7.1 and matching export templates retained and verified |
-| iOS Simulator | Working iOS 26.5 runtime retained; new `Lanto iPhone 17` created |
-
-`~/Developer/Lanto` was a source working copy without Git metadata, with development dependencies installed. `~/Developer/BuildCheck` held compilation examples. `~/Developer/README.txt` documented usage, and `~/Developer/open-ios-simulator.command` opened the new simulator. A SwiftUI test app was actually displayed and then uninstalled. CMake/C++, native Rust, a Rust simulator static library, Python virtual environment, and Godot scripts compiled or ran successfully. Lanto's 19 tests, type checking, Electron production build, and Host build passed; the Electron 44.7.2 arm64 executable was started to verify its version.
-
-Network inspection found system HTTP/HTTPS/SOCKS proxies pointing to inactive `127.0.0.1:10808`. Settings were backed up, and only matching stale proxies were disabled. Direct Mac downloads from GitHub Releases still timed out, so Windows downloaded the official Electron archive and transferred it through KRU. Both ends verified the npm package's SHA-256: `07d73d3d6dd0b8679c2f1849e30df179ea50c1d6b17630fcc398ae05221f0bd2`. TLS verification was not disabled, and no third-party mirror was configured.
-
-Recovery packages and pairing materials were stored outside the repository in access-restricted local directories. Cleanup inventories, validation logs, and proxy backups were stored at Mac `~/.lanto/maintenance`; they must not be committed.
-
-The final full boot was at 12:36:03, with automatic desktop login. Host `d0bd3fd`, bundled native Sunshine, and relocated KRU all started automatically. At 12:37, Windows reused pairing to reconnect; new host logs confirmed HEVC, local cursor, and system audio. Tool paths and versions were rechecked after reboot. After reopening the simulator and saving the final recovery package, measured APFS free space was about 167.54 GB, about 16.0 GB above the roughly 151.5 GB after the second pre-cleanup reboot. This includes newly installed tools, simulator, and recovery-package space and will fluctuate.
-
-The final `lanto-ready.tar.gz` contained the running native app, Host release files and independent Node, Lanto identity and media configuration, KRU runtime, three LaunchAgents, and development-environment entry instructions. It excluded the account keychain and old project source. Windows and Mac SHA-256 matched: `498aadb8e52a78eb4367a66ea95b0a076750ce99f0a9aea9b182f18d9bb1e8e5`. The Windows copy was in the Codex-mapped local Lanto recovery directory, restricted to the current user, administrators, and SYSTEM.
-
-## Subsequent Mac source removal
-
-The user then chose to delete source only and defer keychain cleanup. Deleted items included old Mac project directories, `~/Developer/Lanto`, `~/Developer/BuildCheck`, old build-service workspaces, Sunshine source and debugging scripts, and Mac-local deployment/recovery archives containing source. The 54 targets occupied about 5.45 GiB before removal and were individually confirmed absent afterward. Keychain, signing materials, iCloud sync settings, compilers, simulator, and Windows repositories were retained.
-
-To preserve services, verified Host outputs and production dependencies were first installed at `~/.lanto/runtime/host-d0bd3fd`, with the LaunchAgent entry changed to `app/host/cli.js`. Host was restarted after source removal, and management and Sunshine-reachability checks passed. The existing Windows media session continued with local cursor enabled. New Mac projects can use the installed tools; `~/Developer/README.txt` and the simulator launcher remain.
-
-The Mac recovery package became `~/.lanto/maintenance/recovery/lanto-runtime-only.tar.gz`, containing runtime files, configuration, and entry instructions without deleted project source. JavaScript runtime files and third-party production dependencies remain necessary service components. The package was transferred to Windows and verified with SHA-256 `443957e1cca86fdcf60dce29bb52cde25ef64645c185e60bac36e22d750e1231`. Earlier Windows recovery packages were not deleted; old Mac archives containing source were removed. The removal inventory was `~/.lanto/maintenance/source-removal-completed.json`.
-
-## Subsequent personal-data cleanup and sync disabling
-
-The user requested further cleanup while retaining the Apple account and disabling personal-data sync. After the user operated System Settings, Drive, Photos, Messages, Notes, and password sync were confirmed off; Find My Mac remained enabled. The system removed the local iCloud Drive directory. No cloud deletion was performed.
-
-After source cleanup, another 62 old application, cache, and Mac-local maintenance-archive targets were deleted, including Blender, old Sunshine, and old application settings. A further 75 personal-data targets included Photos library, Messages, Notes, Contacts, Calendar, Safari data, old signing materials, and third-party application containers. Desktop, Documents, Downloads, Pictures, Music, and Movies were checked empty. Before removal, targets were confirmed inside the current user directory or explicitly named application paths; recursive removal did not follow internal symbolic links. The OS can still create normal caches and empty databases.
-
-The Mac restarted again at 13:25:38, logged in automatically, and ran all three LaunchAgents. At 13:27:19, Windows reused pairing; new logs confirmed 2560×1440 HEVC, local cursor, and Opus audio. Main sync switches remained off, and KRU's connection list remained empty. The system recreated an approximately 5 MiB empty Photos library with zero database photos and zero original files. APFS free space was then about 165.75 GB and will vary with caches and simulator use.
-
-The system `security` tool removed 12 identified third-party login credentials and three code-signing identities, including certificates and private keys. Personal signing files were also deleted. Existing Lanto apps passed strict signature verification; future signing requires reimporting certificates. Apple account authentication, the account keychain, SSH access, TCC permissions, and Lanto pairing were retained. Protected keychains were not reset wholesale, so complete clearing of Apple-protected storage is not claimed.
-
-The old Mac KRU credential database and backups were deleted. After its app restarted, both connection and draft counts were zero; Windows KRU projects were unaffected. Old Node 22 and Go 1.25 shell paths were removed. Node, npm, Rust and its three targets, Python, uv, Xcode, and the sole iOS 26.5 simulator were rechecked as usable.
-
-This section supersedes earlier current-state statements that keychain/signing cleanup was deferred and Mac maintenance recovery packages were retained. Earlier sections remain as operation history. Mac `~/.lanto/maintenance`, `~/.lanto/deploy`, and temporary inventories were deleted. Runtime recovery packages remain only on Windows and include service runtime and pairing materials, excluding account keychains and private signing files. Cleanup results are in Windows-local ignored `work/maintenance`.
-
-## Everyday startup simplification
-
-The user then requested that only the remote-access system start daily. User LaunchAgents now contain only `dev.lanto.host` and `dev.lanto.sunshine`, managing connections and video/input/audio respectively. SSH and necessary macOS services remain.
-
-`dev.kru.app` was stopped and disabled through `launchctl disable`; its plist moved to `~/.config/lanto/disabled-startup`. The executable remains available on demand through `~/.local/share/kru-runtime/kru gui`. Old ToDesk and screenshot-tool startup labels were disabled. System-level third-party LaunchAgents/LaunchDaemons directories are empty. Xcode Quick Look and Spotlight extensions are on-demand system integrations, not automatic Xcode startup.
-
-Login application restoration and reopening windows after quitting were disabled. Simulator, System Settings, Activity Monitor, and Magnifier were quit normally, and the simulator device was shut down. Xcode, Godot, KRU, and Simulator are now used on demand. Application restoration and login items are separate mechanisms; see [Apple startup restoration](https://support.apple.com/en-ie/102318).
-
-The final restart was at 13:59:55 with automatic login. Host ran normally, the login item launched Sunshine, and KRU was not loaded. Simulator, Xcode, Godot, System Settings, Activity Monitor, and Magnifier were not running. Host reported Sunshine reachable, Windows accessed the Host identity endpoint using its existing pinned certificate with the same identity, and SSH maintenance access worked. The Windows controller was not launched and no new video stream was started in this round.
+This checks startup on that configured desktop. Lanto does not configure automatic login, change disk-encryption policy, or guarantee remote access before a graphical session starts. A login-screen SSH connection alone does not establish a usable desktop stream.
 
 ## Download sources and checksums
 

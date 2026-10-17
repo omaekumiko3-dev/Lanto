@@ -1,6 +1,8 @@
 # Windows → Linux Deployment Record
 
-Date: 2026-10-16. Deployment used KRU project `Kumiko_linux`; Windows Lanto now contains `KumikoLinux`. This acceptance covers the basic remote desktop path, excluding GUI agents, NAS working directories, and development toolchains.
+> Historical hardware verification. Addresses and device labels are anonymized examples; this is not a universal setup guarantee.
+
+Date: 2026-10-16. Deployment used the local credential manager project `Linux test host`; Windows Lanto now contains `LinuxWorkstation`. This acceptance covers the basic remote desktop path, excluding GUI agents, NAS working directories, and development toolchains.
 
 ## Environment and installation paths
 
@@ -10,7 +12,7 @@ Date: 2026-10-16. Deployment used KRU project `Kumiko_linux`; Windows Lanto now 
 | CPU/GPU | Ryzen 5 7500F/RTX 3080, NVIDIA 595.99.02 |
 | Desktop | Existing GNOME Wayland seat0 user session; original GDM automatic login preserved |
 | Display | HDMI-1, 3840×2160 60Hz, 150% scale, logical desktop 2560×1440 |
-| Network | Linux `192.168.100.138`, Windows `192.168.100.179`, wired direct LAN |
+| Network | Linux `192.0.2.20`, Windows `192.0.2.1`, wired direct LAN |
 | Host | Node.js 24.22.0, TLS TCP 48199, mDNS UDP 5353 |
 | Media | Official Sunshine `2026.914.233613` Ubuntu 26.04 amd64 package, KMS + NVENC |
 | Windows | Existing Lanto Moonlight native-4, HEVC/D3D11VA, shared device and textures |
@@ -25,7 +27,7 @@ Host code was compiled from `f8122d6` and installed as an independent runtime wi
 ~/.config/sunshine/                   # Media configuration, certificates, separate pairing
 ```
 
-Host's data directory is `0700`; identity and media-state files are `0600`. Sunshine management credentials were initialized randomly and saved only in Linux-local `~/.lanto/sunshine-admin.json`, without output or commit. Pairing tickets and media PINs were transferred through temporary files and deleted afterward. KRU handled SSH login and sudo credential injection.
+Host's data directory is `0700`; identity and media-state files are `0600`. Sunshine management credentials were initialized randomly and saved only in Linux-local `~/.lanto/sunshine-admin.json`, without output or commit. Pairing tickets and media PINs were transferred through temporary files and deleted afterward. the local credential manager handled SSH login and sudo credential injection.
 
 Downloads came from the [official Sunshine stable release](https://github.com/LizardByte/Sunshine/releases/tag/v2026.914.233613) and [official Node.js 24.22.0](https://nodejs.org/dist/v24.22.0/SHASUMS256.txt), with SHA-256 verified before installation:
 
@@ -44,7 +46,7 @@ Sunshine uses the official package's `app-dev.lizardbyte.app.Sunshine.service` u
 Main Sunshine configuration:
 
 ```ini
-sunshine_name = KumikoLinux
+sunshine_name = LinuxWorkstation
 capture = kms
 encoder = nvenc
 origin_web_ui_allowed = pc

@@ -26,7 +26,7 @@ cmake -B "$build_dir" -S "$source_dir" -G Ninja \
   -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
   -DFFMPEG_PREPARED_BINARIES="$ffmpeg_dir" \
   -DSUNSHINE_PUBLISHER_NAME=Lanto \
-  -DSUNSHINE_PUBLISHER_ISSUE_URL=https://github.com/omaekumiko2-create/Lanto/issues
+  -DSUNSHINE_PUBLISHER_ISSUE_URL=https://github.com/omaekumiko3-dev/Lanto/issues
 cmake --build "$build_dir" --parallel 4
 ditto "$build_dir/Sunshine.app" "$output_app"
 ditto "$build_dir/assets" "$output_app/Contents/Resources/assets"

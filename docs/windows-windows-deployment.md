@@ -1,6 +1,8 @@
 # Windows Controller → Windows Host Deployment Record
 
-Deployed on 2026-10-17 through KRU project `Kumiko_win`. Lanto contains device `KumikoWindows` at `192.168.100.120`. Completed checks include dual Host/media pairing, 2K60 HEVC desktop, actual audio, clicks/drags, English/Chinese input, reconnection, and startup configuration. Full reboot and long-term stability were not tested.
+> Historical hardware verification. Addresses and device labels are anonymized examples; this is not a universal setup guarantee.
+
+Deployed on 2026-10-17 on a Windows test host. Lanto contains device `WindowsDesktop` at `192.0.2.30`. Completed checks include dual Host/media pairing, 2K60 HEVC desktop, actual audio, clicks/drags, English/Chinese input, reconnection, and startup configuration. Full reboot and long-term stability were not tested.
 
 ## Host and pinned versions
 
@@ -54,7 +56,7 @@ Copy the whole runtime into a permanent target `Program Files` subdirectory, the
 
 ```powershell
 & 'C:\Program Files\Lanto Host\host-8b04e91\install-windows-host.ps1' `
-  -Name KumikoWindows -Address 192.168.100.120
+  -Name WindowsDesktop -Address 192.0.2.30
 ```
 
 The installer requires Node.js 24.12 or later, a runtime inside `Program Files`, and data inside `ProgramData\Lanto`; it rejects reparse points. Runtime writes are restricted to SYSTEM/Administrators; LOCAL SERVICE gets read/execute access. Host data is limited to these three principals, with modify access for LOCAL SERVICE. Existing identity, certificates, and controller authorization are preserved.

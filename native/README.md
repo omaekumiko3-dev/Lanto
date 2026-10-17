@@ -35,6 +35,8 @@ Network requests and PNG decoding run on a separate thread; SDL events take only
 
 Both upstream repositories use GPL licenses. Patches follow their respective upstream licenses. Retain upstream licenses and dependency notices in builds.
 
+The first public release ships the Windows Moonlight player. Its release page also provides matching Moonlight/dependency sources, the Qt source archive and packaging recipe, and license texts. The experimental macOS Sunshine app is source-only. See [licensing scope](../LICENSES.md).
+
 ## Windows build
 
 Prepare MSVC x64, Windows SDK, and an MSVC Qt SDK. Upstream recommends Qt 6.11 or newer. This build initially used the already installed Qt 5.15.2 for compilation and real TLS/D3D11 streaming validation; keep that variable fixed in later performance comparisons.
@@ -46,6 +48,8 @@ pwsh -File native/build-moonlight.ps1 -Source C:/build/moonlight-qt -QtBin C:/Qt
 ```
 
 The output directory must be new. The script copies `native/moonlight/` sources into upstream `app/streaming/lanto/`, builds, deploys dependencies, and writes the `lanto-media.json` capability manifest. That file describes features and is not a security signature. Select the output `Moonlight.exe` in Lanto's Moonlight executable setting. With local cursor disabled by default, no manifest is required and the original client remains usable.
+
+`complete-windows-runtime.ps1` inspects EXE/DLL imports with the installed MSVC tools and copies missing non-system runtime libraries from the selected Qt SDK and MSVC redistributable directory. Packaging must retain their licenses. The unused PDF image plugin is excluded because it can come from a separately versioned QtWebEngine package. Validate a prepared player with a minimal PATH so a developer environment cannot hide missing DLLs.
 
 The build copies repository `assets/lanto-stream.svg` and `.ico` into the upstream working copy's icon resources for the window, taskbar, and executable. The asset shares the controller's geometry and uses a mist-blue background to distinguish remote video; it does not change application pairing identity. The SSH deployment version is `Moonlight-Lanto-native-8`. Incremental builds also refresh Windows RC resources to avoid stale EXE icons.
 
@@ -83,7 +87,7 @@ The SDK patch removes mappings for diagnostic constants missing from the local S
 LANTO_SIGNING_IDENTITY='<stable-local-code-signing-identity>' bash native/build-sunshine.sh /absolute/Sunshine /absolute/ffmpeg /absolute/LantoSunshineNative.app
 ```
 
-The script copies `native/sunshine/` sources into upstream `src/platform/macos/`; it neither switches services nor reads authentication materials. The app uses the distinct identifier `dev.lanto.sunshine.native` and requires an explicitly supplied stable signing identity. This deployment used an existing local Developer ID and passed `codesign --verify --deep --strict`. Unlock the signing keychain in the same build session before signing. KRU supplies the password without writing it to scripts or logs. First launch requires the user to grant Screen Recording, Accessibility, and any audio/network permissions used through the system interface.
+The script copies `native/sunshine/` sources into upstream `src/platform/macos/`; it neither switches services nor reads authentication materials. The app uses the distinct identifier `dev.lanto.sunshine.native` and requires an explicitly supplied stable signing identity. This deployment used an existing local Developer ID and passed `codesign --verify --deep --strict`. Unlock the signing keychain in the same build session before signing. the local credential manager supplies the password without writing it to scripts or logs. First launch requires the user to grant Screen Recording, Accessibility, and any audio/network permissions used through the system interface.
 
 Before signing, `bundle-macos-libraries.py` copies Homebrew dynamic libraries and transitive dependencies into `Contents/Frameworks`, rewrites them to app-relative paths, and retains dependency licenses. Versioned symbolic links such as ICU libraries resolve to real filenames. After copying, every non-system dependency must actually reside inside the app; unresolved dependencies stop packaging. Perform this only on a new staging app, then sign, verify, and deploy, avoiding changes to a running or already signed bundle. On 2026-10-16, six runtime libraries were bundled on the Mac and startup, HEVC, audio, and local cursor were verified. Everyday operation no longer depends on Homebrew installation paths; compilation still requires the development dependencies above.
 

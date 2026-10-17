@@ -3,6 +3,7 @@ import { dirname, join, resolve } from 'node:path'
 import { runtimeDependencies } from './runtime-dependencies.mjs'
 import { createHash } from 'node:crypto'
 import { macClipboard } from '../src/clipboard/native-sources.ts'
+import { packageNotices } from './package-notices.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const output = process.argv[2] && resolve(process.argv[2])
@@ -18,6 +19,7 @@ for (const [path, info] of packages) {
 }
 // Refuse to overwrite a runtime or accidentally include local identity/credentials.
 await mkdir(output)
+await packageNotices(output, ['bonjour-service', 'selfsigned', 'zod'])
 await cp(join(root, 'out/host'), join(output, 'app'), { recursive: true })
 for (const [path] of packages) {
   const destination = join(output, path)
@@ -27,7 +29,13 @@ for (const [path] of packages) {
 await writeFile(
   join(output, 'package.json'),
   JSON.stringify(
-    { name: 'lanto-host-runtime', private: true, type: 'module', version: project.version },
+    {
+      name: 'lanto-host-runtime',
+      private: true,
+      type: 'module',
+      version: project.version,
+      license: project.license
+    },
     null,
     2
   ) + '\n'

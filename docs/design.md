@@ -1,4 +1,6 @@
-# Lanto Product and Technical Design
+# Exploratory design notes
+
+> This document records an early example workspace and possible future directions. Agent orchestration, NAS integration, and prewarmed multi-session switching are not implemented release features. See the [README](../README.md) for the current product scope.
 
 Design date: 2026-10-16. Status: pairing, authorization, and status reporting between the controller and windowless Host are implemented; real streaming and switching between multiple machines await device validation.
 
@@ -116,9 +118,9 @@ Prefer SSH for commands and builds; use a Mac-local Peekaboo Bridge or a verifie
 
 Initial Mac setup requires Remote Login, a graphical session, Screen Recording, and Accessibility permissions. Capture requested over SSH must reach the correct GUI Bridge; checking only the CLI process's permission is insufficient. [Apple Remote Login](https://support.apple.com/en-au/guide/mac-help/mchlp1066/mac), [Peekaboo Bridge and permissions](https://peekaboo.sh/quickstart.html).
 
-KRU retains the existing credential-tool contract. Validate Linux-side SSH/HTTP credential use separately from Mac-side field autofill. Bind every autofill operation to a device, application or website, window, field, and one-time request ID. Autofill on the foreground Linux desktop is not Mac-local autofill. Client configuration and logs do not store password contents. Preserve explicit handling for Touch ID, MFA, signing keychains, and startup unlocking.
+the local credential manager retains the existing credential-tool contract. Validate Linux-side SSH/HTTP credential use separately from Mac-side field autofill. Bind every autofill operation to a device, application or website, window, field, and one-time request ID. Autofill on the foreground Linux desktop is not Mac-local autofill. Client configuration and logs do not store password contents. Preserve explicit handling for Touch ID, MFA, signing keychains, and startup unlocking.
 
-Existing [orchard-relay](https://github.com/omaekumiko2-create/orchard-relay) provides source snapshots, SSH workers, reconnectable builds, logs, and cancellation, and can inform the build adapter. It was not changed in this round, and its snapshot model is not imposed on everyday NAS source editing.
+An earlier remote-build prototype provides source snapshots, SSH workers, reconnectable builds, logs, and cancellation, and can inform the build adapter. It was not changed in this round, and its snapshot model is not imposed on everyday NAS source editing.
 
 ## Windows builds
 
