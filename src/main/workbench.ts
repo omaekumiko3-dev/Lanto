@@ -20,6 +20,7 @@ import { probeSunshine } from './probe.ts'
 import { systemVault } from './secret-vault.ts'
 import { SessionManager } from './session-manager.ts'
 import { ReturnShortcut } from './shortcuts.ts'
+import { switchBinding } from './input-control.ts'
 import { ClipboardSync } from './clipboard-sync.ts'
 import { DeploymentManager } from '../deploy/manager.ts'
 import { decodeTicket } from '../protocol/pair-ticket.ts'
@@ -46,6 +47,7 @@ export class Workbench {
   private moonlightPath: string | null = null
   private epoch = 0
   private closing = false
+  private lastSwitch = 0
 
   constructor(options: {
     directory: string
@@ -89,7 +91,15 @@ export class Workbench {
         return device.id
       }
     })
-    this.adapter = new MoonlightAdapter(join(this.directory, 'media-logs'))
+    this.adapter = new MoonlightAdapter(join(this.directory, 'media-logs'), (pid) => {
+      if (this.session.state.pid === pid && !this.closing) {
+        this.lastSwitch = Date.now()
+        void this.session
+          .hideWindow()
+          .then(() => this.focusLocal())
+          .catch((error: unknown) => this.log(readableError(error), true))
+      }
+    })
     this.session = new SessionManager(this.adapter, this.changed, (message, error) =>
       this.log(message, error)
     )
@@ -257,13 +267,14 @@ export class Workbench {
         throw new Error('The Moonlight path must be absolute')
       if (settings.moonlightPath && !(await findMoonlight(settings.moonlightPath)))
         throw new Error('The selected Moonlight file does not exist or is not executable')
-      const previousMinimize = this.config.settings.minimizeOnBlur
+      if (process.platform === 'win32') switchBinding(settings.returnShortcut)
+      const previousInput = this.config.settings
       await this.shortcut.update(settings.returnShortcut, async () => {
-        await this.session.configureWindow(settings.minimizeOnBlur)
+        await this.session.configureWindow(settings)
         try {
           await this.persist({ ...this.config, settings })
         } catch (error) {
-          await this.session.configureWindow(previousMinimize).catch(() => {})
+          await this.session.configureWindow(previousInput).catch(() => {})
           throw error
         }
       })
@@ -314,7 +325,8 @@ export class Workbench {
   }
 
   private async toggleRemote(): Promise<void> {
-    if (this.closing) return
+    if (this.closing || Date.now() - this.lastSwitch < 200) return
+    this.lastSwitch = Date.now()
     if (this.session.state.pid === null || process.platform !== 'win32') {
       await this.returnLocal()
       return
@@ -323,6 +335,8 @@ export class Workbench {
   }
 
   async showRemote(): Promise<void> {
+    if (this.config.settings.lockInput)
+      throw new Error('Use the switch shortcut to return to the remote desktop')
     if (!this.closing) await this.session.showWindow()
   }
 

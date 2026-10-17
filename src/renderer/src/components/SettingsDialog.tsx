@@ -161,20 +161,18 @@ export function SettingsDialog({
             </small>
           </label>
           <label>
-            Minimize remote window when switching away
+            Switch only with shortcut
             <select
-              aria-label="Minimize remote window when switching away"
-              value={String(draft.minimizeOnBlur)}
-              onChange={(event) =>
-                setDraft({ ...draft, minimizeOnBlur: event.target.value === 'true' })
-              }
+              aria-label="Switch only with shortcut"
+              value={String(draft.lockInput)}
+              onChange={(event) => setDraft({ ...draft, lockInput: event.target.value === 'true' })}
             >
               <option value="true">On (recommended)</option>
               <option value="false">Off</option>
             </select>
             <small>
-              Applies immediately on Windows, including Alt + Tab. The remote desktop stays
-              connected.
+              On Windows, hides the remote window in local mode and locks the mouse in remote mode.
+              Other shortcuts go to the active system. The connection stays active.
             </small>
           </label>
           <details className="advanced-settings">

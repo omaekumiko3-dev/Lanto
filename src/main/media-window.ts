@@ -1,13 +1,28 @@
 import koffi from 'koffi'
+import type { InputSettings } from './input-control.ts'
 
 export interface MediaWindow {
   toggle(): Promise<'local' | 'remote'>
   show(): Promise<void>
-  configure(minimize: boolean): Promise<void>
+  hide(): Promise<void>
+  configure(settings: InputSettings): Promise<void>
   close(): void
 }
 
-function windowsAPI() {
+interface WindowAPI {
+  foreground(): number
+  visible(window: number): number
+  minimized(window: number): number
+  show(window: number, command: number): number
+  focus(window: number): number
+  open(access: number, inherit: number, pid: number): number
+  wait(handle: number, timeout: number): number
+  close(handle: number): number
+  owner(window: number): number
+  find(pid: number): number
+}
+
+function windowsAPI(): WindowAPI {
   const user = koffi.load('user32.dll')
   const kernel = koffi.load('kernel32.dll')
   const rect = koffi.struct({
@@ -28,11 +43,15 @@ function windowsAPI() {
     koffi.out(koffi.pointer(rect))
   ])
   const visible = user.func('int __stdcall IsWindowVisible(uintptr_t window)')
+  const className = user.func(
+    'int __stdcall GetClassNameW(uintptr_t window, _Out_ uint16_t *buffer, int capacity)'
+  )
   const parent = user.func('uintptr_t __stdcall GetWindow(uintptr_t window, uint32_t command)')
   const processId = user.func(
     'uint32_t __stdcall GetWindowThreadProcessId(uintptr_t window, _Out_ uint32_t *pid)'
   )
   const api = {
+    visible,
     foreground: user.func('uintptr_t __stdcall GetForegroundWindow()'),
     minimized: user.func('int __stdcall IsIconic(uintptr_t window)'),
     show: user.func('int __stdcall ShowWindowAsync(uintptr_t window, int command)'),
@@ -51,10 +70,14 @@ function windowsAPI() {
       let best = 0
       let area = 0
       enumerate((window: number) => {
-        if (api.owner(window) !== pid || !visible(window) || parent(window, 4)) return 1
+        if (api.owner(window) !== pid || parent(window, 4)) return 1
+        const name = Buffer.alloc(512)
+        const length = className(window, name, 256)
+        const stream = name.subarray(0, length * 2).toString('utf16le') === 'SDL_app'
+        if (!stream && !visible(window)) return 1
         const box = { left: 0, top: 0, right: 0, bottom: 0 }
         if (!bounds(window, box)) return 1
-        const size = (box.right - box.left) * (box.bottom - box.top)
+        const size = (stream ? 1e12 : 0) + (box.right - box.left) * (box.bottom - box.top)
         if (!best || size > area) {
           best = window
           area = size
@@ -69,79 +92,122 @@ function windowsAPI() {
 
 let native: ReturnType<typeof windowsAPI> | undefined
 
-/** Run in the process receiving the global shortcut, so Windows permits activation. */
-export function createMediaWindow(pid: number, minimize: boolean): MediaWindow {
-  const api = (native ??= windowsAPI())
-  const process = api.open(0x100000, 0, pid) // SYNCHRONIZE
-  if (!process) throw new Error('Cannot access the remote window process')
+export interface WindowInputControl {
+  setRemote(remote: boolean): Promise<void>
+  configure(settings: InputSettings): Promise<void>
+}
+
+/** Keep control mode independent of mouse focus; verify ownership before each mutation. */
+export function createMediaWindow(
+  pid: number,
+  settings: InputSettings,
+  input?: WindowInputControl,
+  api = (native ??= windowsAPI())
+): MediaWindow {
+  const processHandle = api.open(0x100000, 0, pid)
+  if (!processHandle) throw new Error('Cannot access the remote window process')
   let closed = false
   let window = 0
-  let wasRemote = false
-
+  let mode: 'local' | 'remote' = 'remote'
+  let seenRemote = false
+  let pending: Promise<unknown> = Promise.resolve()
+  let polling = false
+  const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
+    const result = pending.then(task)
+    pending = result.catch(() => {})
+    return result
+  }
   function alive(): boolean {
-    return !closed && api.wait(process, 0) === 258
+    return !closed && api.wait(processHandle, 0) === 258
   }
   function ownedWindow(): number {
     if (!alive()) throw new Error('The remote window has closed')
     const front = api.foreground()
     if (front && api.owner(front) === pid) window = front
-    if (!window || api.owner(window) !== pid) window = api.find(pid)
+    const found = api.find(pid)
+    if (found) window = found
+    if (window && api.owner(window) !== pid) window = 0
     if (!window) throw new Error('The remote window is still opening; try again in a moment')
     return window
+  }
+  async function local() {
+    const target = ownedWindow()
+    await input?.setRemote(false)
+    mode = 'local'
+    seenRemote = false
+    api.show(target, settings.lockInput ? 0 : 6) // SW_HIDE / SW_MINIMIZE
+  }
+  async function show() {
+    const target = ownedWindow()
+    await input?.setRemote(true)
+    mode = 'remote'
+    seenRemote = false
+    api.show(target, api.minimized(target) ? 9 : 5) // SW_RESTORE / SW_SHOW
+    api.focus(target)
+    for (let attempt = 0; attempt < 30; attempt++) {
+      if (!alive()) throw new Error('The remote window has closed')
+      if (api.owner(api.foreground()) === pid) {
+        seenRemote = true
+        return
+      }
+      if (api.visible(target)) api.focus(target)
+      await new Promise<void>((resolve) => setTimeout(resolve, 10))
+    }
+    await local()
+    throw new Error('Windows could not focus the remote window; press the switch shortcut to retry')
   }
   function close() {
     if (closed) return
     closed = true
     clearInterval(timer)
-    api.close(process)
+    api.close(processHandle)
   }
-  // Track the original process handle and check window ownership before every mutation.
-  // Startup and zero-foreground transitions must not minimize a window never focused.
   const timer = setInterval(() => {
     if (!alive()) {
       close()
       return
     }
-    const front = api.foreground()
-    if (!front) return
-    const remote = api.owner(front) === pid
-    if (remote) window = front
-    if (wasRemote && !remote && minimize && window && api.owner(window) === pid) api.show(window, 6)
-    wasRemote = remote
+    if (polling) return
+    polling = true
+    void enqueue(async () => {
+      if (!alive()) return
+      const front = api.foreground()
+      if (front && api.owner(front) === pid) window = front
+      if (mode === 'local' && settings.lockInput) {
+        // A click, task switcher, or external activation cannot change the selected system.
+        if (window && api.owner(window) === pid && api.visible(window)) api.show(window, 0)
+      } else if (mode === 'remote') {
+        if (front && api.owner(front) === pid) seenRemote = true
+        else if (front && seenRemote && settings.lockInput) await local()
+      }
+    })
+      .catch(() => {})
+      .finally(() => {
+        polling = false
+      })
   }, 50)
   timer.unref()
-
-  async function show() {
-    const target = ownedWindow()
-    if (api.minimized(target)) api.show(target, 9) // SW_RESTORE
-    api.focus(target)
-    // Cross-process restoration is asynchronous. Verify actual focus before reporting success.
-    for (let attempt = 0; attempt < 30; attempt++) {
-      if (!alive()) throw new Error('The remote window has closed')
-      if (api.owner(api.foreground()) === pid) {
-        wasRemote = true
-        return
-      }
-      await new Promise<void>((resolve) => setTimeout(resolve, 10))
-    }
-    throw new Error('Windows could not focus the remote window; select it from the taskbar')
-  }
-
   return {
-    async toggle() {
-      const target = ownedWindow()
-      if (api.owner(api.foreground()) === pid) {
-        if (minimize) api.show(target, 6) // SW_MINIMIZE
-        wasRemote = false
-        return 'local'
-      }
-      await show()
-      return 'remote'
-    },
-    show,
-    async configure(value) {
-      minimize = value
-    },
+    toggle: () =>
+      enqueue(async () => {
+        // Free window mode follows focus; locked mode only follows explicit transitions.
+        if (settings.lockInput ? mode === 'remote' : api.owner(api.foreground()) === pid) {
+          await local()
+          return 'local'
+        }
+        await show()
+        return 'remote'
+      }),
+    show: () => enqueue(show),
+    hide: () => enqueue(local),
+    configure: (value) =>
+      enqueue(async () => {
+        if (value.lockInput && !input)
+          throw new Error('Reconnect with the latest Lanto player to lock input')
+        await input?.configure(value)
+        settings = value
+        if (mode === 'local' && settings.lockInput) api.show(ownedWindow(), 0)
+      }),
     close
   }
 }

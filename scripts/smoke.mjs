@@ -258,14 +258,10 @@ try {
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByLabel('Switch shortcut').fill('Control+Alt+Shift+F11')
   assert.equal(
-    await page
-      .getByLabel('Minimize remote window when switching away', { exact: true })
-      .inputValue(),
+    await page.getByLabel('Switch only with shortcut', { exact: true }).inputValue(),
     'true'
   )
-  await page
-    .getByLabel('Minimize remote window when switching away', { exact: true })
-    .selectOption('false')
+  await page.getByLabel('Switch only with shortcut', { exact: true }).selectOption('false')
   await page.getByLabel('Resolution', { exact: true }).selectOption('3840x2160')
   await page.getByLabel('Frame rate', { exact: true }).selectOption('30')
   await page.getByLabel('Bitrate (Mbps)', { exact: true }).fill('75')
@@ -276,7 +272,7 @@ try {
   assert.equal(savedVideo.resolution, '3840x2160')
   assert.equal(savedVideo.fps, 30)
   assert.equal(savedVideo.bitrateMbps, 75)
-  assert.equal(savedVideo.minimizeOnBlur, false)
+  assert.equal(savedVideo.lockInput, false)
   assert.equal(
     (await page.evaluate(() => window.lanto.getState())).config.settings.localCursor,
     true
@@ -341,7 +337,7 @@ setInterval(() => {}, 1000);
   await copyFile(process.execPath, fakeMedia)
   await writeFile(
     join(mediaDirectory, 'lanto-media.json'),
-    JSON.stringify({ audioVolumeProtocol: 1 })
+    JSON.stringify({ audioVolumeProtocol: 1, lockedInputProtocol: 1 })
   )
   await page.evaluate(
     (moonlightPath) =>
@@ -416,6 +412,22 @@ setInterval(() => {}, 1000);
   await waitPhase('running', 'Test Linux')
   assert.equal(await linuxSwitch.isChecked(), true)
   const running = (await page.evaluate(() => window.lanto.getState())).session
+  await page.evaluate(async () => {
+    const { config } = await window.lanto.getState()
+    await window.lanto.saveSettings({ ...config.settings, lockInput: true })
+  })
+  assert.equal(await page.getByRole('button', { name: 'Show Test Linux', exact: true }).count(), 0)
+  assert.equal(
+    await page.evaluate(async () => {
+      try {
+        await window.lanto.showRemote()
+        return false
+      } catch {
+        return true
+      }
+    }),
+    true
+  )
   assert.equal((await launches(1))[0].initialVolume, '0')
   await appliedVolume(running.pid, 0)
   await page.getByRole('button', { name: 'Unmute Test Linux', exact: true }).click()

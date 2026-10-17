@@ -34,7 +34,7 @@ The Host runtime uses Node.js and production dependencies, without Electron.
 
 ## Native player
 
-Follow [native/README.md](../native/README.md). The release uses Moonlight Qt commit `de2467e433821664cdd2224aad8c89a625be1ad9` (v6.2.0), Windows dependency bundle v19, and Qt 5.15.2. Initialize recursive submodules. Apply the five Moonlight patches listed there, in order; do not apply patches from other versions or experimental local work.
+Follow [native/README.md](../native/README.md). The release uses Moonlight Qt commit `de2467e433821664cdd2224aad8c89a625be1ad9` (v6.2.0), Windows dependency bundle v19, and Qt 5.15.2. Initialize recursive submodules. Apply the six Moonlight patches listed there, in order; do not apply patches from other versions or experimental local work.
 
 ```powershell
 pwsh -File native/build-moonlight.ps1 -Source C:/build/moonlight-qt -QtBin C:/Qt/msvc_64/bin -Output C:/build/Lanto-player

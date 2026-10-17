@@ -26,7 +26,12 @@ test('Moonlight uses discrete arguments and leaves the remote app running after 
   const overlay = streamArguments(device, { ...config.settings, showPerformanceOverlay: true })
   assert.ok(overlay.includes('--performance-overlay'))
   assert.ok(!overlay.includes('--no-performance-overlay'))
-  assert.equal(args[args.indexOf('--capture-system-keys') + 1], 'never')
+  assert.equal(
+    args[args.indexOf('--capture-system-keys') + 1],
+    process.platform === 'win32' ? 'always' : 'never'
+  )
+  const free = streamArguments(device, { ...config.settings, lockInput: false })
+  assert.equal(free[free.indexOf('--capture-system-keys') + 1], 'never')
 })
 
 test('TCP probe describes reachability without claiming a paired or authenticated stream', async () => {

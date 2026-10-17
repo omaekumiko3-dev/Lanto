@@ -14,8 +14,8 @@ if (!media)
   )
 const project = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const features = JSON.parse(await readFile(join(media, 'lanto-media.json'), 'utf8'))
-if (features.automatedPairProtocol !== 1)
-  throw new Error('Build the player with automated pairing support')
+if (features.automatedPairProtocol !== 1 || features.lockedInputProtocol !== 1)
+  throw new Error('Build the player with automated pairing and locked input support')
 const output = process.argv[3]
   ? resolve(process.argv[3])
   : join(root, 'out/release', `Lanto-${project.version}-win-x64`)
@@ -98,7 +98,7 @@ await writeFile(
   join(output, 'resources/media/source/UPSTREAM.txt'),
   'Moonlight Qt source: https://github.com/moonlight-stream/moonlight-qt/tree/' +
     features.moonlightCommit +
-    `\nLanto changes and build instructions: https://github.com/omaekumiko3-dev/Lanto/tree/v${project.version}/native\nCorresponding native and Qt source archives: https://github.com/omaekumiko3-dev/Lanto/releases/tag/v${project.version}\nMoonlight is GPL-3.0; see ../LICENSE.\n`
+    `\nLanto changes and build instructions are included in this source directory. Project: https://github.com/omaekumiko3-dev/Lanto\nCorresponding native and Qt source archives: https://github.com/omaekumiko3-dev/Lanto/releases/tag/v${project.version}\nMoonlight is GPL-3.0; see ../LICENSE.\n`
 )
 await writeFile(
   join(output, 'Getting Started.txt'),

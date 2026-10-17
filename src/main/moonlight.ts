@@ -6,6 +6,7 @@ import type { MediaAdapter, MediaExit, MediaHandle } from './session-manager.ts'
 import { hasMediaFeature, nativeEnvironment } from './native-profile.ts'
 import { createAudioControl } from './audio-control.ts'
 import { createMediaWindow } from './media-window.ts'
+import { createInputControl } from './input-control.ts'
 
 export function streamArguments(device: Device, settings: Settings): string[] {
   const args = [
@@ -26,7 +27,7 @@ export function streamArguments(device: Device, settings: Settings): string[] {
     '--audio-on-host',
     '--no-background-gamepad',
     '--capture-system-keys',
-    'never'
+    settings.lockInput && process.platform === 'win32' ? 'always' : 'never'
   ]
   if (settings.lowLatency) args.push('--no-vsync', '--no-frame-pacing')
   args.push(settings.showPerformanceOverlay ? '--performance-overlay' : '--no-performance-overlay')
@@ -85,9 +86,11 @@ async function waitForExit(closed: Promise<MediaExit>, timeout: number): Promise
 
 export class MoonlightAdapter implements MediaAdapter {
   private readonly logDirectory: string
+  private readonly onSwitch: (pid: number) => void
 
-  constructor(logDirectory: string) {
+  constructor(logDirectory: string, onSwitch: (pid: number) => void = () => {}) {
     this.logDirectory = logDirectory
+    this.onSwitch = onSwitch
   }
 
   async start(device: Device, settings: Settings): Promise<MediaHandle> {
@@ -99,6 +102,12 @@ export class MoonlightAdapter implements MediaAdapter {
       logFile = join(this.logDirectory, `moonlight-${Date.now()}.log`)
     }
     const environmentOverrides = await nativeEnvironment(executable, settings, device.platform)
+    const inputSupported =
+      process.platform === 'win32' && (await hasMediaFeature(executable, 'lockedInputProtocol'))
+    if (process.platform === 'win32' && settings.lockInput && !inputSupported)
+      throw new Error(
+        'Switching only with the shortcut requires the latest Lanto player; select the bundled program in settings'
+      )
     const audioSupported = await hasMediaFeature(executable, 'audioVolumeProtocol')
     if (!audioSupported && (device.volume !== 100 || device.muted))
       throw new Error(
@@ -107,20 +116,33 @@ export class MoonlightAdapter implements MediaAdapter {
     const control = audioSupported
       ? await createAudioControl(join(this.logDirectory, '..', 'media-controls'), device)
       : undefined
+    let input: Awaited<ReturnType<typeof createInputControl>> | undefined
     try {
-      const handle = await launchMedia(executable, streamArguments(device, settings), logFile, {
-        ...environmentOverrides,
-        LANTO_VOLUME_FILE: '',
-        LANTO_VOLUME: '100',
-        ...control?.environment
-      })
+      if (inputSupported)
+        input = await createInputControl(join(this.logDirectory, '..', 'media-controls'), settings)
+      const handle = await launchMedia(
+        executable,
+        streamArguments(device, settings),
+        logFile,
+        {
+          ...environmentOverrides,
+          LANTO_VOLUME_FILE: '',
+          LANTO_VOLUME: '100',
+          ...control?.environment,
+          LANTO_INPUT_FILE: '',
+          LANTO_CONTROLLER_PID: '',
+          ...input?.environment
+        },
+        input ? (pid) => this.onSwitch(pid) : undefined
+      )
+      if (input) void handle.closed.then(() => input!.close())
       if (control) {
         handle.setAudio = (audio) => control.setAudio(audio)
         void handle.closed.then(() => control.close())
       }
       if (process.platform === 'win32') {
         try {
-          const window = createMediaWindow(handle.pid, settings.minimizeOnBlur)
+          const window = createMediaWindow(handle.pid, settings, input)
           handle.window = window
           void handle.closed.then(() => window.close())
         } catch (error) {
@@ -131,6 +153,7 @@ export class MoonlightAdapter implements MediaAdapter {
       return handle
     } catch (error) {
       await control?.close()
+      await input?.close()
       throw error
     }
   }
@@ -148,15 +171,27 @@ export async function launchMedia(
   executable: string,
   args: string[],
   logFile?: string,
-  environmentOverrides: Record<string, string> = {}
+  environmentOverrides: Record<string, string> = {},
+  onSwitch?: (pid: number) => void
 ): Promise<MediaHandle> {
   const log = logFile ? await open(logFile, 'wx', 0o600) : undefined
   try {
     const child = spawn(executable, args, {
       shell: false,
-      stdio: log ? ['ignore', 'ignore', log.fd] : 'ignore',
+      stdio: ['ignore', onSwitch ? 'pipe' : 'ignore', log ? log.fd : 'ignore'],
       env: { ...process.env, ...environmentOverrides },
       windowsHide: true
+    })
+    let protocol = ''
+    child.stdout?.on('data', (chunk: Buffer) => {
+      protocol += chunk.toString('ascii')
+      let newline: number
+      while ((newline = protocol.indexOf('\n')) >= 0) {
+        const line = protocol.slice(0, newline).trim()
+        protocol = protocol.slice(newline + 1)
+        if (line === 'LANTO_SWITCH' && !ended && child.pid) onSwitch?.(child.pid)
+      }
+      if (protocol.length > 4096) protocol = ''
     })
     let ended = false
     let resolveClosed: (exit: MediaExit) => void = () => {}

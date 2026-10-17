@@ -48,11 +48,11 @@ test('corrupt configuration is preserved and never silently overwritten', async 
   }
 })
 
-test('legacy default shortcut migrates once while custom shortcuts and minimize preferences survive', async () => {
+test('legacy default shortcut migrates once while custom shortcuts and input preferences survive', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'lanto-config-'))
   try {
     const store = new ConfigStore(directory)
-    const { minimizeOnBlur, ...settings } = defaultConfig().settings
+    const { lockInput, ...settings } = defaultConfig().settings
     const legacy = {
       ...defaultConfig(),
       settings: { ...settings, returnShortcut: 'Control+Alt+F12' }
@@ -60,12 +60,20 @@ test('legacy default shortcut migrates once while custom shortcuts and minimize 
     await writeFile(store.file, JSON.stringify(legacy))
     const migrated = await store.load()
     assert.equal(migrated.settings.returnShortcut, 'Control+`')
-    assert.equal(migrated.settings.minimizeOnBlur, true)
+    assert.equal(migrated.settings.lockInput, true)
+    await writeFile(
+      store.file,
+      JSON.stringify({ ...legacy, settings: { ...legacy.settings, minimizeOnBlur: false } })
+    )
+    const oldMinimize = await store.load()
+    assert.equal(oldMinimize.settings.returnShortcut, 'Control+Alt+F12')
+    assert.equal(oldMinimize.settings.lockInput, true)
+    assert.equal('minimizeOnBlur' in oldMinimize.settings, false)
     legacy.settings.returnShortcut = 'Control+Alt+F10'
     await writeFile(store.file, JSON.stringify(legacy))
     assert.equal((await store.load()).settings.returnShortcut, 'Control+Alt+F10')
     migrated.settings.returnShortcut = 'Control+Alt+F12'
-    migrated.settings.minimizeOnBlur = false
+    migrated.settings.lockInput = false
     await store.save(migrated)
     assert.deepEqual((await store.load()).settings, migrated.settings)
   } finally {

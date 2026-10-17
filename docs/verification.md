@@ -211,3 +211,12 @@ Ctrl plus backtick now toggles the Windows remote window while preserving the st
 All 44 behavior tests, Go tunnel tests, type checking, the production build, formatting, and Electron UI smoke tests passed. Coverage includes legacy shortcut migration, preserving custom bindings, saving the minimization preference, keeping the same session during focus switches, failed window actions leaving the stream alive, and Win32 process-handle cleanup. The Windows tests exercise the real FFI against isolated child processes and verify that a missing window cannot target another application.
 
 Global-shortcut behavior and window restoration inside exclusive-fullscreen games remain a manual acceptance check. Automated key injection did not trigger the binding in the active fullscreen environment; this is not recorded as a successful physical shortcut test.
+
+
+### Shortcut-only control mode
+
+This replaces the preceding minimization behavior. On Windows, the default setting now hides the stream in local mode, confines the mouse in remote mode, and passes ordinary system shortcuts to the target. Ctrl plus backtick remains reserved in both modes. Native stdout notifications request an idempotent local transition, and hidden SDL windows remain discoverable before a foreground sample has been recorded.
+
+All 48 behavior tests, Go tests, type checking, the production build, formatting, and Electron UI smoke passed. Coverage includes exact modifier mapping, split stdout messages, atomic control updates and cleanup, explicit mode remaining unchanged after external activation, failed focus restoration returning locally, legacy minimization migration, and hiding/rejecting the Show action while locked. A separate real Win32 check located an isolated hidden SDL-class window and returned it locally twice without changing foreground focus.
+
+The patched Moonlight player compiled with the pinned Qt/MSVC toolchain. Its C++ input-control tests passed for binding changes, local mode, invalid data, controller-process exit, and stdout notification. The new patch applied cleanly after the prior five patches. Physical keyboard forwarding, pointer confinement across monitors, and fullscreen-game switching remain manual acceptance checks at the user's request; no physical keystrokes were injected for this update.

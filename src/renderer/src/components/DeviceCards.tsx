@@ -75,7 +75,7 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
                           : 'Not checked'}
               </span>
               <div className="device-tools">
-                {inUse && (
+                {inUse && !state.config.settings.lockInput && (
                   <button
                     className="text-button"
                     aria-label={`Show ${device.name}`}

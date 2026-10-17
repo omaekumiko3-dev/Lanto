@@ -41,17 +41,17 @@ The first public release ships the Windows Moonlight player. Its release page al
 
 Prepare MSVC x64, Windows SDK, and an MSVC Qt SDK. Upstream recommends Qt 6.11 or newer. This build initially used the already installed Qt 5.15.2 for compilation and real TLS/D3D11 streaming validation; keep that variable fixed in later performance comparisons.
 
-Check out the pinned Moonlight commit, initialize all submodules, extract the verified v19 x64 package into `libs/windows`, and apply `patches/moonlight-local-cursor.patch`, `patches/moonlight-h264-sps.patch`, `patches/moonlight-cursor-shape.patch`, `patches/moonlight-audio-volume.patch`, and `patches/moonlight-auto-pair.patch` in order. Then run:
+Check out the pinned Moonlight commit, initialize all submodules, extract the verified v19 x64 package into `libs/windows`, and apply `patches/moonlight-local-cursor.patch`, `patches/moonlight-h264-sps.patch`, `patches/moonlight-cursor-shape.patch`, `patches/moonlight-audio-volume.patch`, `patches/moonlight-auto-pair.patch`, and `patches/moonlight-locked-input.patch` in order. Then run:
 
 ```powershell
 pwsh -File native/build-moonlight.ps1 -Source C:/build/moonlight-qt -QtBin C:/Qt/msvc_64/bin -Output C:/build/Moonlight-Lanto
 ```
 
-The output directory must be new. The script copies `native/moonlight/` sources into upstream `app/streaming/lanto/`, builds, deploys dependencies, and writes the `lanto-media.json` capability manifest. That file describes features and is not a security signature. Select the output `Moonlight.exe` in Lanto's Moonlight executable setting. With local cursor disabled by default, no manifest is required and the original client remains usable.
+The output directory must be new. The script copies `native/moonlight/` sources into upstream `app/streaming/lanto/`, builds, deploys dependencies, and writes the `lanto-media.json` capability manifest. That file describes features and is not a security signature. Select the output `Moonlight.exe` in Lanto's Moonlight executable setting. The current Windows default requires `lockedInputProtocol=1`. To use an unmodified player, disable both local cursor and **Switch only with shortcut**.
 
 `complete-windows-runtime.ps1` inspects EXE/DLL imports with the installed MSVC tools and copies missing non-system runtime libraries from the selected Qt SDK and MSVC redistributable directory. Packaging must retain their licenses. The unused PDF image plugin is excluded because it can come from a separately versioned QtWebEngine package. Validate a prepared player with a minimal PATH so a developer environment cannot hide missing DLLs.
 
-The build copies repository `assets/lanto-stream.svg` and `.ico` into the upstream working copy's icon resources for the window, taskbar, and executable. The asset shares the controller's geometry and uses a mist-blue background to distinguish remote video; it does not change application pairing identity. The SSH deployment version is `Moonlight-Lanto-native-8`. Incremental builds also refresh Windows RC resources to avoid stale EXE icons.
+The build copies repository `assets/lanto-stream.svg` and `.ico` into the upstream working copy's icon resources for the window, taskbar, and executable. The asset shares the controller's geometry and uses a mist-blue background to distinguish remote video; it does not change application pairing identity. The current Windows control-mode build is `Moonlight-Lanto-native-10`. Incremental builds also refresh Windows RC resources to avoid stale EXE icons.
 
 ## Automatic media pairing over SSH
 
@@ -60,6 +60,14 @@ The build copies repository `assets/lanto-stream.svg` and `.ico` into the upstre
 The build also deploys Qt `qoffscreen.dll`. Automatic pairing uses the offscreen platform and software Quick rendering; normal remote desktops retain ordinary windows and hardware video. Validation covered existing pairing reuse for three hosts and pairing a new portable client identity; temporary client authorization was then revoked. A real Mac HEVC stream received its first video packet after deployment.
 
 The universal Mac clipboard helper is compiled from existing Swift source and merged for x86_64/arm64 by `scripts/build-mac-clipboard.mjs`. Generated source and binary hashes are verified during Host packaging. Installation in the private user cache preserves execution permissions and does not touch Screen Recording or Accessibility authorization databases.
+
+## Switching input ownership
+
+The Windows player advertises lockedInputProtocol=1. The controller supplies LANTO_INPUT_FILE and LANTO_CONTROLLER_PID only to its owned stream. A small atomic JSON file carries the virtual key, modifier mask, lock option, and selected system. SDL reads it on its event thread at most every 50 ms. Remote mode clips the mouse to the video and captures system keys; local mode releases capture and hides the window. Lock mode bypasses Moonlight's built-in combinations, reserving only the configured Lanto shortcut.
+
+The reserved combination raises held keys and mouse buttons before writing LANTO_SWITCH to the owned stdout pipe. The native process grants foreground permission to its controller before returning locally. The controller handles this as an idempotent local transition, which prevents races with focus-loss notifications. A held process handle checks the original controller lifetime; controller exit or invalid control data disables input and hides the stream. Secure Windows desktop shortcuts are OS-owned. This mechanism currently applies to the Windows controller, with Linux, macOS, or Windows targets.
+
+Build native/tests/input-control-test.pro with the same Qt/MSVC toolchain to check exact modifier matching, binding changes, local mode, invalid files, controller exit, and the stdout notification without physical input injection. Mouse confinement and desktop shortcut behavior still require interactive acceptance testing.
 
 ## Per-device stream volume
 

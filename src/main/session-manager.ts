@@ -1,5 +1,6 @@
 import type { Device, DeviceAudio, SessionState, Settings } from '../shared/model.ts'
 import type { MediaWindow } from './media-window.ts'
+import type { InputSettings } from './input-control.ts'
 
 export interface MediaExit {
   code: number | null
@@ -123,6 +124,12 @@ export class SessionManager {
     })
   }
 
+  hideWindow(): Promise<void> {
+    return this.enqueue(async () => {
+      if (this.active && !this.active.stopping) await this.active.handle.window?.hide()
+    })
+  }
+
   showWindow(): Promise<void> {
     return this.enqueue(async () => {
       if (!this.active || this.active.stopping) return
@@ -132,9 +139,9 @@ export class SessionManager {
     })
   }
 
-  configureWindow(minimize: boolean): Promise<void> {
+  configureWindow(settings: InputSettings): Promise<void> {
     return this.enqueue(async () => {
-      if (this.active && !this.active.stopping) await this.active.handle.window?.configure(minimize)
+      if (this.active && !this.active.stopping) await this.active.handle.window?.configure(settings)
     })
   }
 

@@ -79,7 +79,7 @@ Switching always follows this sequence:
 3. Activate the new target window and confirm focus; return to local Windows if this fails.
 4. Grant input ownership to the new session and discard queued events carrying the old session ID.
 
-Keep a switch shortcut handled by the Windows controller. The current default is Ctrl plus backtick (the key above Tab); registration failure prevents session startup. Streaming uses `--capture-system-keys never`. Switching now preserves the same stream, minimizes the remote window by default, and restores it on the next press. Automatic minimization can be disabled in Settings. Device switches and application shutdown still disconnect. System hooks, exclusive fullscreen, and game privilege levels need physical testing; leaving exclusive fullscreen, display-mode changes, and pause behavior require separate validation.
+Keep one reserved switch shortcut: Ctrl plus backtick (the key above Tab). Windows registers it locally; the native player recognizes the same binding while it captures system keys. Default locked mode hides the remote window locally, confines the mouse remotely, and forwards ordinary system shortcuts to the selected target. It disables Moonlight’s built-in shortcut combinations. Switching preserves the stream; device switches and application shutdown still disconnect. The optional free window mode restores normal desktop focus behavior. Protected OS shortcuts, elevated applications, and exclusive fullscreen need separate physical validation.
 
 When streaming already carries keyboard and mouse input, Deskflow/Lan Mouse must not inject the same input again. A future custom input backend will use the same lease management.
 

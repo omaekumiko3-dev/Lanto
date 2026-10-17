@@ -25,7 +25,7 @@ export type DeviceInput = Omit<Device, 'id' | keyof DeviceAudio> &
 export interface Settings {
   moonlightPath: string
   returnShortcut: string
-  minimizeOnBlur: boolean
+  lockInput: boolean
   resolution: '3840x2160' | '2560x1440' | '1920x1080'
   fps: number
   bitrateMbps: number
@@ -142,7 +142,7 @@ export function defaultConfig(): Config {
     settings: {
       moonlightPath: '',
       returnShortcut: 'Control+`',
-      minimizeOnBlur: true,
+      lockInput: true,
       resolution: '3840x2160',
       fps: 30,
       bitrateMbps: 60,

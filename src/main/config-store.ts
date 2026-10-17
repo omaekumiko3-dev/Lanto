@@ -17,9 +17,10 @@ export class ConfigStore {
     try {
       const config = configSchema.parse(contents)
       // Upgrade the old default once; preserve user-selected shortcuts and later edits.
-      const legacy = contents as { settings?: { minimizeOnBlur?: boolean } }
+      const legacy = contents as { settings?: { minimizeOnBlur?: boolean; lockInput?: boolean } }
       if (
         legacy.settings?.minimizeOnBlur === undefined &&
+        legacy.settings?.lockInput === undefined &&
         config.settings.returnShortcut === 'Control+Alt+F12'
       ) {
         config.settings.returnShortcut = defaultConfig().settings.returnShortcut

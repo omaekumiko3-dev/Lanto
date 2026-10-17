@@ -37,7 +37,11 @@ export function createWindow(smoke: boolean, onRendererGone: () => void): Browse
   window.webContents.session.setPermissionCheckHandler(() => false)
   window.webContents.on('render-process-gone', onRendererGone)
   window.once('ready-to-show', () => {
-    if (!smoke) window.show()
+    if (smoke) return
+    if (process.argv.includes('--start-minimized')) {
+      window.showInactive()
+      window.minimize()
+    } else window.show()
   })
   return window
 }

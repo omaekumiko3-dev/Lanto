@@ -1,0 +1,161 @@
+--- a/app/app.pro
++++ b/app/app.pro
+@@ -193,6 +193,7 @@ SOURCES += \
+     streaming/lanto/cursor-frame.cpp \
+     streaming/lanto/cursor-sync.cpp \
+     streaming/lanto/audio-volume.cpp \
++    streaming/lanto/input-control.cpp \
+     streaming/input/reltouch.cpp \
+     streaming/session.cpp \
+     streaming/audio/audio.cpp \
+--- a/app/streaming/input/input.h
++++ b/app/streaming/input/input.h
+@@ -4,6 +4,7 @@
+ #include "backend/computermanager.h"
+ 
+ #include "SDL_compat.h"
++#include "streaming/lanto/input-control.h"
+ 
+ struct GamepadState {
+     SDL_GameController* controller;
+@@ -89,6 +90,7 @@ public:
+     ~SdlInputHandler();
+ 
+     void setWindow(SDL_Window* window);
++    void pollLantoControl();
+ 
+     void handleKeyEvent(SDL_KeyboardEvent* event);
+ 
+@@ -203,7 +205,9 @@ private:
+     static
+     Uint32 dragTimerCallback(Uint32 interval, void* param);
+ 
+-    SDL_Window* m_Window;
++    SDL_Window* m_Window = nullptr;
++    LantoInputControl m_LantoInput;
++    bool m_LantoSwitchPending = false;
+     bool m_MultiController;
+     bool m_GamepadMouse;
+     bool m_SwapMouseButtons;
+--- a/app/streaming/input/input.cpp
++++ b/app/streaming/input/input.cpp
+@@ -269,10 +269,31 @@ SdlInputHandler::~SdlInputHandler()
+ void SdlInputHandler::setWindow(SDL_Window *window)
+ {
+     m_Window = window;
++    pollLantoControl();
++}
++
++void SdlInputHandler::pollLantoControl()
++{
++    if (!m_LantoInput.managed() || !m_LantoInput.refresh() || !m_Window) return;
++    m_PointerRegionLockActive = m_LantoInput.locked();
++    m_PointerRegionLockToggledByUser = m_LantoInput.locked();
++    m_CaptureSystemKeysMode = m_LantoInput.locked() ? StreamingPreferences::CSK_ALWAYS : StreamingPreferences::CSK_OFF;
++    if (!m_LantoInput.remote()) {
++        raiseAllKeys();
++        setCaptureActive(false);
++        if (m_LantoInput.locked()) SDL_HideWindow(m_Window);
++    } else if (SDL_GetWindowFlags(m_Window) & SDL_WINDOW_INPUT_FOCUS) {
++        setCaptureActive(true);
++    }
+ }
+ 
+ void SdlInputHandler::notifyFocusLost()
+ {
++    if (m_LantoInput.managed()) {
++        setCaptureActive(false);
++        for (int button = BUTTON_LEFT; button <= BUTTON_X2; button++)
++            LiSendMouseButtonEvent(BUTTON_ACTION_RELEASE, button);
++    }
+     // Release mouse cursor when another window is activated (e.g. by using ALT+TAB).
+     // This lets user to interact with our window's title bar and with the buttons in it.
+     // Doing this while the window is full-screen breaks the transition out of FS
+@@ -288,6 +309,11 @@ void SdlInputHandler::notifyFocusLost()
+ 
+ void SdlInputHandler::notifyFocusGained()
+ {
++    if (m_LantoInput.managed()) {
++        m_LantoInput.refresh(true);
++        m_LantoSwitchPending = false;
++        setCaptureActive(true);
++    }
+ }
+ 
+ bool SdlInputHandler::isCaptureActive()
+@@ -353,6 +379,14 @@ bool SdlInputHandler::isSystemKeyCaptureActive()
+ 
+ void SdlInputHandler::setCaptureActive(bool active)
+ {
++    if (m_LantoInput.managed()) {
++        m_LantoInput.refresh(true);
++        m_PointerRegionLockActive = m_LantoInput.locked();
++        m_PointerRegionLockToggledByUser = m_LantoInput.locked();
++        m_CaptureSystemKeysMode = m_LantoInput.locked() ? StreamingPreferences::CSK_ALWAYS : StreamingPreferences::CSK_OFF;
++        if (active && ((m_LantoInput.locked() && (!m_LantoInput.remote() || m_LantoSwitchPending)) ||
++                !(SDL_GetWindowFlags(m_Window) & SDL_WINDOW_INPUT_FOCUS))) active = false;
++    }
+     if (active) {
+         // If we're in relative mode, try to activate SDL's relative mouse mode
+         if (m_AbsoluteMouseMode || SDL_SetRelativeMouseMode(SDL_TRUE) < 0) {
+--- a/app/streaming/input/keyboard.cpp
++++ b/app/streaming/input/keyboard.cpp
+@@ -189,6 +189,8 @@ void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)
+     char flags;
+     bool shouldNotConvertToScanCodeOnServer = false;
+ 
++    if (m_LantoInput.managed() && m_LantoInput.locked() && (!m_LantoInput.remote() || m_LantoSwitchPending)) return;
++
+     if (event->repeat) {
+         // Ignore repeat key down events
+         SDL_assert(event->state == SDL_PRESSED);
+@@ -196,7 +198,8 @@ void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)
+     }
+ 
+     // Check for our special key combos
+-    if ((event->state == SDL_PRESSED) &&
++    if (!(m_LantoInput.managed() && m_LantoInput.locked()) &&
++            (event->state == SDL_PRESSED) &&
+             (event->keysym.mod & KMOD_CTRL) &&
+             (event->keysym.mod & KMOD_ALT) &&
+             (event->keysym.mod & KMOD_SHIFT)) {
+@@ -500,6 +503,20 @@ void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)
+         }
+     }
+ 
++    if (m_LantoInput.matches(keyCode, modifiers)) {
++        if (event->state == SDL_PRESSED) {
++            m_LantoSwitchPending = true;
++            raiseAllKeys();
++            for (int button = BUTTON_LEFT; button <= BUTTON_X2; button++)
++                LiSendMouseButtonEvent(BUTTON_ACTION_RELEASE, button);
++            setCaptureActive(false);
++            // Hide even if the controller died, so the switch key always releases input.
++            m_LantoInput.requestSwitch();
++            SDL_HideWindow(m_Window);
++        }
++        return;
++    }
++
+     keyCode |= 0x8000;
+     flags = shouldNotConvertToScanCodeOnServer ? SS_KBE_FLAG_NON_NORMALIZED : 0;
+ 
+--- a/app/streaming/session.cpp
++++ b/app/streaming/session.cpp
+@@ -1967,6 +1967,7 @@ void Session::exec()
+     // because we want to suspend all Qt processing until the stream is over.
+     SDL_Event event;
+     for (;;) {
++        m_InputHandler->pollLantoControl();
+ #if SDL_VERSION_ATLEAST(2, 0, 18) && !defined(STEAM_LINK)
+         // SDL 2.0.18 has a proper wait event implementation that uses platform
+         // support to block on events rather than polling on Windows, macOS, X11,
+@@ -1977,7 +1978,7 @@ void Session::exec()
+         // NB: This behavior was introduced in SDL 2.0.16, but had a few critical
+         // issues that could cause indefinite timeouts, delayed joystick detection,
+         // and other problems.
+-        if (!SDL_WaitEventTimeout(&event, 1000)) {
++        if (!SDL_WaitEventTimeout(&event, 50)) {
+             presence.runCallbacks();
+             continue;
+         }

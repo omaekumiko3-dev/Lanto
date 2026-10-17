@@ -191,8 +191,12 @@ test('window switching retains the same stream, applies live preferences, and di
         remote = true
         commands.push('show')
       },
-      async configure(minimize: boolean) {
-        commands.push(`minimize:${minimize}`)
+      async hide() {
+        remote = false
+        commands.push('hide')
+      },
+      async configure(settings: { lockInput: boolean }) {
+        commands.push(`locked:${settings.lockInput}`)
       },
       close() {}
     }
@@ -213,16 +217,16 @@ test('window switching retains the same stream, applies live preferences, and di
   const original = { ...manager.state }
   assert.equal(await manager.toggleWindow(), 'local')
   assert.equal(await manager.toggleWindow(), 'remote')
-  await manager.configureWindow(false)
+  await manager.configureWindow({ ...defaults.settings, lockInput: false })
   await manager.showWindow()
   assert.deepEqual(manager.state, original)
   assert.equal(starts, 1)
   assert.equal(player.stops, 0)
-  assert.deepEqual(commands, ['toggle', 'toggle', 'minimize:false', 'show'])
+  assert.deepEqual(commands, ['toggle', 'toggle', 'locked:false', 'show'])
   await manager.disconnect()
   assert.equal(player.stops, 1)
   await manager.showWindow()
-  await manager.configureWindow(true)
+  await manager.configureWindow(defaults.settings)
   assert.equal(await manager.toggleWindow(), 'local')
   assert.equal(commands.length, 4)
 })
@@ -234,6 +238,7 @@ test('window control failure retains the stream and does not block disconnect', 
         throw new Error('window helper exited')
       },
       async show() {},
+      async hide() {},
       async configure() {},
       close() {}
     }

@@ -33,7 +33,7 @@ The project combines a focused device manager, guided SSH setup, a small Host se
 | Control volume per device | Remember volume and mute locally without changing the remote system volume. |
 | Share a clipboard | Opt in to plain text and images across paired, online Hosts, even when no desktop stream is open. |
 | Move files and folders | Enable file sharing, copy on one computer, wait for the transfer, and paste on another. |
-| Switch between local and remote | Press **Ctrl + `** (the key above Tab). The remote window minimizes when you switch away, and the same stream returns on the next press. Change this behavior in Settings; use the device switch to disconnect. |
+| Switch between local and remote | Press **Ctrl + `** (the key above Tab). Local mode hides the remote window; remote mode captures the mouse and system shortcuts. Only the switch shortcut changes the selected system by default. The same stream stays connected; use the device switch to disconnect. |
 | Use a direct encrypted tunnel | Optional userspace WireGuard transport with no extra VPN client or account; a reachable UDP endpoint is required. |
 
 ![Guided SSH setup using the actual Lanto interface](docs/images/setup.png)

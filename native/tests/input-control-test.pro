@@ -1,0 +1,10 @@
+QT += core
+QT -= gui
+CONFIG += console c++17
+CONFIG -= app_bundle debug_and_release
+TEMPLATE = app
+TARGET = LantoInputTests
+INCLUDEPATH += ../moonlight
+SOURCES += input-control-test.cpp ../moonlight/input-control.cpp
+HEADERS += ../moonlight/input-control.h
+win32:LIBS += -luser32

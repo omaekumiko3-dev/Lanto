@@ -47,9 +47,9 @@ The release includes a universal macOS clipboard helper. Source builds that omit
 
 ## Everyday use
 
-Use the switch on a device card to connect or disconnect. Only one stream can be active. On the Windows controller, **Ctrl + `** (the key above Tab) switches between the connected desktop and your local computer without disconnecting. Press it again, or click **Show** on the active card, to restore the same stream.
+Use the switch on a device card to connect or disconnect. Only one stream can be active. On the Windows controller, **Ctrl + `** (the key above Tab) switches between the connected desktop and your local computer without disconnecting. Press it again to restore the same stream.
 
-**Minimize remote window when switching away** is enabled by default. It also applies when using **Alt+Tab**, and changes take effect immediately. Turning it off leaves the remote window open behind other windows. The old default shortcut migrates automatically; custom bindings stay as saved. Disconnect with the device card switch or by closing Lanto.
+**Switch only with shortcut** is enabled by default on Windows and requires the current bundled player. Local mode hides the remote window from clicks and task switching. Remote mode confines the mouse to the video and sends Alt+Tab, the Windows key, and other ordinary shortcuts to the target. The switch shortcut is reserved for Lanto in both modes. Disabling the setting restores free window interaction and the card’s **Show** button. Existing custom bindings stay saved; the former minimization option is replaced by this setting. Disconnect with the device card switch or by closing Lanto. Windows secure-desktop combinations such as Ctrl+Alt+Delete remain controlled by the local OS.
 
 Adjust each card's volume or mute independently. These settings change playback on your controller, not the target's system volume.
 
