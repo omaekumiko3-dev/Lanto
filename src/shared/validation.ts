@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { isIP } from 'node:net'
+import { tunnelEndpointSchema } from '../protocol/tunnel.ts'
 
 const cleanText = (max: number) =>
   z
@@ -32,6 +33,7 @@ export const deviceInputSchema = z
       'Application name cannot start with a hyphen'
     ),
     hostId: z.uuid().optional(),
+    tunnel: tunnelEndpointSchema.optional(),
     volume: z.number().int().min(0).max(100).default(100),
     muted: z.boolean().default(false)
   })

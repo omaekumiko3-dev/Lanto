@@ -23,6 +23,8 @@ import { ReturnShortcut } from './shortcuts.ts'
 import { ClipboardSync } from './clipboard-sync.ts'
 import { DeploymentManager } from '../deploy/manager.ts'
 import { decodeTicket } from '../protocol/pair-ticket.ts'
+import { DirectTunnels } from '../controller/tunnel.ts'
+import type { TunnelEndpoint } from '../protocol/tunnel.ts'
 
 export class Workbench {
   private config: Config = defaultConfig()
@@ -35,6 +37,7 @@ export class Workbench {
   private readonly shortcut: ReturnShortcut
   private readonly clipboard: ClipboardSync
   readonly deployment: DeploymentManager
+  private readonly tunnels: DirectTunnels
   private readonly activity: Activity[] = []
   private readonly directory: string
   private readonly version: string
@@ -57,6 +60,11 @@ export class Workbench {
     this.focusLocal = options.focusLocal
     this.store = new ConfigStore(this.directory)
     this.trust = new TrustStore(this.directory, systemVault)
+    this.tunnels = new DirectTunnels({
+      directory: this.directory,
+      resources: options.deploymentResources,
+      vault: systemVault
+    })
     this.hosts = new HostClient(this.trust)
     this.clipboard = new ClipboardSync(this.trust, this.directory, this.changed)
     this.deployment = new DeploymentManager({
@@ -65,9 +73,11 @@ export class Workbench {
       changed: this.changed,
       available: () => !this.closing && this.session.state.pid === null,
       media: () => findMoonlight(this.config.settings.moonlightPath),
-      pair: async (ticket) => {
+      tunnels: this.tunnels,
+      controllerId: () => this.trust.controllerId,
+      pair: async (ticket, tunnel) => {
         const id = decodeTicket(ticket).hostId
-        const state = await this.pairHost(ticket)
+        const state = await this.pairHost(ticket, tunnel)
         const device = state.config.devices.find((entry) => entry.hostId === id)
         if (!device) throw new Error('Failed to add device')
         const trusted = state.trustedHosts.find((entry) => entry.id === id)
@@ -91,6 +101,17 @@ export class Workbench {
   async load(): Promise<void> {
     this.config = await this.store.load()
     await this.trust.load()
+    await this.tunnels.load()
+    for (const device of this.config.devices) {
+      if (!device.tunnel) continue
+      if (!device.hostId || device.host !== this.tunnels.address(device.hostId))
+        throw new Error(
+          'A direct tunnel device has an invalid local address; restore its saved configuration'
+        )
+      await this.tunnels
+        .start(device.hostId, device.tunnel)
+        .catch((error) => this.log(readableError(error), true))
+    }
     // Device config is authoritative if a previous save stopped between the two files.
     for (const host of this.trust.list()) {
       const device = this.config.devices.find((entry) => entry.hostId === host.id)
@@ -160,6 +181,10 @@ export class Workbench {
       const previous = value.id ? this.device(value.id) : undefined
       if (previous?.hostId !== value.hostId)
         throw new Error('Host identity can only be established through pairing')
+      if (Boolean(previous?.tunnel) !== Boolean(value.tunnel))
+        throw new Error('Set up or change the connection mode through Add device via SSH')
+      if (previous?.tunnel && value.host !== previous.host)
+        throw new Error('Edit the tunnel endpoint; its local address is managed by Lanto')
       if (previous?.hostId && previous.platform !== value.platform)
         throw new Error(
           'The system of a paired device is managed by its Host identity; pair again after changing systems'
@@ -198,6 +223,7 @@ export class Workbench {
         ...this.config,
         devices: this.config.devices.filter((entry) => entry.id !== device.id)
       })
+      if (device.tunnel && device.hostId) await this.tunnels.remove(device.hostId)
       this.log(`Removed ${device.name}${device.hostId ? ' and revoked Host authorization' : ''}`)
       return this.snapshot()
     })
@@ -256,6 +282,10 @@ export class Workbench {
       if (!this.shortcut.registered)
         throw new Error('Register an available return shortcut in settings first')
       const device = this.device(input)
+      if (device.tunnel && device.hostId) {
+        await this.tunnels.start(device.hostId, device.tunnel)
+        await this.tunnels.verify(device.hostId)
+      }
       if (device.hostId) {
         const host = await this.hosts.refresh(device.hostId)
         this.changed()
@@ -287,6 +317,14 @@ export class Workbench {
 
   async probe(input: unknown): Promise<ProbeResult> {
     const device = this.device(input)
+    if (device.tunnel && device.hostId) {
+      try {
+        await this.tunnels.start(device.hostId, device.tunnel)
+        await this.tunnels.verify(device.hostId)
+      } catch (error) {
+        return { reachable: false, message: readableError(error) }
+      }
+    }
     if (!device.hostId) return probeSunshine(device.host)
     const host = await this.hosts.refresh(device.hostId)
     this.changed()
@@ -304,7 +342,7 @@ export class Workbench {
     return discoverHosts()
   }
 
-  pairHost(input: unknown): Promise<AppState> {
+  pairHost(input: unknown, tunnel?: TunnelEndpoint): Promise<AppState> {
     return this.queue.run(async () => {
       if (this.session.state.pid !== null) throw new Error('Disconnect before pairing Host')
       const ticket = z.string().max(16000).parse(input)
@@ -318,12 +356,14 @@ export class Workbench {
         host: host.address,
         appName: existing?.appName || 'Desktop',
         volume: existing?.volume ?? 100,
-        muted: existing?.muted ?? false
+        muted: existing?.muted ?? false,
+        ...(tunnel ? { tunnel } : {})
       }
       const devices = existing
         ? this.config.devices.map((entry) => (entry.id === device.id ? device : entry))
         : [...this.config.devices, device]
       await this.persist({ ...this.config, devices })
+      if (existing?.tunnel && !tunnel) await this.tunnels.stop(host.id)
       this.log(`${host.name} Host pairing completed`)
       return this.snapshot()
     })
@@ -337,6 +377,7 @@ export class Workbench {
     await this.queue.drain()
     await this.clipboard.stop()
     await this.session.disconnect()
+    await this.tunnels.close()
   }
   cancelClipboardTransfer(): void {
     this.clipboard.cancel()

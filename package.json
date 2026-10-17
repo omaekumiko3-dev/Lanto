@@ -1,7 +1,7 @@
 {
   "name": "lanto",
   "productName": "Lanto",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A personal LAN remote workspace.",
   "private": true,
   "license": "UNLICENSED",
@@ -23,9 +23,10 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src tests scripts electron.vite.config.ts tsconfig*.json package.json .prettierrc.json",
     "format:check": "prettier --check src tests scripts electron.vite.config.ts tsconfig*.json package.json .prettierrc.json",
-    "test": "node --test tests/*.test.ts",
+    "test": "node --test tests/*.test.ts tests/*.test.mjs && npm run test:tunnel",
+    "test:tunnel": "go -C native/tunnel test ./...",
     "test:smoke": "npm run build && node scripts/smoke.mjs",
-    "build": "npm run typecheck && electron-vite build && npm run host:build && node scripts/build-deploy.mjs",
+    "build": "npm run typecheck && electron-vite build && npm run host:build && node scripts/build-tunnel.mjs && node scripts/build-deploy.mjs",
     "icons": "node scripts/build-icons.mjs"
   },
   "dependencies": {

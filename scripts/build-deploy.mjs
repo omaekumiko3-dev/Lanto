@@ -24,8 +24,9 @@ try {
     .update(await readFile(archive))
     .digest('hex')
   await writeFile(join(destination, 'manifest.json'), JSON.stringify({ sha256 }, null, 2) + '\n')
-  for (const name of ['agent.mjs', 'catalog.json'])
+  for (const name of ['agent.mjs', 'tunnel.mjs', 'catalog.json'])
     await cp(join(root, 'scripts/deploy', name), join(destination, name))
+  await cp(join(root, 'out/tunnel'), join(destination, 'tunnel'), { recursive: true })
   console.log('SSH deployment resources built')
 } finally {
   if (!resolve(stage).startsWith(resolve(destination) + sep) || !stage.includes('.build-'))

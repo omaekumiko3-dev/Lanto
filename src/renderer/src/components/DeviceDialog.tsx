@@ -65,17 +65,45 @@ export function DeviceDialog({
               </select>
             </label>
             <label>
-              IP address or hostname
+              {draft.tunnel ? 'Tunnel endpoint' : 'IP address or hostname'}
               <input
                 required={Boolean(device.hostId)}
-                value={draft.host}
-                onChange={(event) => setDraft({ ...draft, host: event.target.value })}
+                value={draft.tunnel?.address || draft.host}
+                onChange={(event) =>
+                  setDraft(
+                    draft.tunnel
+                      ? { ...draft, tunnel: { ...draft.tunnel, address: event.target.value } }
+                      : { ...draft, host: event.target.value }
+                  )
+                }
                 placeholder="e.g. 192.168.1.20"
                 maxLength={253}
                 spellCheck={false}
               />
             </label>
           </div>
+          {draft.tunnel && (
+            <label>
+              Tunnel UDP port
+              <input
+                required
+                type="number"
+                min={1}
+                max={65535}
+                value={draft.tunnel.port}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    tunnel: { ...draft.tunnel!, port: Number(event.target.value) }
+                  })
+                }
+              />
+              <small>
+                Encrypted device-to-device connection with no account or relay. The endpoint must be
+                directly reachable; a router mapping forwards this UDP port to 48200 on the target.
+              </small>
+            </label>
+          )}
           <label>
             Sunshine application name
             <input

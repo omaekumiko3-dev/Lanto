@@ -44,6 +44,12 @@ export async function bootstrapNode(
 }
 
 const messages: Record<string, string> = {
+  'tunnel-configuration-invalid':
+    'The target tunnel configuration belongs to another installation or is invalid; its keys were preserved',
+  'tunnel-peer-invalid': 'The tunnel peer identity does not match the target Host',
+  'tunnel-peer-limit': 'This target has reached its limit of 64 tunnel peers',
+  'tunnel-service-conflict':
+    'An existing service uses the tunnel service name; its configuration was preserved',
   'linux-clipboard-dependencies':
     'Install Python 3 and GTK 3 on Linux, then continue deploying the desktop component',
   'administrator-required':
@@ -101,6 +107,7 @@ export async function runAgent(
 
 export const deploymentFiles = (root: string) => ({
   agent: join(root, 'agent.mjs'),
+  tunnel: join(root, 'tunnel.mjs'),
   bundle: join(root, 'host-runtime.tar.gz'),
   manifest: join(root, 'manifest.json')
 })

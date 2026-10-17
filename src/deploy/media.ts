@@ -59,7 +59,7 @@ export async function pairMedia(
     signal.throwIfAborted()
     if (code !== 0 || !output.includes('LANTO_PAIR_RESULT:success'))
       throw new Error(
-        'Display pairing failed; check that Sunshine is ready and LAN ports are reachable'
+        'Display pairing failed; check that Sunshine is ready and the connection can reach its streaming ports'
       )
   } finally {
     clearTimeout(timeout)

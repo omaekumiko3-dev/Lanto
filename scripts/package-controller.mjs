@@ -82,7 +82,7 @@ await writeFile(
 )
 await writeFile(
   join(output, 'Getting Started.txt'),
-  'Open Lanto.exe → Add device → Enter the target SSH address and credentials → Confirm the host fingerprint → Deploy.\r\nIncludes the display client and Host deployment program; no Node.js or Moonlight installation is required on this computer. Internet access is required to download missing components for the target during initial setup.\r\nThe target must have SSH enabled and be signed in to the desktop. Allow screen recording and accessibility permissions on the target macOS system.\r\n'
+  'Open Lanto.exe → Add device → Enter the target SSH address and credentials → Confirm the host fingerprint → Deploy.\r\nFor an account-free encrypted tunnel, select Encrypted direct tunnel. Set a reachable endpoint (public IPv6 or public IP/hostname with UDP forwarding). The target listens on UDP 48200. There is no relay; restrictive NAT can prevent direct connections. Initial provisioning still requires reachable SSH.\r\nIncludes the display client, direct tunnel helpers, and Host deployment program; no Go, Node.js, WireGuard client, account, or Moonlight installation is required on this computer. Internet access is required to download missing remote components during initial setup.\r\nThe target must have SSH enabled and be signed in to the desktop. Allow screen recording, accessibility, and applicable local-network prompts on macOS.\r\n'
 )
 const zip = output + '.zip'
 const packed = spawnSync(

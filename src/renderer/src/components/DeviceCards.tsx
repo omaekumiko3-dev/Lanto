@@ -24,7 +24,11 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
               </span>
               <span className="device-identity">
                 <strong>{device.name}</strong>
-                <small>{device.host || 'Address not set'}</small>
+                <small>
+                  {device.tunnel
+                    ? `${device.tunnel.address} · UDP ${device.tunnel.port}`
+                    : device.host || 'Address not set'}
+                </small>
               </span>
               <button
                 type="button"
@@ -52,7 +56,10 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
               </button>
             </div>
             <div className="device-card-footer">
-              <span className="platform-label">{platformNames[device.platform]}</span>
+              <span className="platform-label">
+                {platformNames[device.platform]}
+                {device.tunnel ? ' · Direct tunnel' : ''}
+              </span>
               <span className={`probe-label ${inUse || reachable ? 'reachable' : ''}`}>
                 <span className="status-dot" />
                 {inUse

@@ -19,6 +19,7 @@ import { homedir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
 import https from 'node:https'
 import { setTimeout as delay } from 'node:timers/promises'
+import { createTunnelAgent } from './tunnel.mjs'
 
 const exists = (path) =>
   access(path).then(
@@ -471,7 +472,9 @@ async function mediaPin() {
   }
   const csrf = (await api('/api/csrf-token', auth)).csrf_token
   const normalize = (value) => value?.replace(/^::ffff:/, '')
-  const address = normalize((process.env.SSH_CONNECTION || '').split(' ')[0])
+  const address = request.tunnelControllerId
+    ? await tunnelAgent().peerAddress()
+    : normalize((process.env.SSH_CONNECTION || '').split(' ')[0])
   for (let i = 0; i < 35; i++) {
     const response = await api('/api/pin', auth, csrf)
     const pending = (response.pairings || []).filter(
@@ -500,6 +503,7 @@ async function main() {
   if (request.action === 'host') return ensureHost()
   if (request.action === 'sunshine') return ensureSunshine()
   if (request.action === 'network') return configureNetwork()
+  if (request.action === 'tunnel') return tunnelAgent().ensure()
   if (request.action === 'ticket') {
     const output = await hostCommand('pair')
     const ticket = output.match(/LANTO1\.[A-Za-z0-9_-]+/)
@@ -509,6 +513,22 @@ async function main() {
   if (request.action === 'status') return { host: JSON.parse(await hostCommand('status')) }
   if (request.action === 'media-pin') return mediaPin()
   throw new Error('invalid-action')
+}
+function tunnelAgent() {
+  return createTunnelAgent({
+    request,
+    system,
+    home,
+    run,
+    must,
+    ps,
+    psQuote,
+    sudo,
+    verify,
+    exists,
+    launchAgent,
+    userEnvironment
+  })
 }
 try {
   console.log(

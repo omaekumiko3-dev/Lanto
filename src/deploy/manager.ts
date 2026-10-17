@@ -15,6 +15,9 @@ import { downloadAsset, loadCatalog, selectAssets, sha256 } from './assets.ts'
 import { bootstrapNode, createStage, deploymentFiles, runAgent } from './bootstrap.ts'
 import { pairMedia } from './media.ts'
 import { canConnect } from '../common/tcp.ts'
+import { DirectTunnels } from '../controller/tunnel.ts'
+import { tunnelEndpointText } from '../protocol/tunnel.ts'
+import type { TunnelEndpoint } from '../protocol/tunnel.ts'
 
 export class DeploymentManager {
   private view: DeploymentView = initialDeployment()
@@ -25,13 +28,20 @@ export class DeploymentManager {
   private idle?: ReturnType<typeof setTimeout>
   private stage?: string
   private macPermissions = false
+  private connectionAddress?: string
+  private ticket?: string
+  private tunnelHostId?: string
+  private tunnelPublicKey?: string
+  private tunnelConfigured = false
   private readonly options: {
     directory: string
     resources: string
     changed: () => void
-    pair: (ticket: string) => Promise<string>
+    pair: (ticket: string, tunnel?: TunnelEndpoint) => Promise<string>
     media: () => Promise<string | null>
     available: () => boolean
+    tunnels?: DirectTunnels
+    controllerId?: () => string
   }
   constructor(options: DeploymentManager['options']) {
     this.options = options
@@ -46,6 +56,9 @@ export class DeploymentManager {
   private step(id: string, patch: Partial<DeploymentStep>): void {
     this.view.steps = this.view.steps.map((step) => (step.id === id ? { ...step, ...patch } : step))
     this.options.changed()
+  }
+  private complete(id: string): boolean {
+    return this.view.steps.some((step) => step.id === id && step.phase === 'complete')
   }
   private expire(): void {
     clearTimeout(this.idle)
@@ -71,7 +84,18 @@ export class DeploymentManager {
     this.input = input
     this.stage = undefined
     this.macPermissions = false
-    this.view = { phase: 'connecting', name: input.name, host: input.host, steps: [] }
+    this.connectionAddress = input.host
+    this.ticket = undefined
+    this.tunnelHostId = undefined
+    this.tunnelPublicKey = undefined
+    this.tunnelConfigured = false
+    this.view = {
+      phase: 'connecting',
+      name: input.name,
+      host: input.host,
+      network: input.network,
+      steps: []
+    }
     this.options.changed()
     void (async () => {
       await ssh.connect(input, this.options.directory, async (fingerprint, previousFingerprint) => {
@@ -121,14 +145,23 @@ export class DeploymentManager {
               ? 'Preserve Host identity, certificates, and configuration'
               : 'Install Host and desktop components'
           },
-          { id: 'network', title: 'Check network access', phase: 'pending' },
+          {
+            id: 'network',
+            title:
+              input.network === 'tunnel'
+                ? 'Create encrypted direct tunnel'
+                : 'Check network access',
+            phase: 'pending'
+          },
           { id: 'pair', title: 'Add device automatically', phase: 'pending' },
           { id: 'media', title: 'Complete display pairing', phase: 'pending' }
         ],
         message:
           system.platform === 'windows' && !system.administrator
             ? 'Windows installation requires an administrator SSH account; switch accounts and reconnect'
-            : 'Inspection complete; ready to deploy'
+            : input.network === 'tunnel'
+              ? 'Ready to connect the two devices directly. The target must be reachable through IPv6 or a UDP port mapping; no account or relay is used'
+              : 'Inspection complete; ready to deploy'
       })
       this.expire()
     })().catch((error: unknown) => {
@@ -200,6 +233,7 @@ export class DeploymentManager {
       }
       await bootstrapNode(ssh, system, stage, assets.node)
       await ssh.upload(files.agent, stage + '/agent.mjs', progress('Upload deployment program'))
+      await ssh.upload(files.tunnel, stage + '/tunnel.mjs', progress('Upload direct tunnel setup'))
       const manifest = JSON.parse(await readFile(files.manifest, 'utf8')) as { sha256: string }
       if ((await sha256(files.bundle)) !== manifest.sha256)
         throw new Error('The local Host package is incomplete; reinstall Lanto')
@@ -235,19 +269,105 @@ export class DeploymentManager {
       if (typeof host.runtime === 'string') system.hostRuntime = host.runtime
       system.hostInstalled = true
       this.step('host', { phase: 'complete' })
+    }
+    const tunnelEndpoint: TunnelEndpoint | undefined =
+      input.network === 'tunnel'
+        ? { address: input.tunnelAddress || input.host, port: input.tunnelPort }
+        : undefined
+    if (!this.complete('pair')) {
+      const response = await runAgent(ssh, system, this.stage!, { action: 'ticket' })
+      this.ticket = z.string().parse(response.ticket)
+      if (tunnelEndpoint && decodeTicket(this.ticket).port !== 48199)
+        throw new Error(
+          'The direct tunnel currently requires Host port 48199; the target configuration was preserved'
+        )
+    }
+    if (!this.complete('network')) {
       this.step('network', { phase: 'running' })
-      const reachable = await Promise.all([
-        canConnect(input.host, 48199),
-        canConnect(input.host, 47989)
-      ])
-      if (!reachable.every(Boolean))
-        await runAgent(ssh, system, stage, { ...payload, action: 'network' })
+      if (tunnelEndpoint) {
+        const tunnels = this.options.tunnels
+        if (!tunnels || !this.options.controllerId)
+          throw new Error('This controller has no direct tunnel support')
+        const hostId = decodeTicket(this.ticket!).hostId
+        this.tunnelHostId = hostId
+        this.tunnelPublicKey = await tunnels.key(hostId)
+        if (!this.tunnelConfigured) {
+          const folder = join(this.options.resources, 'tunnel')
+          const manifest = JSON.parse(await readFile(join(folder, 'manifest.json'), 'utf8')) as {
+            assets: { platform: string; architecture: string; name: string; sha256: string }[]
+          }
+          const asset = manifest.assets.find(
+            (value) =>
+              value.platform === system.platform && value.architecture === system.architecture
+          )
+          if (
+            !asset ||
+            !/^lanto-tunnel-[a-z0-9.-]+$/.test(asset.name) ||
+            (await sha256(join(folder, asset.name))) !== asset.sha256
+          )
+            throw new Error(
+              'The target tunnel component is missing or failed its integrity check; rebuild or reinstall Lanto'
+            )
+          await ssh.upload(
+            join(folder, asset.name),
+            this.stage! + '/' + asset.name,
+            progress('Upload direct tunnel component')
+          )
+          const peer = await runAgent(ssh, system, this.stage!, {
+            action: 'tunnel',
+            hostId,
+            asset,
+            tunnelControllerId: this.options.controllerId(),
+            tunnelPublicKey: this.tunnelPublicKey,
+            administratorPassword: input.administratorPassword || input.password
+          })
+          await tunnels.configure(hostId, { publicKey: peer.publicKey, address: peer.address })
+          this.tunnelConfigured = true
+        }
+        this.update({
+          message: 'Checking the encrypted connection between these two devices…',
+          tunnelEndpoint: tunnelEndpointText(tunnelEndpoint),
+          progress: undefined
+        })
+        this.connectionAddress = await tunnels.start(hostId, tunnelEndpoint)
+        try {
+          await tunnels.verify(hostId, signal)
+        } catch (error) {
+          signal.throwIfAborted()
+          this.step('network', { phase: 'attention' })
+          this.update({
+            phase: 'attention',
+            message:
+              error instanceof Error ? error.message : 'The direct tunnel could not be verified',
+            progress: undefined
+          })
+          this.expire()
+          return
+        }
+        this.step('network', {
+          detail: 'Encrypted device-to-device connection · ' + tunnelEndpointText(tunnelEndpoint)
+        })
+      } else {
+        const reachable = await Promise.all([
+          canConnect(input.host, 48199),
+          canConnect(input.host, 47989)
+        ])
+        if (!reachable.every(Boolean))
+          await runAgent(ssh, system, this.stage!, {
+            action: 'network',
+            administratorPassword: input.administratorPassword || input.password
+          })
+      }
       this.step('network', { phase: 'complete' })
+    }
+    if (!this.complete('pair')) {
       this.step('pair', { phase: 'running' })
-      const response = await runAgent(ssh, system, stage, { action: 'ticket' })
-      const ticket = decodeTicket(z.string().parse(response.ticket))
-      // Connect to the exact SSH destination, even if a reused Host advertises an old IP.
-      const deviceId = await this.options.pair(encodeTicket({ ...ticket, address: input.host }))
+      const ticket = decodeTicket(this.ticket!)
+      // SSH authenticates the Host identity; the tunnel has its own pinned peer key.
+      const deviceId = await this.options.pair(
+        encodeTicket({ ...ticket, address: this.connectionAddress! }),
+        tunnelEndpoint
+      )
       signal.throwIfAborted()
       this.update({ deviceId })
       this.step('pair', { phase: 'complete' })
@@ -266,7 +386,7 @@ export class DeploymentManager {
     const executable = await this.options.media()
     if (!executable)
       throw new Error('Select a display client in Lanto settings, then inspect again to continue')
-    await pairMedia(executable, input.host, signal, async (pin) => {
+    await pairMedia(executable, this.connectionAddress!, signal, async (pin) => {
       await runAgent(
         ssh,
         system,
@@ -274,6 +394,12 @@ export class DeploymentManager {
         {
           action: 'media-pin',
           pin,
+          ...(tunnelEndpoint
+            ? {
+                tunnelControllerId: this.options.controllerId!(),
+                tunnelPublicKey: this.tunnelPublicKey
+              }
+            : {}),
           ...(input.sunshineUsername && input.sunshinePassword
             ? { mediaAuth: { username: input.sunshineUsername, password: input.sunshinePassword } }
             : {})
@@ -291,7 +417,9 @@ export class DeploymentManager {
     signal.throwIfAborted()
     this.update({
       phase: 'complete',
-      message: 'Device added and display paired; the remote desktop is ready to connect',
+      message: tunnelEndpoint
+        ? 'Encrypted direct tunnel verified and display paired; this device is ready without an account or relay'
+        : 'Device added and display paired; the remote desktop is ready to connect',
       progress: undefined
     })
     this.release()
@@ -323,6 +451,9 @@ export class DeploymentManager {
     this.abort = undefined
     this.ssh?.close()
     this.ssh = undefined
+    this.ticket = undefined
+    if (this.tunnelHostId && !this.view.deviceId)
+      void this.options.tunnels?.stop(this.tunnelHostId).catch(() => {})
     if (this.input) {
       this.input.password = ''
       this.input.passphrase = ''

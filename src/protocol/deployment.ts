@@ -1,9 +1,13 @@
 import { z } from 'zod'
 import { endpointSchema } from './host.ts'
+import { tunnelAddressSchema } from './tunnel.ts'
 
 export const sshConnectionSchema = z
   .object({
     name: z.string().trim().min(1).max(50),
+    network: z.enum(['direct', 'tunnel']).default('direct'),
+    tunnelAddress: z.union([z.literal(''), tunnelAddressSchema]).default(''),
+    tunnelPort: z.number().int().min(1).max(65535).default(48200),
     host: endpointSchema.shape.address,
     port: z.number().int().min(1).max(65535).default(22),
     username: z
@@ -80,6 +84,8 @@ export interface DeploymentView {
   phase: DeploymentPhase
   name?: string
   host?: string
+  network?: 'direct' | 'tunnel'
+  tunnelEndpoint?: string
   fingerprint?: string
   previousFingerprint?: string
   system?: RemoteSystem

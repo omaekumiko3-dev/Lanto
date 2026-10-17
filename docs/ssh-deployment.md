@@ -4,7 +4,7 @@ On the Windows controller, **Add device** opens the SSH setup wizard. Enter the 
 
 ## Requirements and scope
 
-- The target must have SSH and SFTP enabled, with its SSH and LAN streaming ports reachable from the controller. Video uses a direct connection, not an SSH tunnel.
+- The target must have SSH and SFTP enabled, with SSH reachable from the controller during setup. Local/direct mode also requires reachable streaming ports. Encrypted direct tunnel mode carries those ports over a device-to-device UDP connection; see [direct tunnel setup](direct-tunnel.md).
 - Windows requires an administrator SSH account and a signed-in desktop user. On macOS and Linux, connect as the desktop user; system package installation uses sudo when required. Desktop services do not run as root.
 - Windows and macOS select official x64 or ARM64 packages automatically. Fresh Linux installation supports Ubuntu 22.04, 24.04, and 26.04 on amd64 and arm64. Other Linux distributions can reuse installed Sunshine. Desktop clipboard support requires Python 3, GTK 3, a systemd user session, and a working X11 or Xwayland clipboard bridge.
 - The controller needs internet access to download missing Node.js or Sunshine packages. Linux may also need access to package repositories. Existing components are reused without a forced upgrade.
@@ -27,7 +27,7 @@ Cancellation stops subsequent steps and closes SSH. An operating system installe
 
 ## Packaging
 
-Build the controller and Host:
+Build the controller and Host with Node.js and Go 1.26.4 or newer (for the bundled direct tunnel):
 
 ```powershell
 npm ci
@@ -42,6 +42,6 @@ On a Mac with Xcode command line tools, run `node scripts/build-mac-clipboard.mj
 node scripts/package-controller.mjs C:\path\to\native-player
 ```
 
-Output is `out/release/Lanto-0.2.0-win-x64/` and a matching ZIP. It contains Electron, runtime dependencies, the player, Host archive, pinned component catalog, native patches, and build instructions. Launch `Lanto.exe`; no separate Node.js or Moonlight installation is required on the controller. User configuration is stored outside the release folder. The packaging script requires a new output directory and refuses to overwrite an existing one.
+Output is `out/release/Lanto-0.3.0-win-x64/` and a matching ZIP. It contains Electron, runtime dependencies, the player, Host archive, pinned component catalog, native patches, and build instructions. Launch `Lanto.exe`; no separate Node.js or Moonlight installation is required on the controller. User configuration is stored outside the release folder. The packaging script requires a new output directory and refuses to overwrite an existing one.
 
 Components are pinned to Node.js 24.22.0 and Sunshine v2026.914.233613. Digests come from the [official Node.js checksums](https://nodejs.org/dist/v24.22.0/SHASUMS256.txt) and [official Sunshine release](https://github.com/LizardByte/Sunshine/releases/tag/v2026.914.233613). Installation follows the [Sunshine documentation](https://docs.lizardbyte.dev/projects/sunshine/latest/md_docs_2getting__started.html). Version changes require updates to `scripts/deploy/catalog.json` and renewed verification.

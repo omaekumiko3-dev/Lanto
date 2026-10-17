@@ -7,6 +7,9 @@ import { Icon } from '../Icon.tsx'
 
 const empty: SshConnectionInput = {
   name: '',
+  network: 'direct',
+  tunnelAddress: '',
+  tunnelPort: 48200,
   host: '',
   port: 22,
   username: '',
@@ -33,6 +36,7 @@ export function DeployDialog({
 }) {
   const [draft, setDraft] = useState<SshConnectionInput>({
     ...empty,
+    network: view.network || 'direct',
     name: view.name || '',
     host: view.host || ''
   })
@@ -83,6 +87,23 @@ export function DeployDialog({
               Connect once to configure the remote desktop automatically. SSH must be enabled and
               the target desktop signed in.
             </p>
+            <label>
+              Connection mode
+              <select
+                aria-label="Connection mode"
+                value={draft.network || 'direct'}
+                onChange={(event) => field('network', event.target.value)}
+              >
+                <option value="direct">Local network / direct connection</option>
+                <option value="tunnel">Encrypted direct tunnel · no account</option>
+              </select>
+              {draft.network === 'tunnel' && (
+                <small>
+                  Connect these two devices without an account or relay. Set up over reachable SSH
+                  first; future connections use the tunnel.
+                </small>
+              )}
+            </label>
             <div className="form-columns">
               <label>
                 Device name
@@ -132,6 +153,42 @@ export function DeployDialog({
                 />
               </label>
             </div>
+            {draft.network === 'tunnel' && (
+              <div className="form-columns deploy-address">
+                <label>
+                  Tunnel endpoint
+                  <input
+                    aria-label="Tunnel endpoint"
+                    aria-describedby="tunnel-endpoint-help"
+                    maxLength={253}
+                    spellCheck={false}
+                    value={draft.tunnelAddress || ''}
+                    onChange={(event) => field('tunnelAddress', event.target.value)}
+                    placeholder="Leave blank to use the SSH address"
+                  />
+                  <small id="tunnel-endpoint-help">
+                    Use the target’s public IPv6, public IP, or hostname when connecting across
+                    networks. Without a reachable endpoint, this mode cannot connect.
+                  </small>
+                </label>
+                <label>
+                  Tunnel UDP port
+                  <input
+                    aria-label="Tunnel UDP port"
+                    aria-describedby="tunnel-port-help"
+                    required
+                    type="number"
+                    min={1}
+                    max={65535}
+                    value={draft.tunnelPort || 48200}
+                    onChange={(event) => field('tunnelPort', Number(event.target.value))}
+                  />
+                  <small id="tunnel-port-help">
+                    Forward this external UDP port to port 48200 on the target if using a router.
+                  </small>
+                </label>
+              </div>
+            )}
             <label>
               Authentication method
               <select
@@ -267,6 +324,11 @@ export function DeployDialog({
                   : ''}
               </span>
             </div>
+            {view.tunnelEndpoint && (
+              <p className="form-intro">
+                Direct tunnel endpoint: <strong>{view.tunnelEndpoint}</strong>
+              </p>
+            )}
             {view.phase === 'host-key' ? (
               <div className="host-key-review">
                 <p>{view.message}</p>
@@ -379,6 +441,20 @@ export function DeployDialog({
                   onClick={() => void action(() => api.startDeployment())}
                 >
                   Continue verification
+                </button>
+              )}
+              {view.phase === 'attention' && view.network === 'tunnel' && (
+                <button
+                  className="button secondary"
+                  disabled={starting}
+                  onClick={() =>
+                    void action(async () => {
+                      await api.cancelDeployment()
+                      setEditing(true)
+                    })
+                  }
+                >
+                  Edit connection
                 </button>
               )}
               {['failed', 'cancelled', 'complete'].includes(view.phase) && (

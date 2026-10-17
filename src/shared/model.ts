@@ -1,6 +1,7 @@
 import type { DiscoveredHost, TrustedHostView } from '../protocol/host.ts'
 import type { ClipboardView } from '../protocol/clipboard.ts'
 import type { DeploymentView, SshConnectionInput } from '../protocol/deployment.ts'
+import type { TunnelEndpoint } from '../protocol/tunnel.ts'
 export type Platform = 'linux' | 'macos' | 'windows'
 
 export interface DeviceAudio {
@@ -15,6 +16,7 @@ export interface Device extends DeviceAudio {
   platform: Platform
   appName: string
   hostId?: string
+  tunnel?: TunnelEndpoint
 }
 
 export type DeviceInput = Omit<Device, 'id' | keyof DeviceAudio> &
