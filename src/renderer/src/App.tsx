@@ -101,16 +101,6 @@ export function App() {
           cancel={() => void run('clipboard-cancel', () => api.cancelClipboardTransfer())}
           openFiles={() => void run('clipboard-files', () => api.openClipboardFiles())}
         />
-        <div className="workspace-tools">
-          <button
-            className="text-button"
-            disabled={Boolean(busy) || !state.runtime.moonlightPath || active}
-            onClick={() => void run('pair', () => api.openMoonlight())}
-          >
-            <Icon name="external" size={13} />
-            Pair Screen
-          </button>
-        </div>
       </main>
 
       {pairOpen && (

@@ -490,15 +490,6 @@ h1 span {
   margin-top: 8px;
   accent-color: #73b894;
 }
-.workspace-tools {
-  display: flex;
-  justify-content: flex-end;
-  padding: 16px 2px 22px;
-}
-.workspace-tools .text-button {
-  color: #7e8d8f;
-  font-size: 11px;
-}
 .notice {
   display: flex;
   align-items: center;
