@@ -47,7 +47,7 @@ export const settingsSchema = z
       .max(4096)
       .refine((value) => !/[\u0000-\u001f]/.test(value)),
     returnShortcut: cleanText(80),
-    resolution: z.enum(['2560x1440', '1920x1080']),
+    resolution: z.enum(['3840x2160', '2560x1440', '1920x1080']),
     fps: z.number().int().min(15).max(60),
     bitrateMbps: z.number().int().min(5).max(100),
     windowMode: z.enum(['borderless', 'windowed']),

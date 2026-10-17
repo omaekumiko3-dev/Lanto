@@ -129,6 +129,7 @@ try {
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByRole('dialog').waitFor()
   const resolution = page.getByLabel('Resolution', { exact: true })
+  assert.equal(await resolution.inputValue(), '3840x2160')
   await resolution.click()
   await page.waitForFunction(() => document.querySelector('select:open'))
   await page.screenshot({ path: join(artifacts, 'select-compact.png') })
@@ -138,7 +139,7 @@ try {
   await resolution.press('Space')
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
-  assert.equal(await resolution.inputValue(), '1920x1080')
+  assert.equal(await resolution.inputValue(), '2560x1440')
   await page.getByRole('button', { name: 'Save settings', exact: true }).focus()
   await page.keyboard.press('Tab')
   assert.equal(
@@ -256,11 +257,16 @@ try {
 
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByLabel('Disconnect shortcut').fill('Control+Alt+Shift+F11')
-  await page.getByLabel('Bitrate (Mbps)').fill('35')
+  await page.getByLabel('Resolution', { exact: true }).selectOption('3840x2160')
+  await page.getByLabel('Frame rate', { exact: true }).selectOption('30')
+  await page.getByLabel('Bitrate (Mbps)', { exact: true }).fill('75')
   await page.getByLabel('Cursor display').selectOption('true')
   await page.getByRole('button', { name: 'Save settings', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
-  assert.equal((await page.evaluate(() => window.lanto.getState())).config.settings.bitrateMbps, 35)
+  const savedVideo = (await page.evaluate(() => window.lanto.getState())).config.settings
+  assert.equal(savedVideo.resolution, '3840x2160')
+  assert.equal(savedVideo.fps, 30)
+  assert.equal(savedVideo.bitrateMbps, 75)
   assert.equal(
     (await page.evaluate(() => window.lanto.getState())).config.settings.localCursor,
     true
@@ -491,6 +497,9 @@ setInterval(() => {}, 1000);
   assert.equal(records[0].args[1], 'Desktop')
   assert.equal(records[2].args[1], 'Next Desktop')
   assert.equal(records[0].args[0], 'linux1.local')
+  assert.equal(records[0].args[records[0].args.indexOf('--resolution') + 1], '3840x2160')
+  assert.equal(records[0].args[records[0].args.indexOf('--fps') + 1], '30')
+  assert.equal(records[0].args[records[0].args.indexOf('--bitrate') + 1], '75000')
   assert.equal(records[2].args[0], '192.0.2.21')
   assert.equal(records[2].args[records[2].args.indexOf('--bitrate') + 1], '36000')
   assert.equal(records[2].initialVolume, '0')
@@ -516,7 +525,9 @@ setInterval(() => {}, 1000);
   assert.equal(persisted.config.devices[0].name, 'Build Linux')
   assert.equal(persisted.config.devices[0].volume, 48)
   assert.equal(persisted.config.devices[0].muted, true)
-  assert.equal(persisted.config.settings.bitrateMbps, 35)
+  assert.equal(persisted.config.settings.resolution, '3840x2160')
+  assert.equal(persisted.config.settings.fps, 30)
+  assert.equal(persisted.config.settings.bitrateMbps, 75)
   assert.equal(persisted.config.settings.shareFiles, true)
   assert.equal(persisted.config.settings.shareClipboard, false)
   assert.equal(persisted.config.settings.showPerformanceOverlay, false)

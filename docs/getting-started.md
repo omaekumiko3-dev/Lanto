@@ -51,7 +51,9 @@ Use the switch on a device card to connect or disconnect. Only one stream can be
 
 Adjust each card's volume or mute independently. These settings change playback on your controller, not the target's system volume.
 
-In Settings, choose resolution, frame rate, bitrate, and window mode. Start with defaults and change one setting at a time. Performance data is optional. Experimental options require compatible native components; see [native notes](../native/README.md).
+In Settings, choose resolution, frame rate, bitrate, and window mode independently. New profiles start at **4K (3840 × 2160), 30 FPS, and 60 Mbps**. Existing profiles keep their saved choices; select the new values and reconnect to apply them. 1440p and 1080p remain available, with 15/30/60 FPS and a manually adjustable 5–100 Mbps bitrate.
+
+For sharper desktop text, match the stream resolution to your controller display and check the target's desktop resolution. Lanto does not automatically resize the target desktop. A higher bitrate preserves more image detail but needs more network bandwidth; lower it if your connection cannot sustain it. Performance data is optional. Experimental options require compatible native components; see [native notes](../native/README.md).
 
 ![Actual stream settings](images/screenshots/settings.png)
 

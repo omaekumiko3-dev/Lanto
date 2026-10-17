@@ -169,16 +169,16 @@ Media travels directly between Windows and the target host, without NAS, cloud, 
 
 ## Performance records and initial acceptance targets
 
-Only 2K at 30fps is a user-specified display requirement. The time thresholds below are candidate engineering targets for stage zero, not measured results or hardware guarantees. If the baseline falls short, identify the bottleneck before adjusting the target or implementation.
+The initial display requirement was 2K at 30fps. It was revised on 2026-10-17 to selectable 4K, 30fps, and a higher bitrate for desktop text clarity. The time thresholds below are candidate engineering targets for stage zero, not measured results or hardware guarantees. If the baseline falls short, identify the bottleneck before adjusting the target or implementation.
 
 | Metric | Candidate target or measurement |
 | --- | --- |
-| Resolution and frame rate | 2560×1440, 30fps; encoders may emit frames on demand for a static desktop |
+| Resolution and frame rate | Up to 3840×2160; new profiles use 30fps, with 15/30/60fps selectable. Encoders may emit frames on demand for a static desktop. |
 | Continuous active desktop use | Record presented frame rate, dropped frames, and stutter during scrolling; run for at least 30 minutes |
 | Switching connected sessions | From key event to usable new view; initial P95 target ≤500ms over at least 100 switches |
 | Input-to-video response | Initial P95 target ≤120ms; use external recording or consistent end-to-end measurement, not ping |
 | Cold connection and reconnection | Record first frame, reauthentication, and restored input separately from hot-switch measurements |
-| Bitrate | Test 10/20/35 Mbps and choose based on content, encoder, and text clarity |
+| Bitrate | Start new 4K30 profiles at 60 Mbps; expose 5–100 Mbps and verify text clarity and network headroom on each setup. |
 | Background prewarming cost | Record CPU/GPU/VRAM and network use; do not promise zero overhead when hidden |
 | Game impact | Compare frame times and input with Lanto closed, the console resident, and a prewarmed stream resident |
 | Residual input | Repeated switching and abnormal disconnects must leave no held input; this is a functional pass criterion |

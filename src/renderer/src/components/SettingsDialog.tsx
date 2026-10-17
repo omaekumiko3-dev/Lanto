@@ -52,14 +52,19 @@ export function SettingsDialog({
               <select
                 autoFocus
                 aria-label="Resolution"
+                aria-describedby="resolution-hint"
                 value={draft.resolution}
                 onChange={(event) =>
                   setDraft({ ...draft, resolution: event.target.value as Settings['resolution'] })
                 }
               >
+                <option value="3840x2160">4K · 3840 × 2160</option>
                 <option value="2560x1440">2K · 2560 × 1440</option>
                 <option value="1920x1080">1080p · 1920 × 1080</option>
               </select>
+              <small id="resolution-hint">
+                Match your display for sharper text. The remote desktop keeps its resolution.
+              </small>
             </label>
             <label>
               Frame rate
@@ -79,6 +84,8 @@ export function SettingsDialog({
               Bitrate (Mbps)
               <input
                 type="number"
+                aria-label="Bitrate (Mbps)"
+                aria-describedby="bitrate-hint"
                 required
                 min={5}
                 max={100}
@@ -87,6 +94,9 @@ export function SettingsDialog({
                   setDraft({ ...draft, bitrateMbps: Number(event.target.value) })
                 }
               />
+              <small id="bitrate-hint">
+                Higher values preserve more detail and use more bandwidth.
+              </small>
             </label>
             <label>
               Window mode

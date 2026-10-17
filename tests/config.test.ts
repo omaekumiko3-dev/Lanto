@@ -17,12 +17,20 @@ test('configuration persists a NAS-independent local profile across restarts', a
     assert.deepEqual(original, defaultConfig())
     assert.equal(original.devices.length, 0)
     original.devices.push(deviceFixture())
-    original.settings.bitrateMbps = 35
+    original.settings.resolution = '3840x2160'
+    original.settings.fps = 30
+    original.settings.bitrateMbps = 75
     await store.save(original)
     assert.deepEqual(await new ConfigStore(directory).load(), original)
     original.devices[0]!.name = 'New name'
     await store.save(original)
     assert.equal((await store.load()).devices[0]!.name, 'New name')
+    // New defaults must not overwrite an existing lower-bandwidth profile.
+    original.settings.resolution = '1920x1080'
+    original.settings.fps = 60
+    original.settings.bitrateMbps = 20
+    await store.save(original)
+    assert.deepEqual((await new ConfigStore(directory).load()).settings, original.settings)
   } finally {
     await removeTestDirectory(directory, 'lanto-config-')
   }

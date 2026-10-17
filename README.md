@@ -29,6 +29,7 @@ The project combines a focused device manager, guided SSH setup, a small Host se
 | Manage several computers | Save named devices and connect to one remote desktop at a time. |
 | Set up through SSH | Inspect the target, verify its host fingerprint, and install or reuse the required components through the setup wizard. |
 | Stream desktop, audio, and input | The native player handles video decoding, sound, keyboard, and mouse outside Electron. |
+| Choose stream quality | Select 4K, 1440p, or 1080p and adjust frame rate and bitrate independently. New profiles start at 4K / 30 FPS / 60 Mbps. |
 | Control volume per device | Remember volume and mute locally without changing the remote system volume. |
 | Share a clipboard | Opt in to plain text and images across paired, online Hosts, even when no desktop stream is open. |
 | Move files and folders | Enable file sharing, copy on one computer, wait for the transfer, and paste on another. |
@@ -59,7 +60,7 @@ This early release is an unsigned portable application. Verify its checksum agai
 | Remote Host | Linux | Ubuntu desktop deployment and streaming tested; clipboard access needs a working graphical session. |
 | Controller | macOS / Linux | Source is available; this release does not provide or validate controller packages. |
 
-Desktop sessions up to **2560 × 1440 at 60 fps** were exercised on the tested LAN setups. Actual quality and latency depend on capture support, encoder/decoder hardware, network conditions, and the display. This is a record of compatibility checks, not a performance guarantee. See [verification notes](docs/verification.md).
+Desktop sessions up to **2560 × 1440 at 60 fps** were exercised on the tested LAN setups. A subsequent Windows-to-Linux check also received **3840 × 2160 at 30 fps** with a 60 Mbps bitrate setting. Actual quality and latency depend on capture support, encoder/decoder hardware, network conditions, and the display. This is a record of compatibility checks, not a performance guarantee. See [verification notes](docs/verification.md).
 
 ## How it works
 
