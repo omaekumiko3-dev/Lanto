@@ -99,7 +99,7 @@ All 23 tests, type checking, production build, and Electron smoke testing passed
 The local native client was updated to v5 with existing pairing retained. A real Linux session used HEVC 2560×1440 at 60fps and the existing D3D11VA pipeline; first audio arrived at about 400ms. A low-amplitude PipeWire tone played in the Linux desktop session, and Windows read that Moonlight process's audio-session peaks:
 
 | Card setting | Mean Windows audio-session peak |
-| --- | ---: |
+| ---------------------- | ------------------------------: |
 | 100% | 0.0250318 |
 | 50% | 0.0125154 |
 | 25% | 0.0062579 |
@@ -123,7 +123,7 @@ All 23 core tests, Host TypeScript build, formatting, PowerShell parsing, and wh
 On 2026-10-17, StudioMac, LinuxWorkstation, and WindowsDesktop were connected individually at the user's request. Each existing desktop session played a low-amplitude tone. Device-card sliders and mute buttons were operated, and the controller read the corresponding Moonlight WASAPI session. Results below use each host's stable 100% output as baseline; percentages describe PCM peak ratios, not perceived loudness.
 
 | Host | Measured output at 50% | At 25% | Zero volume / mute | Unmute back to 25% | Restore 37% after reconnect |
-| --- | ---: | ---: | --- | ---: | ---: |
+| ------- | ---------------------: | -----: | ------------------ | -----------------: | --------------------------: |
 | macOS | 50.00% | 25.01% | Both 0 | 24.98% | 36.97% |
 | Linux | 50.00% | 25.00% | Both 0 | 25.00% | 37.01% |
 | Windows | 50.00% | 25.00% | Both 0 | 25.00% | 36.99% |
@@ -141,7 +141,7 @@ On 2026-10-17, shared clipboard and a separate file-sharing switch were added. A
 Connection arguments now include `--audio-on-host`, preserving normal target playback while forwarding the same sound to the controller. Each host was connected and played a low-amplitude tone:
 
 | Host | Target during streaming | Mean controller Moonlight audio-session peak |
-| --- | --- | ---: |
+| ------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------: |
 | macOS | Default remained Mac mini speakers, 50% and unmuted | 0.00502146 |
 | Linux | Physical ALC897 digital output remained 40%; player and Sunshine capture monitor used the same physical device | 0.00502088 |
 | Windows | Default remained Redmi Computer Speakers; physical endpoint peak stayed nonzero | 0.13987496 |
@@ -189,5 +189,17 @@ Validation limits: existing Sunshine and Host installations were not removed to 
 On 2026-10-17, 3840 × 2160 was added to the settings schema and resolution selector. New profiles use 4K, 30 FPS, and 60 Mbps; existing profiles keep their saved settings. Resolution, frame rate, and bitrate remain independently editable. Configuration tests cover both 4K persistence and preservation of an existing 1080p profile. The Electron smoke test saves a custom 75 Mbps 4K30 profile, verifies the native launch arguments, and verifies the saved values after restart. The compact settings layout and updated documentation screenshot were inspected.
 
 The everyday controller was updated after a backup and its settings changed through the actual UI to 4K / 30 FPS / 60 Mbps. All device entries and unrelated preferences were preserved. A Windows-to-Linux connection confirmed `Video stream is 3840x2160x30`, a requested bitrate of `60000 kbps`, receipt of video, and D3D11VA hardware decoding/rendering on a 3840 × 2160 display. The short sample reported 0% network/jitter frame drops, approximately 1 ms average network latency, 1.33 ms average decoding time, and 0.21 ms average rendering time. These component timings are not end-to-end latency, and this short check is not a sustained performance benchmark. The user subsequently confirmed that the image was clear.
+
+### Actual 4K sources on macOS and Windows
+
+Follow-up inspection found that the Mac was rendering a 1920 × 1080 headless fallback desktop, while the Windows host's physical monitor exposed at most 2560 × 1440. Both were being enlarged into a 3840 × 2160 video. The client setting alone had not created a 4K desktop source.
+
+An optional standalone virtual-display helper was compiled on the Apple M2 with warnings treated as errors. CoreGraphics and System Profiler confirmed a 3840 × 2160 framebuffer with 1920 × 1080 logical points. A user LaunchAgent keeps the display alive, and a readiness wrapper orders Sunshine startup after it. A cold restart of both components followed by another real connection passed. Sunshine selected the new display and created a 3840 × 2160 VideoToolbox HEVC session; the controller received 4K30 at a requested 60 Mbps through D3D11VA. The post-restart short sample reported 0% network/jitter drops, about 1 ms average network latency, 3.28 ms decoding, and 0.12 ms rendering. The existing Sunshine binary and permissions were retained. A full OS reboot was not performed for this change.
+
+On Windows, the signed Virtual Display Driver 25.7.23 was verified and installed, with one 4K virtual monitor rendered by the RTX 3080. The archive matched the upstream SHA-256 digest. Windows required establishing the catalog's valid SignPath Foundation signer in Trusted Publishers; only that leaf certificate was added, with its thumbprint and previous trust state recorded for rollback. No root certificate or signature-enforcement setting was changed.
+
+Sunshine was configured to activate only the virtual monitor during a session and restore the original display arrangement on disconnect. Real session logs confirmed both `Capture size: 3840x2160` and `Desktop resolution [3840x2160]`, HEVC NVENC, a 30 FPS request, and receipt of 4K30 at 60 Mbps on the controller. One short sample reported 0% network/jitter drops, approximately 2 ms average network latency, 0.83 ms decoding, and 0.12 ms rendering. A read from the interactive console confirmed that disconnect restored the original 2560 × 1440 physical display and left the virtual monitor inactive.
+
+The first Windows connection after setup timed out during the control handshake. Subsequent connection and reconnection passed; the initial timeout was not treated as a successful sample. On macOS, the existing capture process initially retained stale display information; restarting it after the virtual display became ready resolved that condition. These are short functional checks, not a sustained stability or end-to-end latency benchmark. See [host display setup](host-display.md) for scope and rollback.
 
 The connection was restored with the performance overlay off. The target desktop resolution was not automatically changed. Build/type checking, formatting, all 39 behavior tests, Go tunnel tests, and Electron UI smoke tests passed.

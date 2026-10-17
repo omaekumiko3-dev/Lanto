@@ -5,6 +5,7 @@
 - Add selectable 4K (3840 × 2160) streaming alongside 1440p and 1080p.
 - Start new profiles at 4K, 30 FPS, and 60 Mbps. Existing profiles retain their saved values.
 - Keep resolution, frame rate, and bitrate independently adjustable, with guidance for desktop text clarity and bandwidth.
+- Document true 4K host display setup, including an optional macOS HiDPI virtual-display helper and Windows display restoration after streaming.
 
 ## 0.3.1 — 2026-10-17
 

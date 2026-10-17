@@ -53,7 +53,7 @@ Adjust each card's volume or mute independently. These settings change playback 
 
 In Settings, choose resolution, frame rate, bitrate, and window mode independently. New profiles start at **4K (3840 × 2160), 30 FPS, and 60 Mbps**. Existing profiles keep their saved choices; select the new values and reconnect to apply them. 1440p and 1080p remain available, with 15/30/60 FPS and a manually adjustable 5–100 Mbps bitrate.
 
-For sharper desktop text, match the stream resolution to your controller display and check the target's desktop resolution. Lanto does not automatically resize the target desktop. A higher bitrate preserves more image detail but needs more network bandwidth; lower it if your connection cannot sustain it. Performance data is optional. Experimental options require compatible native components; see [native notes](../native/README.md).
+For sharper desktop text, match the stream resolution to your controller display and check the target's desktop resolution. Lanto does not automatically resize the target desktop. See [host display setup](host-display.md) for a true 4K source on headless Macs and Windows hosts with lower-resolution monitors. A higher bitrate preserves more image detail but needs more network bandwidth; lower it if your connection cannot sustain it. Performance data is optional. Experimental options require compatible native components; see [native notes](../native/README.md).
 
 ![Actual stream settings](images/screenshots/settings.png)
 
