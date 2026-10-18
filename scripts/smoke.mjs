@@ -409,7 +409,9 @@ setInterval(() => {}, 1000);
       if (value === expected) return
       await new Promise((resolve) => setTimeout(resolve, 30))
     }
-    throw new Error(`Audio gain did not reach ${expected}; observed ${JSON.stringify([...observed])}`)
+    throw new Error(
+      `Audio gain did not reach ${expected}; observed ${JSON.stringify([...observed])}`
+    )
   }
   const linuxSwitch = page.getByRole('switch', { name: 'Test Linux connection', exact: true })
   assert.equal(await linuxSwitch.isChecked(), false)
