@@ -9,6 +9,7 @@ StartLimitBurst=5
 ExecStart=/usr/bin/python3 %h/.lanto/display/linux-virtual-display.py --virtual-only
 Restart=on-failure
 RestartSec=5
+TimeoutStopSec=5
 
 [Install]
 WantedBy=graphical-session.target

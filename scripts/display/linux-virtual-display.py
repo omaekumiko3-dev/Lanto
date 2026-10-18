@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import subprocess
 import sys
 import time
 
@@ -25,6 +26,24 @@ VIRTUAL_ONLY = "--virtual-only" in sys.argv
 READY = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "lanto-virtual-display.json"
 SC = "org.gnome.Mutter.ScreenCast"
 DC = "org.gnome.Mutter.DisplayConfig"
+
+
+def stream_linked(graph, node, pid):
+    """A surviving monitor can have a stalled PipeWire producer or consumer."""
+    objects = {item["id"]: item for item in graph}
+    source = objects.get(node, {}).get("info", {})
+    if source.get("state") != "running" or source.get("props", {}).get("media.class") != "Stream/Output/Video":
+        return False
+    for item in graph:
+        link = item.get("info", {})
+        if not item.get("type", "").endswith(":Link") or link.get("output-node-id") != node or link.get("state") != "active":
+            continue
+        sink = objects.get(link.get("input-node-id"), {}).get("info", {})
+        props = sink.get("props", {})
+        client = objects.get(props.get("client.id"), {}).get("info", {}).get("props", {})
+        if sink.get("state") == "running" and props.get("media.class") == "Stream/Input/Video" and str(client.get("application.process.id")) == str(pid):
+            return True
+    return False
 
 
 def proxy(name, path, interface):
@@ -180,7 +199,9 @@ if __name__ == "__main__":
             valid = any(m[0][0] == data["connector"] and any(
                 v[1] == WIDTH and v[2] == HEIGHT and abs(v[3] - RATE) < 1 and v[6].get("is-current")
                 for v in m[1]) for m in state[1])
+            graph = json.loads(subprocess.check_output(["pw-dump"], text=True, timeout=3))
+            valid = valid and stream_linked(graph, data["pipewireNode"], data["pid"])
             sys.exit(0 if valid else 1)
-        except (OSError, ValueError, KeyError, GLib.Error):
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError, GLib.Error):
             sys.exit(1)
     sys.exit(VirtualDisplay().run())
