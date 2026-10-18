@@ -209,6 +209,16 @@ export function createMediaWindow(
         // A click, task switcher, or external activation cannot change the selected system.
         if (window && api.owner(window) === pid && api.visible(window)) api.show(window, 0)
       } else if (mode === 'remote') {
+        // A slow host handshake can outlive Windows' initial activation grant.
+        // Start protection once the selected player's window is actually visible,
+        // even if a local app prevented its first foreground activation.
+        if (!seenRemote && settings.lockInput) {
+          const target = api.find(pid)
+          if (target && api.owner(target) === pid && api.visible(target)) {
+            window = target
+            seenRemote = true
+          }
+        }
         if (front && api.owner(front) === pid) seenRemote = true
         if (seenRemote && settings.lockInput && window && api.owner(window) === pid) {
           // Focus loss is not a switch request. Games and screen-capture tools may

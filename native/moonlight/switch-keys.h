@@ -88,8 +88,14 @@ public:
         if (m_Guard) {
             DWORD foreground = 0;
             GetWindowThreadProcessId(GetForegroundWindow(), &foreground);
-            if (foreground == GetCurrentProcessId())
+            if (foreground == GetCurrentProcessId()) {
                 m_ForegroundLocked = LockSetForegroundWindow(LSFW_LOCK) != FALSE;
+            } else if (m_ForegroundLocked) {
+                // Let the controller restore this window if an OS activation
+                // bypassed the lock. Input remains guarded until focus returns.
+                LockSetForegroundWindow(LSFW_UNLOCK);
+                m_ForegroundLocked = false;
+            }
         } else if (m_ForegroundLocked) {
             LockSetForegroundWindow(LSFW_UNLOCK);
             m_ForegroundLocked = false;

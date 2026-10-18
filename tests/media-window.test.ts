@@ -83,6 +83,14 @@ test('locked selection survives local popups and releases protection only on exp
     api
   )
   try {
+    foreground = 20
+    visible = false
+    await new Promise((resolve) => setTimeout(resolve, 80))
+    assert.equal(foreground, 20) // An opening/hidden player cannot take focus.
+    visible = true
+    await new Promise((resolve) => setTimeout(resolve, 80))
+    assert.equal(foreground, 10) // Finish a delayed handshake behind a local app.
+    assert.equal(topmost, true)
     assert.equal(await control.toggle(), 'local')
     assert.equal(visible, false)
     assert.equal(topmost, false)
