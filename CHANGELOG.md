@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preserve the GNOME virtual output through transient compositor timeouts, reduce steady-state layout polling, and bound cleanup after internal failures so a blocked PipeWire teardown cannot prevent service recovery.
+
 - Retry brief Host network failures, refresh paired-device availability in the background, and clear recovered network notices. Distinguish network loss, rejected authorization, changed identity, and an offline Sunshine service instead of reporting all failures as expired pairing.
 
 - Allow each device to override the global stream resolution, so a 4K Mac and a 1440p Windows desktop can keep independent video sizes. Document how to preserve the Windows physical display without automatic 4K switching.

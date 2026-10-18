@@ -58,6 +58,13 @@ def call(target, method, signature=None, values=None):
     return result.unpack() if result else None
 
 
+def arm_cleanup_timeout(seconds=5):
+    # GStreamer can block inside native code during teardown. A Python timer or
+    # handler cannot interrupt that call; the default POSIX action can.
+    signal.signal(signal.SIGALRM, signal.SIG_DFL)
+    signal.alarm(seconds)
+
+
 class VirtualDisplay:
     def __init__(self):
         self.loop = GLib.MainLoop()
@@ -68,6 +75,8 @@ class VirtualDisplay:
         self.failed = False
         self.closing = False
         self.started = time.monotonic()
+        self.next_layout_check = 0
+        self.layout_failure_since = None
         self.dc = proxy(DC, "/org/gnome/Mutter/DisplayConfig", DC)
         self.before = {m[0][0] for m in call(self.dc, "GetCurrentState")[1]}
 
@@ -103,6 +112,10 @@ class VirtualDisplay:
             self.fail(str(error))
 
     def check_layout(self):
+        now = time.monotonic()
+        if now < self.next_layout_check:
+            return True
+        self.next_layout_check = now + (5 if self.connector else 0.5)
         try:
             serial, monitors, logical, properties = call(self.dc, "GetCurrentState")
             if self.connector is None:
@@ -110,6 +123,7 @@ class VirtualDisplay:
                 if not candidates:
                     if time.monotonic() - self.started > 30:
                         return self.fail("GNOME did not expose the virtual display within 30 seconds")
+                    self.layout_failure_since = None
                     return True
                 if len(candidates) != 1:
                     return self.fail("Another virtual display appeared; refusing to change an ambiguous output")
@@ -146,6 +160,7 @@ class VirtualDisplay:
                 call(self.dc, "ApplyMonitorsConfig", "(uua(iiduba(ssa{sv}))a{sv})", (
                     serial, 1, arrangement, {"layout-mode": GLib.Variant("u", properties.get("layout-mode", 1))}
                 ))
+                self.layout_failure_since = None
                 return True
             if not READY.exists():
                 READY.write_text(json.dumps({"pid": os.getpid(), "connector": self.connector,
@@ -153,8 +168,18 @@ class VirtualDisplay:
                     "pipewireNode": self.node}) + "\n")
                 READY.chmod(0o600)
                 print(f"Ready: {self.connector} {WIDTH}x{HEIGHT}@{mode[3]:.2f}, scale {scale}", flush=True)
-        except (GLib.Error, StopIteration, ValueError) as error:
+        except GLib.Error as error:
+            # A busy compositor can miss one D-Bus deadline. Removing a healthy
+            # virtual output here also invalidates Sunshine's saved selection.
+            if self.layout_failure_since is None:
+                self.layout_failure_since = time.monotonic()
+                print(f"Display configuration temporarily unavailable; retrying: {error}", file=sys.stderr, flush=True)
+            if time.monotonic() - self.layout_failure_since < 30:
+                return True
+            return self.fail(f"Display configuration unavailable for 30 seconds: {error}")
+        except (StopIteration, ValueError) as error:
             return self.fail(f"Display configuration failed: {error}")
+        self.layout_failure_since = None
         return True
 
     def run(self):
@@ -179,6 +204,9 @@ class VirtualDisplay:
             self.loop.run()
         finally:
             self.closing = True
+            # TimeoutStopSec only covers a stop requested by systemd. Internal
+            # failures also need a deadline, otherwise Restart never runs.
+            arm_cleanup_timeout()
             READY.unlink(missing_ok=True)
             if self.pipeline:
                 self.pipeline.set_state(Gst.State.NULL)
@@ -187,6 +215,7 @@ class VirtualDisplay:
                     call(self.session, "Stop")
                 except GLib.Error:
                     pass
+            signal.alarm(0)
         return 1 if self.failed else 0
 
 
