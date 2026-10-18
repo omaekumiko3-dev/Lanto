@@ -2,7 +2,6 @@
 #include <windows.h>
 #include <fstream>
 #include <string>
-#include <sstream>
 
 static std::string json(const char* text) {
     std::string value = "\"";
@@ -34,10 +33,16 @@ int main(int argc, char** argv) {
     MSG message;
     while (IsWindow(window) && GetMessageW(&message, nullptr, 0, 0) > 0) {
         if (message.message == WM_TIMER) {
-            std::ifstream input(volumeFile);
-            if (input) {
-                std::ostringstream value; value << input.rdbuf();
-                std::ofstream("volume-" + std::to_string(GetCurrentProcessId()) + ".json") << value.str();
+            // Match the real player's atomic-file reader. A plain ifstream denies
+            // replacement on Windows and can spuriously fail the controller write.
+            HANDLE input = CreateFileW(volumeFile, GENERIC_READ,
+                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (input != INVALID_HANDLE_VALUE) {
+                char value[256]; DWORD length = 0;
+                const bool read = ReadFile(input, value, sizeof(value), &length, nullptr) != FALSE;
+                CloseHandle(input);
+                if (read) std::ofstream("volume-" + std::to_string(GetCurrentProcessId()) + ".json").write(value, length);
             }
         }
         TranslateMessage(&message); DispatchMessageW(&message);
