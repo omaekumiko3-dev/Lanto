@@ -26,7 +26,7 @@
     "test": "node --test tests/*.test.ts tests/*.test.mjs && npm run test:tunnel",
     "test:tunnel": "go -C native/tunnel test ./...",
     "test:smoke": "npm run build && node scripts/smoke.mjs",
-    "build": "npm run typecheck && electron-vite build && npm run host:build && node scripts/build-tunnel.mjs && node scripts/build-deploy.mjs",
+    "build": "npm run typecheck && electron-vite build && npm run host:build && node scripts/build-switch.mjs && node scripts/build-tunnel.mjs && node scripts/build-deploy.mjs",
     "icons": "node scripts/build-icons.mjs"
   },
   "dependencies": {

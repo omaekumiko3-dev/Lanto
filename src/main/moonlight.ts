@@ -87,10 +87,16 @@ async function waitForExit(closed: Promise<MediaExit>, timeout: number): Promise
 export class MoonlightAdapter implements MediaAdapter {
   private readonly logDirectory: string
   private readonly onSwitch: (pid: number) => void
+  private readonly switchEnvironment: () => Record<string, string>
 
-  constructor(logDirectory: string, onSwitch: (pid: number) => void = () => {}) {
+  constructor(
+    logDirectory: string,
+    onSwitch: (pid: number) => void = () => {},
+    switchEnvironment: () => Record<string, string> = () => ({})
+  ) {
     this.logDirectory = logDirectory
     this.onSwitch = onSwitch
+    this.switchEnvironment = switchEnvironment
   }
 
   async start(device: Device, settings: Settings): Promise<MediaHandle> {
@@ -107,6 +113,16 @@ export class MoonlightAdapter implements MediaAdapter {
     if (process.platform === 'win32' && settings.lockInput && !inputSupported)
       throw new Error(
         'Switching only with the shortcut requires the latest Lanto player; select the bundled program in settings'
+      )
+    const switchEnvironment = this.switchEnvironment()
+    if (
+      process.platform === 'win32' &&
+      settings.lockInput &&
+      switchEnvironment.LANTO_SWITCH_MAP &&
+      !(await hasMediaFeature(executable, 'sharedSwitchProtocol'))
+    )
+      throw new Error(
+        'Holding a modifier while switching requires the latest Lanto player; select the bundled program in settings'
       )
     const audioSupported = await hasMediaFeature(executable, 'audioVolumeProtocol')
     if (!audioSupported && (device.volume !== 100 || device.muted))
@@ -131,6 +147,8 @@ export class MoonlightAdapter implements MediaAdapter {
           ...control?.environment,
           LANTO_INPUT_FILE: '',
           LANTO_CONTROLLER_PID: '',
+          LANTO_SWITCH_MAP: '',
+          ...switchEnvironment,
           ...input?.environment
         },
         input ? (pid) => this.onSwitch(pid) : undefined

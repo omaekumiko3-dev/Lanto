@@ -88,7 +88,7 @@ export function SettingsDialog({
                 aria-describedby="bitrate-hint"
                 required
                 min={5}
-                max={100}
+                max={150}
                 value={draft.bitrateMbps}
                 onChange={(event) =>
                   setDraft({ ...draft, bitrateMbps: Number(event.target.value) })

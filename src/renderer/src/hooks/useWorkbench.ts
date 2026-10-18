@@ -42,7 +42,7 @@ export function useWorkbench() {
 
   const settings = state?.config.settings || defaultConfig().settings
   const active = Boolean(
-    state && (state.session.pid !== null || state.session.phase === 'launching')
+    state && (state.sessions.length > 0 || state.session.phase === 'launching')
   )
   function newDevice() {
     setEditing({ name: '', host: '', platform: 'linux', appName: 'Desktop' })

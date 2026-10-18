@@ -2,6 +2,7 @@ import koffi from 'koffi'
 import type { InputSettings } from './input-control.ts'
 
 export interface MediaWindow {
+  readonly mode?: 'local' | 'remote'
   toggle(): Promise<'local' | 'remote'>
   show(): Promise<void>
   hide(): Promise<void>
@@ -50,12 +51,34 @@ function windowsAPI(): WindowAPI {
   const processId = user.func(
     'uint32_t __stdcall GetWindowThreadProcessId(uintptr_t window, _Out_ uint32_t *pid)'
   )
+  const setForeground = user.func('int __stdcall SetForegroundWindow(uintptr_t window)')
+  const currentThread = kernel.func('uint32_t __stdcall GetCurrentThreadId()')
+  const attachInput = user.func(
+    'int __stdcall AttachThreadInput(uint32_t from, uint32_t to, int attach)'
+  )
   const api = {
     visible,
     foreground: user.func('uintptr_t __stdcall GetForegroundWindow()'),
     minimized: user.func('int __stdcall IsIconic(uintptr_t window)'),
     show: user.func('int __stdcall ShowWindowAsync(uintptr_t window, int command)'),
-    focus: user.func('int __stdcall SetForegroundWindow(uintptr_t window)'),
+    focus(window: number): number {
+      if (setForeground(window)) return 1
+      // A consumed switch key need not generate WM_HOTKEY. Borrow the foreground queue
+      // only for this explicit user-requested activation, then detach immediately.
+      const foregroundThread = processId(api.foreground(), [0])
+      const thread = currentThread()
+      if (
+        !foregroundThread ||
+        foregroundThread === thread ||
+        !attachInput(thread, foregroundThread, 1)
+      )
+        return 0
+      try {
+        return setForeground(window)
+      } finally {
+        attachInput(thread, foregroundThread, 0)
+      }
+    },
     open: kernel.func(
       'uintptr_t __stdcall OpenProcess(uint32_t access, int inherit, uint32_t pid)'
     ),
@@ -188,6 +211,9 @@ export function createMediaWindow(
   }, 50)
   timer.unref()
   return {
+    get mode() {
+      return mode
+    },
     toggle: () =>
       enqueue(async () => {
         // Free window mode follows focus; locked mode only follows explicit transitions.

@@ -47,13 +47,13 @@ The release includes a universal macOS clipboard helper. Source builds that omit
 
 ## Everyday use
 
-Use the switch on a device card to connect or disconnect. Only one stream can be active. On the Windows controller, **Ctrl + `** (the key above Tab) switches between the connected desktop and your local computer without disconnecting. Press it again to restore the same stream.
+Use the switch on a device card to connect or disconnect that device. Up to two streams can stay open. On the Windows controller, **Ctrl + `** (the default; custom bindings such as Alt plus backtick remain saved) cycles Local → remote 1 → remote 2 → Local, in connection order. With one device, the cycle is Local → remote → Local. Hold the modifier and tap the key repeatedly to advance once per press; keyboard autorepeat does not advance the cycle. Connecting a third device requires disconnecting one first.
 
 **Switch only with shortcut** is enabled by default on Windows and requires the current bundled player. Local mode hides the remote window from clicks and task switching. Remote mode confines the mouse to the video and sends Alt+Tab, the Windows key, and other ordinary shortcuts to the target. The switch shortcut is reserved for Lanto in both modes. Disabling the setting restores free window interaction and the card’s **Show** button. Existing custom bindings stay saved; the former minimization option is replaced by this setting. Disconnect with the device card switch or by closing Lanto. Windows secure-desktop combinations such as Ctrl+Alt+Delete remain controlled by the local OS.
 
 Adjust each card's volume or mute independently. These settings change playback on your controller, not the target's system volume.
 
-In Settings, choose resolution, frame rate, bitrate, and window mode independently. New profiles start at **4K (3840 × 2160), 30 FPS, and 60 Mbps**. Existing profiles keep their saved choices; select the new values and reconnect to apply them. 1440p and 1080p remain available, with 15/30/60 FPS and a manually adjustable 5–100 Mbps bitrate.
+In Settings, choose resolution, frame rate, bitrate, and window mode independently. New profiles start at **4K (3840 × 2160), 60 FPS, and 120 Mbps per stream**. Existing profiles keep their saved choices; select the new values and reconnect to apply them. 1440p and 1080p remain available, with 15/30/60 FPS and a manually adjustable 5–150 Mbps bitrate. Two streams at 120 Mbps need about 240 Mbps plus transport overhead, along with suitable capture and decoding hardware.
 
 For sharper desktop text, match the stream resolution to your controller display and check the target's desktop resolution. Lanto does not automatically resize the target desktop. See [host display setup](host-display.md) for a true 4K source on headless Macs and Windows hosts with lower-resolution monitors. A higher bitrate preserves more image detail but needs more network bandwidth; lower it if your connection cannot sustain it. Performance data is optional. Experimental options require compatible native components; see [native notes](../native/README.md).
 

@@ -2,7 +2,7 @@
 
 The stream resolution and the host desktop resolution are separate. A 3840 × 2160 video can contain a 1920 × 1080 desktop enlarged by the encoder. Increasing bitrate cannot recover text detail that the host never rendered.
 
-For a 4K controller, use a 3840 × 2160 host framebuffer and a 3840 × 2160 stream. Lanto's 30 FPS / 60 Mbps profile is a useful starting point on a capable LAN. Use the host's display scaling setting to make text larger while retaining the full framebuffer resolution.
+For a 4K controller, use a 3840 × 2160 host framebuffer and a 3840 × 2160 stream. New profiles request 60 FPS / 120 Mbps per stream; 30 FPS / 60 Mbps remains a lower-bandwidth option. Use the host's display scaling setting to make text larger while retaining the full framebuffer resolution.
 
 The controller's resolution selector configures the video stream. Host display changes remain a separate, optional setup step. The SSH setup wizard does not install virtual displays automatically.
 

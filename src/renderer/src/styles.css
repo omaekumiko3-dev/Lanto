@@ -1,3 +1,11 @@
+.session-cycle {
+  margin: 18px 0 0;
+  color: #929ba9;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
 :root {
   color-scheme: dark;
   font-family: 'Segoe UI Variable', 'Segoe UI', 'Microsoft YaHei UI', sans-serif;

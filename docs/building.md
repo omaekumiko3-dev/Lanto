@@ -19,7 +19,7 @@ npm run build
 npm run dev
 ```
 
-`build` produces Electron main/preload/renderer output, compiles the Host, cross-compiles tunnel helpers, and packages SSH deployment resources. Go dependencies and npm dependencies are pinned by their lockfiles.
+`build` produces Electron main/preload/renderer output, compiles the Host, builds the Windows keyboard helper with MSVC, cross-compiles tunnel helpers, and packages SSH deployment resources. The Windows helper has no Qt runtime dependency. Its edge tests run during compilation; a hidden-window test fixture is built for smoke tests but excluded from release packages. Go dependencies and npm dependencies are pinned by their lockfiles.
 
 Windows window control uses Koffi 3.3.3 through Node-API. `npm ci` installs its matching optional platform binary. Controller packaging explicitly includes `koffi` and `@koromix/koffi-win32-<architecture>`, including their license files; the standalone Host does not need them.
 
@@ -34,7 +34,7 @@ The Host runtime uses Node.js and production dependencies, without Electron.
 
 ## Native player
 
-Follow [native/README.md](../native/README.md). The release uses Moonlight Qt commit `de2467e433821664cdd2224aad8c89a625be1ad9` (v6.2.0), Windows dependency bundle v19, and Qt 5.15.2. Initialize recursive submodules. Apply the six Moonlight patches listed there, in order; do not apply patches from other versions or experimental local work.
+Follow [native/README.md](../native/README.md). The release uses Moonlight Qt commit `de2467e433821664cdd2224aad8c89a625be1ad9` (v6.2.0), Windows dependency bundle v19, and Qt 5.15.2. Initialize recursive submodules. Apply the seven Moonlight patches listed there, in order; do not apply patches from other versions or experimental local work.
 
 ```powershell
 pwsh -File native/build-moonlight.ps1 -Source C:/build/moonlight-qt -QtBin C:/Qt/msvc_64/bin -Output C:/build/Lanto-player

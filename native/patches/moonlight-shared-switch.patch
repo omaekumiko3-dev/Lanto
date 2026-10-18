@@ -1,0 +1,25 @@
+diff --git a/app/streaming/input/input.cpp b/app/streaming/input/input.cpp
+index d3002b2..a64ef9e 100644
+--- a/app/streaming/input/input.cpp
++++ b/app/streaming/input/input.cpp
+@@ -342,11 +342,20 @@ void SdlInputHandler::updateKeyboardGrabState()
+     SDL_SetHint(SDL_HINT_WINDOWS_NO_CLOSE_ON_ALT_F4, shouldGrab ? "1" : "0");
+ 
+ #if SDL_VERSION_ATLEAST(2, 0, 15)
++    m_LantoInput.setSwitchCapture(false);
+     // On SDL 2.0.15+, we can get keyboard-only grab on Win32, X11, and Wayland.
+     // SDL 2.0.18 adds keyboard grab on macOS (if built with non-AppStore APIs).
+     SDL_SetWindowKeyboardGrab(m_Window, shouldGrab ? SDL_TRUE : SDL_FALSE);
+ #endif
+ 
++    m_LantoInput.setSwitchCapture(m_LantoInput.managed() && m_LantoInput.remote() && isCaptureActive(), [](int physical) {
++        auto modifiers = static_cast<Uint16>(SDL_GetModState()) & ~(KMOD_SHIFT | KMOD_CTRL | KMOD_ALT | KMOD_GUI);
++        if (physical & 1) modifiers |= KMOD_LSHIFT;
++        if (physical & 2) modifiers |= KMOD_LCTRL;
++        if (physical & 4) modifiers |= KMOD_LALT;
++        if (physical & 8) modifiers |= KMOD_LGUI;
++        SDL_SetModState(static_cast<SDL_Keymod>(modifiers));
++    });
+     m_KeyboardCaptureActive = shouldGrab;
+ }
+ 

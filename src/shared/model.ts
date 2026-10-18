@@ -62,6 +62,8 @@ export interface Activity {
 export interface AppState {
   config: Config
   session: SessionState
+  sessions: SessionState[]
+  controlDeviceId: string | null
   clipboard: ClipboardView
   deployment: DeploymentView
   runtime: {
@@ -95,8 +97,9 @@ export interface LantoAPI {
   chooseMoonlight(): Promise<string | null>
   openMoonlight(): Promise<void>
   connect(id: string): Promise<void>
+  disconnect(id: string): Promise<void>
   returnLocal(): Promise<void>
-  showRemote(): Promise<void>
+  showRemote(id: string): Promise<void>
   probe(id: string): Promise<ProbeResult>
   discoverHosts(): Promise<DiscoveredHost[]>
   pairHost(ticket: string): Promise<AppState>
@@ -122,6 +125,7 @@ export const channels = {
   chooseMoonlight: 'lanto:choose-moonlight',
   openMoonlight: 'lanto:open-moonlight',
   connect: 'lanto:connect',
+  disconnect: 'lanto:disconnect',
   returnLocal: 'lanto:return-local',
   showRemote: 'lanto:show-remote',
   probe: 'lanto:probe',
@@ -144,8 +148,8 @@ export function defaultConfig(): Config {
       returnShortcut: 'Control+`',
       lockInput: true,
       resolution: '3840x2160',
-      fps: 30,
-      bitrateMbps: 60,
+      fps: 60,
+      bitrateMbps: 120,
       windowMode: 'borderless',
       lowLatency: false,
       showPerformanceOverlay: false,

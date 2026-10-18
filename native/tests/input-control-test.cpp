@@ -71,6 +71,24 @@ int main(int argc, char** argv)
     require(controller.waitForFinished());
     owned.refresh(true);
     require(!owned.remote() && !owned.requestSwitch());
+#ifdef Q_OS_WIN
+    // Simulate broker lifetime separately from the controller without installing a hook.
+    controller.start(app.applicationFilePath(), {"--idle"});
+    require(controller.waitForStarted());
+    const auto name = QString("Local\\LantoInputTest-%1").arg(app.applicationPid());
+    LantoSwitchHook shared;
+    require(shared.open(reinterpret_cast<const wchar_t*>(name.utf16()), true, app.applicationPid()));
+    shared.state()->broker = controller.processId();
+    qputenv("LANTO_CONTROLLER_PID", QByteArray::number(app.applicationPid()));
+    qputenv("LANTO_SWITCH_MAP", name.toUtf8());
+    LantoInputControl brokerOwned;
+    require(brokerOwned.remote());
+    require(!brokerOwned.matches(192, 2)); // Shared hook owns matching; no duplicate stdout path.
+    controller.kill(); require(controller.waitForFinished());
+    brokerOwned.refresh(true);
+    require(!brokerOwned.remote());
+    qunsetenv("LANTO_SWITCH_MAP");
+#endif
     require(QFile::remove(path));
     control.refresh(true);
     require(!control.remote());

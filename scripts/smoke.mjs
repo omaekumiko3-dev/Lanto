@@ -263,15 +263,15 @@ try {
   )
   await page.getByLabel('Switch only with shortcut', { exact: true }).selectOption('false')
   await page.getByLabel('Resolution', { exact: true }).selectOption('3840x2160')
-  await page.getByLabel('Frame rate', { exact: true }).selectOption('30')
-  await page.getByLabel('Bitrate (Mbps)', { exact: true }).fill('75')
+  await page.getByLabel('Frame rate', { exact: true }).selectOption('60')
+  await page.getByLabel('Bitrate (Mbps)', { exact: true }).fill('120')
   await page.getByLabel('Cursor display').selectOption('true')
   await page.getByRole('button', { name: 'Save settings', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
   const savedVideo = (await page.evaluate(() => window.lanto.getState())).config.settings
   assert.equal(savedVideo.resolution, '3840x2160')
-  assert.equal(savedVideo.fps, 30)
-  assert.equal(savedVideo.bitrateMbps, 75)
+  assert.equal(savedVideo.fps, 60)
+  assert.equal(savedVideo.bitrateMbps, 120)
   assert.equal(savedVideo.lockInput, false)
   assert.equal(
     (await page.evaluate(() => window.lanto.getState())).config.settings.localCursor,
@@ -334,10 +334,13 @@ setInterval(() => {}, 1000);
   const mediaDirectory = join(testData, 'media')
   await mkdir(mediaDirectory)
   const fakeMedia = join(mediaDirectory, basename(process.execPath))
-  await copyFile(process.execPath, fakeMedia)
+  await copyFile(
+    process.platform === 'win32' ? join(root, 'out/native/LantoTestMedia.exe') : process.execPath,
+    fakeMedia
+  )
   await writeFile(
     join(mediaDirectory, 'lanto-media.json'),
-    JSON.stringify({ audioVolumeProtocol: 1, lockedInputProtocol: 1 })
+    JSON.stringify({ audioVolumeProtocol: 1, lockedInputProtocol: 1, sharedSwitchProtocol: 1 })
   )
   await page.evaluate(
     (moonlightPath) =>
@@ -504,12 +507,44 @@ setInterval(() => {}, 1000);
   assert.equal(await windowsSwitch.isChecked(), true)
   assert.equal(
     await page.getByRole('switch', { name: 'Build Linux connection', exact: true }).isChecked(),
-    false
+    true
   )
   await launches(2)
   assert.equal((await launches(2))[1].initialVolume, '81')
+  assert.equal((await page.evaluate(() => window.lanto.getState())).sessions.length, 2)
+  const thirdId = await page.evaluate(async () => {
+    const state = await window.lanto.saveDevice({
+      name: 'Third device',
+      host: 'third.local',
+      platform: 'linux',
+      appName: 'Desktop'
+    })
+    return state.config.devices.at(-1).id
+  })
+  assert.equal(
+    await page.getByRole('switch', { name: 'Third device connection', exact: true }).isDisabled(),
+    true
+  )
+  assert.equal(
+    await page.evaluate(async (id) => {
+      try {
+        await window.lanto.connect(id)
+        return false
+      } catch (error) {
+        return error.message.includes('Two devices')
+      }
+    }, thirdId),
+    true
+  )
+  assert.equal((await page.evaluate(() => window.lanto.getState())).sessions.length, 2)
+  await page.evaluate((id) => window.lanto.removeDevice(id), thirdId)
+  await page.screenshot({ path: join(artifacts, 'two-connections.png') })
   await windowsSwitch.focus()
   await windowsSwitch.press('Space')
+  await waitPhase('running', 'Build Linux')
+  assert.equal((await page.evaluate(() => window.lanto.getState())).sessions[0].pid, running.pid)
+  assert.equal(await windowsSwitch.isChecked(), false)
+  await page.getByRole('switch', { name: 'Build Linux connection', exact: true }).click()
   await waitPhase('idle')
   assert.equal(await windowsSwitch.isChecked(), false)
 
@@ -520,8 +555,8 @@ setInterval(() => {}, 1000);
   assert.equal(records[2].args[1], 'Next Desktop')
   assert.equal(records[0].args[0], 'linux1.local')
   assert.equal(records[0].args[records[0].args.indexOf('--resolution') + 1], '3840x2160')
-  assert.equal(records[0].args[records[0].args.indexOf('--fps') + 1], '30')
-  assert.equal(records[0].args[records[0].args.indexOf('--bitrate') + 1], '75000')
+  assert.equal(records[0].args[records[0].args.indexOf('--fps') + 1], '60')
+  assert.equal(records[0].args[records[0].args.indexOf('--bitrate') + 1], '120000')
   assert.equal(records[2].args[0], '192.0.2.21')
   assert.equal(records[2].args[records[2].args.indexOf('--bitrate') + 1], '36000')
   assert.equal(records[2].initialVolume, '0')
@@ -548,8 +583,8 @@ setInterval(() => {}, 1000);
   assert.equal(persisted.config.devices[0].volume, 48)
   assert.equal(persisted.config.devices[0].muted, true)
   assert.equal(persisted.config.settings.resolution, '3840x2160')
-  assert.equal(persisted.config.settings.fps, 30)
-  assert.equal(persisted.config.settings.bitrateMbps, 75)
+  assert.equal(persisted.config.settings.fps, 60)
+  assert.equal(persisted.config.settings.bitrateMbps, 120)
   assert.equal(persisted.config.settings.shareFiles, true)
   assert.equal(persisted.config.settings.shareClipboard, false)
   assert.equal(persisted.config.settings.showPerformanceOverlay, false)

@@ -14,7 +14,11 @@ if (!media)
   )
 const project = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const features = JSON.parse(await readFile(join(media, 'lanto-media.json'), 'utf8'))
-if (features.automatedPairProtocol !== 1 || features.lockedInputProtocol !== 1)
+if (
+  features.automatedPairProtocol !== 1 ||
+  features.lockedInputProtocol !== 1 ||
+  features.sharedSwitchProtocol !== 1
+)
   throw new Error('Build the player with automated pairing and locked input support')
 const output = process.argv[3]
   ? resolve(process.argv[3])
@@ -58,6 +62,8 @@ await writeFile(
 )
 for (const folder of ['main', 'preload', 'renderer', 'deploy'])
   await cp(join(root, 'out', folder), join(app, 'out', folder), { recursive: true })
+await mkdir(join(app, 'out/native'), { recursive: true })
+await cp(join(root, 'out/native/LantoSwitch.exe'), join(app, 'out/native/LantoSwitch.exe'))
 await cp(join(root, 'assets'), join(app, 'assets'), { recursive: true })
 const lock = JSON.parse(await readFile(join(root, 'package-lock.json'), 'utf8'))
 const windowRuntime = `@koromix/koffi-win32-${process.arch}`

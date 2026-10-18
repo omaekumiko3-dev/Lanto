@@ -30,6 +30,7 @@ if (-not $lantoAudioSource.Contains('m_LantoAudioVolume.apply')) { throw 'Apply 
 $lantoPairSource = Get-Content -LiteralPath (Join-Path $lantoSource 'app/cli/pair.cpp') -Raw
 if (-not $lantoPairSource.Contains('LANTO_AUTOMATED_PAIR')) { throw 'Apply moonlight-auto-pair.patch before building' }
 if (-not $lantoInputSource.Contains('pollLantoControl')) { throw 'Apply moonlight-locked-input.patch before building' }
+if (-not $lantoInputSource.Contains('setSwitchCapture')) { throw 'Apply moonlight-shared-switch.patch before building' }
 $lantoCursorSource = Join-Path $lantoSource 'app/streaming/lanto'
 New-Item -ItemType Directory -Path $lantoCursorSource -Force | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'moonlight') -File | Copy-Item -Destination $lantoCursorSource
@@ -79,6 +80,7 @@ $lantoQtVersion = & (Join-Path $lantoQtBin 'qmake.exe') -query QT_VERSION
   audioVolumeProtocol = 1
   automatedPairProtocol = 1
   lockedInputProtocol = 1
+  sharedSwitchProtocol = 1
   brand = 'lanto'
   moonlightCommit = 'de2467e433821664cdd2224aad8c89a625be1ad9'
   qtVersion = $lantoQtVersion.Trim()

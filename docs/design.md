@@ -178,7 +178,7 @@ The initial display requirement was 2K at 30fps. It was revised on 2026-10-17 to
 | Switching connected sessions | From key event to usable new view; initial P95 target ≤500ms over at least 100 switches |
 | Input-to-video response | Initial P95 target ≤120ms; use external recording or consistent end-to-end measurement, not ping |
 | Cold connection and reconnection | Record first frame, reauthentication, and restored input separately from hot-switch measurements |
-| Bitrate | Start new 4K30 profiles at 60 Mbps; expose 5–100 Mbps and verify text clarity and network headroom on each setup. |
+| Bitrate | Start new 4K60 profiles at 120 Mbps per stream; expose 5–150 Mbps and verify text clarity and aggregate network headroom for up to two streams. |
 | Background prewarming cost | Record CPU/GPU/VRAM and network use; do not promise zero overhead when hidden |
 | Game impact | Compare frame times and input with Lanto closed, the console resident, and a prewarmed stream resident |
 | Residual input | Repeated switching and abnormal disconnects must leave no held input; this is a functional pass criterion |

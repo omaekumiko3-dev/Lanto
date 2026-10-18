@@ -1,13 +1,20 @@
 import { globalShortcut } from 'electron'
+import { SwitchBroker } from './switch-broker.ts'
 
 export class ReturnShortcut {
   private current = ''
   private readonly callback: () => void
-  constructor(callback: () => void) {
+  private readonly broker?: SwitchBroker
+  constructor(callback: () => void, executable?: string, failed: () => void = () => {}) {
     this.callback = callback
+    if (process.platform === 'win32' && executable)
+      this.broker = new SwitchBroker(executable, callback, failed)
   }
   get registered(): boolean {
-    return Boolean(this.current)
+    return this.broker ? this.broker.registered : Boolean(this.current)
+  }
+  get environment(): Record<string, string> {
+    return { LANTO_SWITCH_MAP: this.broker?.map ?? '' }
   }
 
   private register(value: string): boolean {
@@ -18,13 +25,35 @@ export class ReturnShortcut {
     }
   }
 
-  start(value: string): void {
+  async start(value: string): Promise<void> {
+    if (this.broker) {
+      try {
+        await this.broker.start(value)
+        this.current = value
+      } catch {
+        this.broker.close()
+      }
+      return
+    }
     if (this.register(value)) this.current = value
   }
 
   async update(value: string, save: () => Promise<void>): Promise<void> {
     const previous = this.current
     const changed = previous !== value
+    if (this.broker) {
+      if (!this.registered) await this.broker.start(value)
+      else if (changed) await this.broker.bind(value)
+      try {
+        await save()
+      } catch (error) {
+        if (changed && previous) await this.broker.bind(previous)
+        else if (!previous) this.broker.close()
+        throw error
+      }
+      this.current = value
+      return
+    }
     if (changed && !this.register(value))
       throw new Error(
         'The switch shortcut is invalid or already in use; choose another combination. The previous shortcut was preserved'
@@ -42,7 +71,8 @@ export class ReturnShortcut {
   }
 
   close(): void {
-    if (this.current) globalShortcut.unregister(this.current)
+    this.broker?.close()
+    if (this.current && !this.broker) globalShortcut.unregister(this.current)
     this.current = ''
   }
 }

@@ -31,7 +31,11 @@ export async function nativeEnvironment(
 export async function hasMediaFeature(
   executable: string,
   feature:
-    'localCursorProtocol' | 'audioVolumeProtocol' | 'automatedPairProtocol' | 'lockedInputProtocol'
+    | 'localCursorProtocol'
+    | 'audioVolumeProtocol'
+    | 'automatedPairProtocol'
+    | 'lockedInputProtocol'
+    | 'sharedSwitchProtocol'
 ): Promise<boolean> {
   try {
     const path = join(dirname(executable), 'lanto-media.json')

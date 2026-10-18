@@ -51,7 +51,7 @@ export const settingsSchema = z
     minimizeOnBlur: z.boolean().optional(),
     resolution: z.enum(['3840x2160', '2560x1440', '1920x1080']),
     fps: z.number().int().min(15).max(60),
-    bitrateMbps: z.number().int().min(5).max(100),
+    bitrateMbps: z.number().int().min(5).max(150),
     windowMode: z.enum(['borderless', 'windowed']),
     lowLatency: z.boolean().default(false),
     showPerformanceOverlay: z.boolean().default(false),

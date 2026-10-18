@@ -3,7 +3,9 @@
 ## Unreleased
 
 - Add selectable 4K (3840 × 2160) streaming alongside 1440p and 1080p.
-- Start new profiles at 4K, 30 FPS, and 60 Mbps. Existing profiles retain their saved values.
+- Keep up to two remote streams open and cycle Local → remote 1 → remote 2 → Local in connection order. Disconnect and volume controls apply independently.
+- Preserve held modifiers across Windows/native-player handoffs; each separate switch-key press advances once, with no timed debounce or autorepeat cycling.
+- Start new profiles at 4K, 60 FPS, and 120 Mbps per stream, with a 150 Mbps settings ceiling. Existing profiles retain their saved values.
 - Keep resolution, frame rate, and bitrate independently adjustable, with guidance for desktop text clarity and bandwidth.
 - Document true 4K host display setup, including an optional macOS HiDPI virtual-display helper and Windows display restoration after streaming.
 

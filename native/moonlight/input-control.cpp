@@ -14,6 +14,9 @@ LantoInputControl::LantoInputControl()
     m_ControllerPid = qEnvironmentVariable("LANTO_CONTROLLER_PID").toULong(&ok);
     if (managed() && ok && m_ControllerPid)
         m_Controller = OpenProcess(SYNCHRONIZE, FALSE, m_ControllerPid);
+    const auto map = qEnvironmentVariable("LANTO_SWITCH_MAP");
+    m_SharedSwitch = !map.isEmpty();
+    if (m_SharedSwitch) m_SwitchFailed = !m_SwitchHook.open(reinterpret_cast<const wchar_t*>(map.utf16()), false);
 #endif
     refresh(true);
 }
@@ -36,6 +39,7 @@ bool LantoInputControl::refresh(bool force)
 #ifdef Q_OS_WIN
     QFile file(m_Path);
     if (m_Controller && WaitForSingleObject(m_Controller, 0) == WAIT_TIMEOUT &&
+            (!m_SharedSwitch || (!m_SwitchFailed && m_SwitchHook.available())) &&
             file.open(QIODevice::ReadOnly) && file.size() <= 1024) {
         const auto doc = QJsonDocument::fromJson(file.readAll());
         const auto value = doc.object();
@@ -58,7 +62,21 @@ bool LantoInputControl::refresh(bool force)
 
 bool LantoInputControl::matches(int key, int modifiers) const
 {
+#ifdef Q_OS_WIN
+    if (m_SharedSwitch) return false; // The shared physical-key hook owns the reserved combination.
+#endif
     return managed() && locked() && remote() && key == m_Key && (modifiers & 15) == m_Modifiers;
+}
+
+void LantoInputControl::setSwitchCapture(bool active, void (*modifiersChanged)(int))
+{
+#ifdef Q_OS_WIN
+    m_SwitchHook.setModifiersCallback(modifiersChanged);
+    if (m_SharedSwitch && !m_SwitchHook.activate(active)) m_SwitchFailed = true;
+#else
+    Q_UNUSED(active);
+    Q_UNUSED(modifiersChanged);
+#endif
 }
 
 bool LantoInputControl::requestSwitch()

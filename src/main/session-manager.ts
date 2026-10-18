@@ -6,7 +6,6 @@ export interface MediaExit {
   code: number | null
   signal: string | null
 }
-
 export interface MediaHandle {
   pid: number
   closed: Promise<MediaExit>
@@ -14,11 +13,9 @@ export interface MediaHandle {
   setAudio?(audio: DeviceAudio): Promise<void>
   window?: MediaWindow
 }
-
 export interface MediaAdapter {
   start(device: Device, settings: Settings): Promise<MediaHandle>
 }
-
 const idle = (): SessionState => ({
   phase: 'idle',
   deviceId: null,
@@ -26,31 +23,53 @@ const idle = (): SessionState => ({
   startedAt: null,
   error: null
 })
+interface Active {
+  handle: MediaHandle
+  device: Device
+  stopping: boolean
+  state: SessionState
+  input: InputSettings
+}
 
 export class SessionManager {
   state = idle()
-  private active: { handle: MediaHandle; device: Device; stopping: boolean } | null = null
+  private selected: string | null = null
+  private active = new Map<string, Active>()
   private pending: Promise<unknown> = Promise.resolve()
-
+  private readonly adapter: MediaAdapter
+  private readonly onState: (state: SessionState) => void
+  private readonly onActivity: (message: string, error?: boolean) => void
   constructor(
-    privateAdapter: MediaAdapter,
+    adapter: MediaAdapter,
     onState: (state: SessionState) => void,
     onActivity: (message: string, error?: boolean) => void
   ) {
-    this.adapter = privateAdapter
+    this.adapter = adapter
     this.onState = onState
     this.onActivity = onActivity
   }
 
-  private readonly adapter: MediaAdapter
-  private readonly onState: (state: SessionState) => void
-  private readonly onActivity: (message: string, error?: boolean) => void
-
+  get sessions(): SessionState[] {
+    return [...this.active.values()].map((entry) => ({ ...entry.state }))
+  }
+  get controlDeviceId(): string | null {
+    return this.selected && this.active.get(this.selected)?.handle.window?.mode === 'local'
+      ? null
+      : this.selected
+  }
+  get busy(): boolean {
+    return this.active.size > 0 || this.state.phase === 'launching'
+  }
+  has(id: string): boolean {
+    return this.active.has(id)
+  }
+  owns(pid: number): boolean {
+    return [...this.active.values()].some((entry) => entry.handle.pid === pid)
+  }
   private set(state: SessionState): void {
     this.state = state
     this.onState({ ...state })
   }
-
   private enqueue<T>(task: () => Promise<T>): Promise<T> {
     const result = this.pending.then(task)
     this.pending = result.catch(() => {})
@@ -60,31 +79,44 @@ export class SessionManager {
   connect(device: Device, settings: Settings): Promise<void> {
     return this.enqueue(async () => {
       if (!device.host) throw new Error('Enter the IP address or hostname of this device first')
-      if (this.active?.device.id === device.id && !this.active.stopping) return
-      await this.stopActive()
+      if (this.active.has(device.id)) return
+      if (this.active.size >= 2)
+        throw new Error(
+          'Two devices are already connected; disconnect one before connecting another'
+        )
+      // Release the previous owner before a new player can acquire focus or capture input.
+      await this.select(null)
       this.set({ ...idle(), phase: 'launching', deviceId: device.id })
       try {
         const handle = await this.adapter.start(device, settings)
-        const active = { handle, device, stopping: false }
-        this.active = active
-        this.set({
+        const state: SessionState = {
           phase: 'running',
           deviceId: device.id,
           pid: handle.pid,
           startedAt: new Date().toISOString(),
           error: null
-        })
+        }
+        const active = {
+          handle,
+          device,
+          stopping: false,
+          state,
+          input: { lockInput: settings.lockInput, returnShortcut: settings.returnShortcut }
+        }
+        this.active.set(device.id, active)
+        this.selected = device.id
+        this.set(state)
         this.onActivity(
           `${device.name} Moonlight client started; see its window for streaming status`
         )
         void handle.closed.then(({ code, signal }) => {
-          if (this.active !== active) return
-          this.active = null
-          if (active.stopping || code === 0) {
-            this.set(idle())
-          } else {
-            const error = `Moonlight exited (${signal || code || 'unknown reason'}); check pairing, host address, and Sunshine status`
-            this.set({ ...this.state, phase: 'failed', pid: null, error })
+          if (this.active.get(device.id) !== active) return
+          this.active.delete(device.id)
+          if (this.selected === device.id) this.selected = null
+          if (active.stopping || code === 0) this.set(this.sessions.at(-1) ?? idle())
+          else {
+            const error = `${device.name}: Moonlight exited (${signal || code || 'unknown reason'}); check pairing, host address, and Sunshine status`
+            this.set({ ...state, phase: 'failed', pid: null, error })
             this.onActivity(error, true)
           }
         })
@@ -97,69 +129,111 @@ export class SessionManager {
     })
   }
 
-  disconnect(): Promise<void> {
+  disconnect(id?: string): Promise<void> {
     return this.enqueue(async () => {
-      await this.stopActive()
-      this.set(idle())
+      const targets = id
+        ? [this.active.get(id)].filter((value): value is Active => Boolean(value))
+        : [...this.active.values()]
+      const failures: unknown[] = []
+      for (const active of targets) {
+        active.stopping = true
+        active.state = { ...active.state, phase: 'stopping' }
+        this.set(active.state)
+        try {
+          // A window may already have disappeared; stopping its owned process must still run.
+          await active.handle.window?.hide().catch(() => {})
+          if (this.selected === active.device.id) this.selected = null
+          await active.handle.stop()
+          if (this.active.get(active.device.id) === active) this.active.delete(active.device.id)
+          this.onActivity(`Stopped ${active.device.name} local streaming client`)
+        } catch (error) {
+          active.stopping = false
+          active.state = {
+            ...active.state,
+            phase: 'failed',
+            error: 'The client could not exit; disconnect manually in Moonlight and retry'
+          }
+          this.set(active.state)
+          failures.push(error)
+        }
+      }
+      if (failures.length) throw failures[0]
+      this.set(this.sessions.at(-1) ?? idle())
     })
   }
 
   setAudio(id: string, audio: DeviceAudio): Promise<void> {
     return this.enqueue(async () => {
-      if (!this.active || this.active.device.id !== id || this.active.stopping) return
-      if (!this.active.handle.setAudio)
+      const active = this.active.get(id)
+      if (!active || active.stopping) return
+      if (!active.handle.setAudio)
         throw new Error(
           'The current player does not support volume control; select the latest Lanto player in settings and reconnect'
         )
-      await this.active.handle.setAudio(audio)
+      await active.handle.setAudio(audio)
     })
+  }
+
+  private async select(id: string | null): Promise<void> {
+    for (const entry of this.active.values()) {
+      if (entry.device.id !== id) await entry.handle.window?.hide()
+    }
+    this.selected = null
+    if (id) {
+      const active = this.active.get(id)
+      if (!active || active.stopping) {
+        this.onState(this.state)
+        return
+      }
+      if (!active.handle.window) throw new Error('Window switching requires the Windows controller')
+      try {
+        await active.handle.window.show()
+        this.selected = id
+      } finally {
+        this.onState(this.state)
+      }
+    } else this.onState(this.state)
   }
 
   toggleWindow(): Promise<'local' | 'remote'> {
     return this.enqueue(async () => {
-      if (!this.active || this.active.stopping) return 'local'
-      if (!this.active.handle.window)
-        throw new Error('Window switching requires the Windows controller')
-      return this.active.handle.window.toggle()
+      const cycle: Array<string | null> = [
+        null,
+        ...[...this.active.values()]
+          .filter((entry) => !entry.stopping)
+          .map((entry) => entry.device.id)
+      ]
+      const next = cycle[(Math.max(0, cycle.indexOf(this.controlDeviceId)) + 1) % cycle.length]!
+      await this.select(next)
+      return this.controlDeviceId ? 'remote' : 'local'
     })
   }
-
   hideWindow(): Promise<void> {
-    return this.enqueue(async () => {
-      if (this.active && !this.active.stopping) await this.active.handle.window?.hide()
-    })
+    return this.enqueue(() => this.select(null))
   }
-
-  showWindow(): Promise<void> {
-    return this.enqueue(async () => {
-      if (!this.active || this.active.stopping) return
-      if (!this.active.handle.window)
-        throw new Error('Window switching requires the Windows controller')
-      await this.active.handle.window.show()
-    })
+  showWindow(id?: string): Promise<void> {
+    return this.enqueue(() => this.select(id ?? this.active.keys().next().value ?? null))
   }
-
   configureWindow(settings: InputSettings): Promise<void> {
     return this.enqueue(async () => {
-      if (this.active && !this.active.stopping) await this.active.handle.window?.configure(settings)
+      const changed: Array<{ entry: Active; previous: InputSettings }> = []
+      try {
+        for (const entry of this.active.values()) {
+          const previous = entry.input
+          await entry.handle.window?.configure(settings)
+          entry.input = { lockInput: settings.lockInput, returnShortcut: settings.returnShortcut }
+          changed.push({ entry, previous })
+        }
+      } catch (error) {
+        for (const { entry, previous } of changed.reverse()) {
+          await entry.handle.window?.configure(previous).catch(async () => {
+            await entry.handle.window?.hide().catch(() => {})
+            this.onActivity(`Reconnect ${entry.device.name} to restore its input settings`, true)
+          })
+          entry.input = previous
+        }
+        throw error
+      }
     })
-  }
-
-  private async stopActive(): Promise<void> {
-    const active = this.active
-    if (!active) return
-    active.stopping = true
-    this.set({ ...this.state, phase: 'stopping' })
-    try {
-      await active.handle.stop()
-      if (this.active === active) this.active = null
-      this.set(idle())
-      this.onActivity(`Stopped ${active.device.name} local streaming client`)
-    } catch (error) {
-      const message = 'The client could not exit; disconnect manually in Moonlight and retry'
-      this.set({ ...this.state, phase: 'failed', error: message })
-      this.onActivity(message, true)
-      throw error
-    }
   }
 }

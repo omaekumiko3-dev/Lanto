@@ -115,6 +115,22 @@ export function App() {
           </div>
         )}
         <DeviceCards model={view} />
+        <p className="session-cycle">
+          {state.sessions.length ? (
+            <>
+              {settings.returnShortcut.replace('Control', 'Ctrl')} · Local →{' '}
+              {state.sessions
+                .map(
+                  (entry) =>
+                    state.config.devices.find((device) => device.id === entry.deviceId)?.name
+                )
+                .join(' → ')}{' '}
+              → Local
+            </>
+          ) : (
+            'Connect up to 2 devices and switch with your keyboard.'
+          )}
+        </p>
       </main>
 
       {pairOpen && (
@@ -174,7 +190,7 @@ export function App() {
         <DeviceDialog
           notice={feedback}
           device={editing}
-          active={active && editing.id === state.session.deviceId}
+          active={state.sessions.some((entry) => entry.deviceId === editing.id)}
           busy={Boolean(busy)}
           close={() => setEditing(null)}
           save={async (input) => {

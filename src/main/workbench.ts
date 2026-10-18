@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { isAbsolute, join } from 'node:path'
+import { dirname, isAbsolute, join } from 'node:path'
 import { z } from 'zod'
 import { SerialQueue } from '../common/serial-queue.ts'
 import { HostClient } from '../controller/host-client.ts'
@@ -47,7 +47,6 @@ export class Workbench {
   private moonlightPath: string | null = null
   private epoch = 0
   private closing = false
-  private lastSwitch = 0
 
   constructor(options: {
     directory: string
@@ -73,7 +72,7 @@ export class Workbench {
       directory: this.directory,
       resources: options.deploymentResources,
       changed: this.changed,
-      available: () => !this.closing && this.session.state.pid === null,
+      available: () => !this.closing && !this.session.busy,
       media: () => findMoonlight(this.config.settings.moonlightPath),
       tunnels: this.tunnels,
       controllerId: () => this.trust.controllerId,
@@ -91,21 +90,27 @@ export class Workbench {
         return device.id
       }
     })
-    this.adapter = new MoonlightAdapter(join(this.directory, 'media-logs'), (pid) => {
-      if (this.session.state.pid === pid && !this.closing) {
-        this.lastSwitch = Date.now()
-        void this.session
-          .hideWindow()
-          .then(() => this.focusLocal())
-          .catch((error: unknown) => this.log(readableError(error), true))
-      }
-    })
+    this.adapter = new MoonlightAdapter(
+      join(this.directory, 'media-logs'),
+      (pid) => {
+        if (this.session.owns(pid) && !this.closing)
+          void this.toggleRemote().catch((error: unknown) => this.log(readableError(error), true))
+      },
+      () => this.shortcut.environment
+    )
     this.session = new SessionManager(this.adapter, this.changed, (message, error) =>
       this.log(message, error)
     )
-    this.shortcut = new ReturnShortcut(() => {
-      void this.toggleRemote().catch((error: unknown) => this.log(readableError(error), true))
-    })
+    this.shortcut = new ReturnShortcut(
+      () => {
+        void this.toggleRemote().catch((error: unknown) => this.log(readableError(error), true))
+      },
+      join(dirname(options.deploymentResources), 'native', 'LantoSwitch.exe'),
+      () => {
+        void this.session.hideWindow().catch(() => {})
+        this.log('The keyboard switch helper stopped. Restart Lanto to restore switching.', true)
+      }
+    )
   }
 
   async load(): Promise<void> {
@@ -129,7 +134,7 @@ export class Workbench {
         await this.trust.updateAddress(host.id, device.host)
     }
     this.moonlightPath = await findMoonlight(this.config.settings.moonlightPath)
-    this.shortcut.start(this.config.settings.returnShortcut)
+    await this.shortcut.start(this.config.settings.returnShortcut)
     await this.clipboard.configure({
       enabled: this.config.settings.shareClipboard,
       files: this.config.settings.shareFiles
@@ -146,6 +151,8 @@ export class Workbench {
     return {
       config: this.config,
       session: this.session.state,
+      sessions: this.session.sessions,
+      controlDeviceId: this.session.controlDeviceId,
       clipboard: this.clipboard.snapshot(),
       deployment: this.deployment.snapshot(),
       trustedHosts: this.hosts.list(),
@@ -226,8 +233,7 @@ export class Workbench {
   removeDevice(input: unknown): Promise<AppState> {
     return this.queue.run(async () => {
       const device = this.device(input)
-      if (device.id === this.session.state.deviceId && this.session.state.pid !== null)
-        throw new Error('Disconnect before removing this device')
+      if (this.session.has(device.id)) throw new Error('Disconnect before removing this device')
       if (device.hostId) await this.hosts.unpair(device.hostId)
       await this.persist({
         ...this.config,
@@ -324,25 +330,29 @@ export class Workbench {
     this.focusLocal()
   }
 
+  async disconnect(input: unknown): Promise<void> {
+    const device = this.device(input)
+    await this.session.disconnect(device.id)
+  }
+
   private async toggleRemote(): Promise<void> {
-    if (this.closing || Date.now() - this.lastSwitch < 200) return
-    this.lastSwitch = Date.now()
-    if (this.session.state.pid === null || process.platform !== 'win32') {
+    if (this.closing) return
+    if (!this.session.busy || process.platform !== 'win32') {
       await this.returnLocal()
       return
     }
     if ((await this.session.toggleWindow()) === 'local') this.focusLocal()
   }
 
-  async showRemote(): Promise<void> {
+  async showRemote(input: unknown): Promise<void> {
     if (this.config.settings.lockInput)
       throw new Error('Use the switch shortcut to return to the remote desktop')
-    if (!this.closing) await this.session.showWindow()
+    if (!this.closing) await this.session.showWindow(this.device(input).id)
   }
 
   openMoonlight(): Promise<void> {
     return this.queue.run(async () => {
-      if (this.session.state.pid !== null)
+      if (this.session.busy)
         throw new Error('Disconnect before opening the Moonlight pairing window')
       await this.adapter.open(this.config.settings)
       this.log('Moonlight opened; complete streaming pairing there')
@@ -378,7 +388,7 @@ export class Workbench {
 
   pairHost(input: unknown, tunnel?: TunnelEndpoint): Promise<AppState> {
     return this.queue.run(async () => {
-      if (this.session.state.pid !== null) throw new Error('Disconnect before pairing Host')
+      if (this.session.busy) throw new Error('Disconnect before pairing Host')
       const ticket = z.string().max(16000).parse(input)
       const host = await this.hosts.pair(ticket)
       const existing = this.config.devices.find((entry) => entry.hostId === host.id)

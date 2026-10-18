@@ -1,261 +1,264 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { SessionManager } from '../src/main/session-manager.ts'
-import type { MediaAdapter, MediaExit, MediaHandle } from '../src/main/session-manager.ts'
+import { SessionManager, type MediaExit, type MediaHandle } from '../src/main/session-manager.ts'
 import { defaultConfig } from '../src/shared/model.ts'
-import type { Device, SessionState } from '../src/shared/model.ts'
 import { deviceFixture } from './fixtures.ts'
 
-const defaults = defaultConfig()
-const first: Device = deviceFixture()
-const second: Device = deviceFixture({ name: 'Test Mac', host: 'mac.local', platform: 'macos' })
+const settings = defaultConfig().settings
+const first = deviceFixture()
+const second = deviceFixture({ name: 'Test Mac', host: 'mac.local', platform: 'macos' })
+const third = deviceFixture({ name: 'Third', host: 'third.local' })
 
-function handle(
-  pid: number
-): MediaHandle & { exit(code: number): void; stops: number; failStop: boolean } {
-  let resolve: (exit: MediaExit) => void = () => {}
-  const value = {
-    pid,
-    stops: 0,
-    failStop: false,
-    closed: new Promise<MediaExit>((done) => {
-      resolve = done
-    }),
-    exit(code: number) {
-      resolve({ code, signal: null })
-    },
-    async stop() {
-      value.stops++
-      if (value.failStop) throw new Error('stop failed')
-      value.exit(0)
+function fixture() {
+  const owners = new Set<number>()
+  const handles: ReturnType<typeof handle>[] = []
+  const events: string[] = []
+  let failStart = false
+  function handle(pid: number) {
+    let resolve!: (exit: MediaExit) => void
+    const value = {
+      pid,
+      stops: 0,
+      failStop: false,
+      failHide: false,
+      failShow: false,
+      failConfigure: false,
+      audio: [] as number[],
+      closed: new Promise<MediaExit>((done) => {
+        resolve = done
+      }),
+      exit(code: number) {
+        owners.delete(pid)
+        resolve({ code, signal: null })
+      },
+      async stop() {
+        value.stops++
+        if (value.failStop) throw new Error('stop failed')
+        value.exit(0)
+      },
+      async setAudio(audio: { volume: number }) {
+        value.audio.push(audio.volume)
+      },
+      window: {
+        async toggle(): Promise<'local' | 'remote'> {
+          throw new Error('Use explicit owner selection')
+        },
+        async show() {
+          events.push(`show:${pid}`)
+          if (value.failShow) throw new Error('show failed')
+          assert.ok(
+            owners.size === 0 || owners.has(pid),
+            'previous input owner must release before show'
+          )
+          owners.add(pid)
+        },
+        async hide() {
+          events.push(`hide:${pid}`)
+          if (value.failHide) throw new Error('hide failed')
+          owners.delete(pid)
+        },
+        async configure(input: { lockInput: boolean }) {
+          if (value.failConfigure) throw new Error('configure failed')
+          events.push(`configure:${pid}:${input.lockInput}`)
+        },
+        close() {}
+      }
     }
+    return value
   }
-  return value
-}
-
-test('switch closes the previous process before launching the next; stale exits cannot clear it', async () => {
-  const handles = [handle(100), handle(101)]
-  const order: string[] = []
-  const states: SessionState[] = []
-  let index = 0
   const manager = new SessionManager(
     {
-      async start(device) {
-        if (index === 1) assert.equal(handles[0]!.stops, 1)
-        order.push(device.id)
-        return handles[index++]!
+      async start() {
+        if (failStart) throw new Error('missing executable')
+        assert.equal(owners.size, 0, 'release the current owner before launching')
+        const value = handle(100 + handles.length)
+        handles.push(value)
+        owners.add(value.pid)
+        return value
       }
     },
-    (state) => states.push(state),
-    () => {}
-  )
-  await manager.connect(first, defaults.settings)
-  await manager.connect(first, defaults.settings)
-  assert.equal(index, 1)
-  await manager.connect(second, defaults.settings)
-  handles[0]!.exit(1)
-  await Promise.resolve()
-  assert.equal(manager.state.deviceId, second.id)
-  assert.equal(manager.state.pid, 101)
-  assert.deepEqual(order, [first.id, second.id])
-  assert.ok(states.some((state) => state.phase === 'stopping'))
-  await manager.disconnect()
-  assert.equal(manager.state.phase, 'idle')
-  assert.equal(handles[1]!.stops, 1)
-})
-
-test('a return requested during launch closes the process as soon as it is created', async () => {
-  const pending = handle(102)
-  let finish: (handle: MediaHandle) => void = () => {}
-  const adapter: MediaAdapter = {
-    start: () =>
-      new Promise((resolve) => {
-        finish = resolve
-      })
-  }
-  const manager = new SessionManager(
-    adapter,
     () => {},
     () => {}
   )
-  const connecting = manager.connect(first, defaults.settings)
+  return {
+    manager,
+    handles,
+    owners,
+    events,
+    failStart: (value: boolean) => {
+      failStart = value
+    }
+  }
+}
+
+test('two streams stay connected; a third is rejected and the cycle retains one input owner', async () => {
+  const { manager, handles, owners } = fixture()
+  await manager.connect(first, settings)
+  await manager.connect(first, settings)
+  await manager.connect(second, settings)
+  assert.equal(handles.length, 2)
+  assert.deepEqual(
+    handles.map((value) => value.stops),
+    [0, 0]
+  )
+  assert.equal(manager.controlDeviceId, second.id)
+  await assert.rejects(manager.connect(third, settings), /Two devices/)
+  assert.equal(manager.controlDeviceId, second.id)
+  assert.equal(await manager.toggleWindow(), 'local')
+  assert.equal(owners.size, 0)
+  const expected = [first.id, second.id, null, first.id, second.id, null]
+  for (const id of expected) {
+    await manager.toggleWindow()
+    assert.equal(manager.controlDeviceId, id)
+  }
+  assert.equal(manager.sessions.length, 2)
+  await manager.disconnect()
+  assert.deepEqual(
+    handles.map((value) => value.stops),
+    [1, 1]
+  )
+})
+
+test('rapid switch requests queue every distinct tap without a time debounce', async () => {
+  const { manager, handles } = fixture()
+  await manager.connect(first, settings)
+  await manager.connect(second, settings)
+  await manager.hideWindow()
+  const results = await Promise.all(Array.from({ length: 10 }, () => manager.toggleWindow()))
+  assert.deepEqual(results, [
+    'remote',
+    'remote',
+    'local',
+    'remote',
+    'remote',
+    'local',
+    'remote',
+    'remote',
+    'local',
+    'remote'
+  ])
+  assert.equal(manager.controlDeviceId, first.id)
+  assert.deepEqual(
+    handles.map((value) => value.stops),
+    [0, 0]
+  )
+  await manager.disconnect()
+})
+
+test('disconnect and volume only target the selected device; another stream survives its exit', async () => {
+  const { manager, handles } = fixture()
+  await manager.connect(first, settings)
+  await manager.connect(second, settings)
+  await manager.setAudio(first.id, { volume: 25, muted: false })
+  await manager.setAudio(second.id, { volume: 80, muted: true })
+  assert.deepEqual(
+    handles.map((value) => value.audio),
+    [[25], [80]]
+  )
+  await manager.disconnect(first.id)
+  assert.equal(manager.controlDeviceId, second.id)
+  assert.equal(manager.sessions.length, 1)
+  assert.equal(handles[1]!.stops, 0)
+  await manager.connect(first, settings)
+  handles[0]!.exit(9)
+  await Promise.resolve()
+  assert.equal(manager.sessions.length, 2)
+  handles[1]!.exit(7)
+  await Promise.resolve()
+  assert.equal(manager.sessions.length, 1)
+  assert.equal(manager.controlDeviceId, first.id)
+  assert.equal(manager.state.phase, 'failed')
+  await manager.disconnect()
+})
+
+test('startup failure leaves the existing stream alive and the queue usable', async () => {
+  const { manager, handles, failStart } = fixture()
+  await manager.connect(first, settings)
+  failStart(true)
+  await assert.rejects(manager.connect(second, settings), /missing executable/)
+  assert.equal(manager.sessions.length, 1)
+  assert.equal(manager.controlDeviceId, null)
+  assert.equal(handles[0]!.stops, 0)
+  failStart(false)
+  await manager.connect(second, settings)
+  await manager.disconnect()
+})
+
+test('failure to hide prevents a new owner; failure to show keeps both streams alive', async () => {
+  const { manager, handles } = fixture()
+  await manager.connect(first, settings)
+  handles[0]!.failHide = true
+  await assert.rejects(manager.connect(second, settings), /hide failed/)
+  assert.equal(handles.length, 1)
+  handles[0]!.failHide = false
+  await manager.connect(second, settings)
+  await manager.hideWindow()
+  handles[0]!.failShow = true
+  await assert.rejects(manager.toggleWindow(), /show failed/)
+  assert.equal(manager.controlDeviceId, null)
+  assert.equal(manager.sessions.length, 2)
+  await manager.disconnect()
+})
+
+test('disconnect all attempts both clients and retains ownership of a process that fails to stop', async () => {
+  const { manager, handles } = fixture()
+  await manager.connect(first, settings)
+  await manager.connect(second, settings)
+  handles[0]!.failStop = true
+  await assert.rejects(manager.disconnect(), /stop failed/)
+  assert.equal(handles[1]!.stops, 1)
+  assert.equal(manager.sessions.length, 1)
+  assert.equal(manager.sessions[0]!.pid, handles[0]!.pid)
+  handles[0]!.failStop = false
+  await manager.disconnect()
+  assert.equal(manager.state.phase, 'idle')
+})
+
+test('disconnect requested during startup waits for and closes the newly owned process', async () => {
+  const { handles, manager: source } = fixture()
+  await source.connect(first, settings)
+  const pending = handles[0]!
+  let finish!: (handle: MediaHandle) => void
+  const manager = new SessionManager(
+    {
+      start: () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    },
+    () => {},
+    () => {}
+  )
+  const connecting = manager.connect(first, settings)
   await new Promise<void>((resolve) => setImmediate(resolve))
-  const returning = manager.disconnect()
+  const closing = manager.disconnect()
   finish(pending)
-  await Promise.all([connecting, returning])
+  await Promise.all([connecting, closing])
   assert.equal(pending.stops, 1)
   assert.equal(manager.state.phase, 'idle')
 })
 
-test('launch failure does not poison the queue; an unexpected exit is not reported as connected', async () => {
-  let fail = true
-  const process = handle(103)
-  const manager = new SessionManager(
-    {
-      async start() {
-        if (fail) throw new Error('missing executable')
-        return process
-      }
-    },
-    () => {},
-    () => {}
-  )
-  await assert.rejects(manager.connect(first, defaults.settings), /missing executable/)
-  assert.equal(manager.state.phase, 'failed')
-  fail = false
-  await manager.connect(first, defaults.settings)
-  process.exit(7)
-  await Promise.resolve()
-  assert.equal(manager.state.phase, 'failed')
-  assert.equal(manager.state.pid, null)
+test('live input settings apply to both connected clients', async () => {
+  const { manager, events } = fixture()
+  await manager.connect(first, settings)
+  await manager.connect(second, settings)
+  await manager.configureWindow({ ...settings, lockInput: false })
+  assert.ok(events.includes('configure:100:false') && events.includes('configure:101:false'))
   await manager.disconnect()
-  assert.equal(manager.state.phase, 'idle')
 })
 
-test('an unclosed process blocks replacement rather than allowing two input owners', async () => {
-  const process = handle(104)
-  process.failStop = true
-  let starts = 0
-  const manager = new SessionManager(
-    {
-      async start() {
-        starts++
-        return process
-      }
-    },
-    () => {},
-    () => {}
-  )
-  await manager.connect(first, defaults.settings)
-  await assert.rejects(manager.connect(second, defaults.settings), /stop failed/)
-  assert.equal(starts, 1)
-  assert.equal(manager.state.pid, 104)
-  process.failStop = false
-  await manager.disconnect()
-  assert.equal(manager.state.pid, null)
-})
-
-test('volume only targets the current device and unsupported clients report failure', async () => {
-  const applied: number[] = []
-  const client = {
-    ...handle(105),
-    async setAudio(audio: { volume: number }) {
-      applied.push(audio.volume)
-    }
-  }
-  const manager = new SessionManager(
-    {
-      async start() {
-        return client
-      }
-    },
-    () => {},
-    () => {}
-  )
-  await manager.setAudio(first.id, { volume: 10, muted: false })
-  await manager.connect(first, defaults.settings)
-  await manager.setAudio(second.id, { volume: 20, muted: true })
-  await manager.setAudio(first.id, { volume: 35, muted: false })
-  assert.deepEqual(applied, [35])
-  await manager.disconnect()
-  await manager.setAudio(first.id, { volume: 70, muted: false })
-  assert.deepEqual(applied, [35])
-  const unsupported = new SessionManager(
-    {
-      async start() {
-        return handle(106)
-      }
-    },
-    () => {},
-    () => {}
-  )
-  await unsupported.connect(first, defaults.settings)
+test('a failed input-settings update rolls back the other connected client', async () => {
+  const { manager, handles, events } = fixture()
+  await manager.connect(first, settings)
+  await manager.connect(second, settings)
+  handles[1]!.failConfigure = true
   await assert.rejects(
-    unsupported.setAudio(first.id, { volume: 40, muted: false }),
-    /does not support volume control/
+    manager.configureWindow({ ...settings, lockInput: false }),
+    /configure failed/
   )
-  await unsupported.disconnect()
-})
-
-test('window switching retains the same stream, applies live preferences, and disconnect still stops it', async () => {
-  const commands: string[] = []
-  let remote = true
-  const player = Object.assign(handle(107), {
-    window: {
-      async toggle(): Promise<'local' | 'remote'> {
-        remote = !remote
-        commands.push('toggle')
-        return remote ? 'remote' : 'local'
-      },
-      async show() {
-        remote = true
-        commands.push('show')
-      },
-      async hide() {
-        remote = false
-        commands.push('hide')
-      },
-      async configure(settings: { lockInput: boolean }) {
-        commands.push(`locked:${settings.lockInput}`)
-      },
-      close() {}
-    }
-  })
-  let starts = 0
-  const manager = new SessionManager(
-    {
-      async start() {
-        starts++
-        return player
-      }
-    },
-    () => {},
-    () => {}
+  assert.deepEqual(
+    events.filter((entry) => entry.startsWith('configure')),
+    ['configure:100:false', 'configure:100:true']
   )
-  assert.equal(await manager.toggleWindow(), 'local')
-  await manager.connect(first, defaults.settings)
-  const original = { ...manager.state }
-  assert.equal(await manager.toggleWindow(), 'local')
-  assert.equal(await manager.toggleWindow(), 'remote')
-  await manager.configureWindow({ ...defaults.settings, lockInput: false })
-  await manager.showWindow()
-  assert.deepEqual(manager.state, original)
-  assert.equal(starts, 1)
-  assert.equal(player.stops, 0)
-  assert.deepEqual(commands, ['toggle', 'toggle', 'locked:false', 'show'])
   await manager.disconnect()
-  assert.equal(player.stops, 1)
-  await manager.showWindow()
-  await manager.configureWindow(defaults.settings)
-  assert.equal(await manager.toggleWindow(), 'local')
-  assert.equal(commands.length, 4)
-})
-
-test('window control failure retains the stream and does not block disconnect', async () => {
-  const player = Object.assign(handle(108), {
-    window: {
-      async toggle(): Promise<'local' | 'remote'> {
-        throw new Error('window helper exited')
-      },
-      async show() {},
-      async hide() {},
-      async configure() {},
-      close() {}
-    }
-  })
-  const manager = new SessionManager(
-    {
-      async start() {
-        return player
-      }
-    },
-    () => {},
-    () => {}
-  )
-  await manager.connect(first, defaults.settings)
-  await assert.rejects(manager.toggleWindow(), /window helper exited/)
-  assert.equal(manager.state.phase, 'running')
-  assert.equal(player.stops, 0)
-  await manager.disconnect()
-  assert.equal(player.stops, 1)
 })

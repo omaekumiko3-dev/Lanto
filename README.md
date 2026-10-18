@@ -26,19 +26,21 @@ The project combines a focused device manager, guided SSH setup, a small Host se
 
 | Capability | What it means in practice |
 | --- | --- |
-| Manage several computers | Save named devices and connect to one remote desktop at a time. |
+| Manage several computers | Save named devices, keep up to two remote streams open, and select one system for keyboard and mouse control. |
 | Set up through SSH | Inspect the target, verify its host fingerprint, and install or reuse the required components through the setup wizard. |
 | Stream desktop, audio, and input | The native player handles video decoding, sound, keyboard, and mouse outside Electron. |
-| Choose stream quality | Select 4K, 1440p, or 1080p and adjust frame rate and bitrate independently. New profiles start at 4K / 30 FPS / 60 Mbps. |
+| Choose stream quality | Select 4K, 1440p, or 1080p and adjust frame rate and bitrate independently. New profiles start at 4K / 60 FPS / 120 Mbps per stream. |
 | Control volume per device | Remember volume and mute locally without changing the remote system volume. |
 | Share a clipboard | Opt in to plain text and images across paired, online Hosts, even when no desktop stream is open. |
 | Move files and folders | Enable file sharing, copy on one computer, wait for the transfer, and paste on another. |
-| Switch between local and remote | Press **Ctrl + `** (the key above Tab). Local mode hides the remote window; remote mode captures the mouse and system shortcuts. Only the switch shortcut changes the selected system by default. The same stream stays connected; use the device switch to disconnect. |
+| Switch between local and remote | Press **Ctrl + `** (the default; custom bindings are retained) to cycle Local → remote 1 → remote 2 → Local in connection order. Keep the modifier held and tap the key repeatedly. The streams stay open; each card disconnects only its own device. |
 | Use a direct encrypted tunnel | Optional userspace WireGuard transport with no extra VPN client or account; a reachable UDP endpoint is required. |
 
 ![Guided SSH setup using the actual Lanto interface](docs/images/setup.png)
 
 ## Download and start
+
+Current `main` includes unreleased two-stream switching and 4K60 defaults. The published v0.3.1 package predates these changes.
 
 1. Download **`Lanto-0.3.1-win-x64.zip`** from [Releases](https://github.com/omaekumiko3-dev/Lanto/releases/latest).
 2. Extract the entire folder and run **`Lanto.exe`**. Keep its accompanying files together.

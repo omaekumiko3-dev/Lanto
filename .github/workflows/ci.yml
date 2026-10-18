@@ -25,5 +25,6 @@ jobs:
           cache-dependency-path: native/tunnel/go.sum
       - run: npm ci
       - run: npm run format:check
+      - run: node scripts/build-switch.mjs
       - run: npm test
       - run: npm run test:smoke

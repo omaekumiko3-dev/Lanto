@@ -4,13 +4,14 @@ import { platformNames, phaseNames } from '../format.ts'
 import { DeviceVolume } from './DeviceVolume.tsx'
 
 export function DeviceCards({ model }: { model: WorkbenchView }) {
-  const { state, active, busy, newDevice, run, api, setEditing, probes, setProbes } = model
+  const { state, busy, newDevice, run, api, setEditing, probes, setProbes } = model
   const waiting = state.session.phase === 'launching' || state.session.phase === 'stopping'
   return (
     <section className="device-cards" aria-label="Device list">
       {state.config.devices.map((device) => {
         const host = state.trustedHosts.find((entry) => entry.id === device.hostId)
-        const inUse = active && state.session.deviceId === device.id
+        const session = state.sessions.find((entry) => entry.deviceId === device.id)
+        const inUse = Boolean(session) || (waiting && state.session.deviceId === device.id)
         const reachable = host
           ? !host.error && host.status?.sunshineReachable
           : probes[device.id]?.reachable
@@ -37,18 +38,25 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
                 aria-label={`${device.name} connection`}
                 aria-checked={inUse}
                 aria-busy={inUse && waiting}
-                title={inUse ? 'Disconnect' : 'Connect device'}
+                title={
+                  inUse
+                    ? 'Disconnect'
+                    : state.sessions.length >= 2
+                      ? 'Disconnect a device first (maximum 2)'
+                      : 'Connect device'
+                }
                 disabled={
                   Boolean(busy) ||
                   waiting ||
                   (!inUse &&
-                    (!device.host ||
+                    (state.sessions.length >= 2 ||
+                      !device.host ||
                       !state.runtime.moonlightPath ||
                       !state.runtime.shortcutRegistered))
                 }
                 onClick={() =>
                   void run(`connection:${device.id}`, () =>
-                    inUse ? api.returnLocal() : api.connect(device.id)
+                    inUse ? api.disconnect(device.id) : api.connect(device.id)
                   )
                 }
               >
@@ -63,7 +71,11 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
               <span className={`probe-label ${inUse || reachable ? 'reachable' : ''}`}>
                 <span className="status-dot" />
                 {inUse
-                  ? phaseNames[state.session.phase]
+                  ? session?.phase === 'running'
+                    ? state.controlDeviceId === device.id
+                      ? 'Selected'
+                      : phaseNames.running
+                    : phaseNames[session?.phase ?? state.session.phase]
                   : !device.host
                     ? 'Not configured'
                     : reachable
@@ -80,7 +92,7 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
                     className="text-button"
                     aria-label={`Show ${device.name}`}
                     disabled={Boolean(busy) || waiting}
-                    onClick={() => void run(`show:${device.id}`, () => api.showRemote())}
+                    onClick={() => void run(`show:${device.id}`, () => api.showRemote(device.id))}
                   >
                     Show
                   </button>
