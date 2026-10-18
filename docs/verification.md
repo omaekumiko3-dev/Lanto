@@ -2,15 +2,15 @@
 
 Date: 2026-10-16. Environment: local Windows, Node.js 24.12.0, Electron 44.7.2. These records cover the Electron controller and standalone Node.js Host.
 
-| Check | Result |
-| --- | --- |
-| `npm run build` | Type checking and main/preload/renderer builds passed |
-| `npm run host:build` | Standalone Node.js Host built; compiled CLI runs |
-| `npm run format:check` | Passed |
-| `npm test` | All 20 tests passed |
-| `npm run test:smoke` | Real Electron operations and loopback Host pairing passed with isolated configuration |
-| npm dependency audit | Reported zero known vulnerabilities after installation; this does not exclude unknown issues |
-| `git diff --check` | Passed |
+| Check                  | Result                                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------------------- |
+| `npm run build`        | Type checking and main/preload/renderer builds passed                                        |
+| `npm run host:build`   | Standalone Node.js Host built; compiled CLI runs                                             |
+| `npm run format:check` | Passed                                                                                       |
+| `npm test`             | All 20 tests passed                                                                          |
+| `npm run test:smoke`   | Real Electron operations and loopback Host pairing passed with isolated configuration        |
+| npm dependency audit   | Reported zero known vulnerabilities after installation; this does not exclude unknown issues |
+| `git diff --check`     | Passed                                                                                       |
 
 Core tests cover configuration save/reload, retaining corrupt configurations, address/argument validation, duplicate device IDs, Moonlight arguments, TCP probing, real local child-process cleanup, switching order, returning during startup, abnormal exit, and preventing replacement sessions after stop failure.
 
@@ -98,13 +98,13 @@ All 23 tests, type checking, production build, and Electron smoke testing passed
 
 The local native client was updated to v5 with existing pairing retained. A real Linux session used HEVC 2560×1440 at 60fps and the existing D3D11VA pipeline; first audio arrived at about 400ms. A low-amplitude PipeWire tone played in the Linux desktop session, and Windows read that Moonlight process's audio-session peaks:
 
-| Card setting | Mean Windows audio-session peak |
+| Card setting           | Mean Windows audio-session peak |
 | ---------------------- | ------------------------------: |
-| 100% | 0.0250318 |
-| 50% | 0.0125154 |
-| 25% | 0.0062579 |
-| Muted | 0 |
-| Unmuted, restoring 25% | 0.0062580 |
+| 100%                   |                       0.0250318 |
+| 50%                    |                       0.0125154 |
+| 25%                    |                       0.0062579 |
+| Muted                  |                               0 |
+| Unmuted, restoring 25% |                       0.0062580 |
 
 This verifies real output gain follows the card, not perceptually linear loudness. The tone stopped, everyday volume and diagnostics were restored, and remote system volume/services were unchanged.
 
@@ -122,11 +122,11 @@ All 23 core tests, Host TypeScript build, formatting, PowerShell parsing, and wh
 
 On 2026-10-17, StudioMac, LinuxWorkstation, and WindowsDesktop were connected individually at the user's request. Each existing desktop session played a low-amplitude tone. Device-card sliders and mute buttons were operated, and the controller read the corresponding Moonlight WASAPI session. Results below use each host's stable 100% output as baseline; percentages describe PCM peak ratios, not perceived loudness.
 
-| Host | Measured output at 50% | At 25% | Zero volume / mute | Unmute back to 25% | Restore 37% after reconnect |
+| Host    | Measured output at 50% | At 25% | Zero volume / mute | Unmute back to 25% | Restore 37% after reconnect |
 | ------- | ---------------------: | -----: | ------------------ | -----------------: | --------------------------: |
-| macOS | 50.00% | 25.01% | Both 0 | 24.98% | 36.97% |
-| Linux | 50.00% | 25.00% | Both 0 | 25.00% | 37.01% |
-| Windows | 50.00% | 25.00% | Both 0 | 25.00% | 36.99% |
+| macOS   |                 50.00% | 25.01% | Both 0             |             24.98% |                      36.97% |
+| Linux   |                 50.00% | 25.00% | Both 0             |             25.00% |                      37.01% |
+| Windows |                 50.00% | 25.00% | Both 0             |             25.00% |                      36.99% |
 
 All three completed 100% → 50% → 25% → 0% → muted at 25% → unmuted, then disconnected/reconnected with 37% and mute saved. New streams initially output zero and restored 37% after unmuting. Client PIDs stayed unchanged during live adjustment, and every other device's saved volume/mute remained unchanged. Separate 23%/47%/71% values and mixed mute states were then saved, and all survived an actual Lanto exit/restart.
 
@@ -140,11 +140,11 @@ On 2026-10-17, shared clipboard and a separate file-sharing switch were added. A
 
 Connection arguments now include `--audio-on-host`, preserving normal target playback while forwarding the same sound to the controller. Each host was connected and played a low-amplitude tone:
 
-| Host | Target during streaming | Mean controller Moonlight audio-session peak |
+| Host    | Target during streaming                                                                                        | Mean controller Moonlight audio-session peak |
 | ------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------: |
-| macOS | Default remained Mac mini speakers, 50% and unmuted | 0.00502146 |
-| Linux | Physical ALC897 digital output remained 40%; player and Sunshine capture monitor used the same physical device | 0.00502088 |
-| Windows | Default remained Redmi Computer Speakers; physical endpoint peak stayed nonzero | 0.13987496 |
+| macOS   | Default remained Mac mini speakers, 50% and unmuted                                                            |                                   0.00502146 |
+| Linux   | Physical ALC897 digital output remained 40%; player and Sunshine capture monitor used the same physical device |                                   0.00502088 |
+| Windows | Default remained Redmi Computer Speakers; physical endpoint peak stayed nonzero                                |                                   0.13987496 |
 
 Windows also had other actual playback, so its peak is not a single-tone amplitude and cannot be used for loudness comparison. Checks confirm streaming neither replaced nor muted target physical audio while the controller simultaneously received it. Client-only sound did not substitute for target inspection. Tones and temporary tasks were removed; system volume on all three hosts was unchanged.
 
@@ -212,7 +212,6 @@ All 44 behavior tests, Go tunnel tests, type checking, the production build, for
 
 Global-shortcut behavior and window restoration inside exclusive-fullscreen games remain a manual acceptance check. Automated key injection did not trigger the binding in the active fullscreen environment; this is not recorded as a successful physical shortcut test.
 
-
 ### Shortcut-only control mode
 
 This replaces the preceding minimization behavior. On Windows, the default setting now hides the stream in local mode, confines the mouse in remote mode, and passes ordinary system shortcuts to the target. Ctrl plus backtick remains reserved in both modes. Native stdout notifications request an idempotent local transition, and hidden SDL windows remain discoverable before a foreground sample has been recorded.
@@ -232,3 +231,15 @@ All 52 Node behavior tests and the Go tunnel tests passed, along with type check
 The native switch helper tests held Alt with twelve separate taps, repeated keydown suppression, key release across simulated ownership changes, exact modifier matching, and shared-memory continuity. Native input-control tests also cover helper death while the controller survives. The foreground player's hook runs before SDL's keyboard hook and seeds SDL's modifier state from physical edges, including modifiers held before the new window acquired focus. The native player was rebuilt with the seventh patch, and its runtime was checked with a minimal Windows PATH. No physical keyboard or mouse events were injected. Held-Alt switching across actual desktops, fullscreen applications, pointer confinement, and sustained simultaneous 4K60 performance remain manual acceptance checks.
 
 After a backup, the everyday Windows controller and native-11 player were installed and restarted minimized. Readback confirmed all three saved device entries, the existing Alt-plus-backtick binding, successful helper registration, 3840 × 2160, 60 FPS, and 120 Mbps. The settings UI accepted the 150 Mbps ceiling. Installed main/helper/player hashes matched the prepared package. The previous stream was closed for the update; no remote desktop was automatically opened afterward.
+
+### Virtual displays on all three hosts
+
+On 2026-10-18, the macOS and Windows virtual-display configurations were rechecked with actual 3840 × 2160, 60 FPS streams requesting 120 Mbps. The Mac's LaunchAgent-owned Lanto 4K display remained its active desktop. Windows Sunshine selected its virtual display, captured a true 3840 × 2160 desktop, and restored the prior arrangement on disconnect. Both short samples received HEVC video through D3D11VA and reported 0% network/jitter frame drops.
+
+The Ubuntu 26.04.1 / GNOME 50.1 / NVIDIA RTX 3080 host gained a Mutter virtual output held open by the optional Python/GStreamer helper. The output is 3840 × 2160 at 60 Hz with 150% desktop scaling. An enabled user service maintains it, and a Sunshine service drop-in waits for its readiness. Sunshine uses Portal capture of the virtual display. The host owner's explicit authorization was applied through the normal GNOME accessibility actions over SSH.
+
+The original Sunshine 2026.914.233613 build passed encoder self-tests but stalled during live capture negotiation. Disabling its tray allowed a stream, but a later restart still stalled. The official Ubuntu 26.04 package for Sunshine 2026.1017.185028 was installed after verifying SHA-256 `a9d965ab2a4be4eb330e16507c556dd7cb3f757f4ab2d7ae789e5eb79151d702`; configuration and the verified previous installation package were retained for rollback. This is a host-specific pre-release upgrade, not a change to Lanto's default deployment version.
+
+With the new version, a real stream, a second connection with HDMI disabled, and a connection after restarting Sunshine all passed. During the physical-output test, GNOME listed only Meta-0 as active, Sunshine selected Meta-0, and PipeWire reported a 3840 × 2160 buffer with a 60 FPS maximum. The 2560 × 1440 logical desktop size reflects 150% scaling, not source upscaling. The client received 4K60 HEVC at the requested 120 Mbps; the short physical-output-disabled sample reported 0% network/jitter drops, approximately 1 ms network latency, 1.08 ms decoding, and 0.11 ms rendering. The physical display arrangement was restored afterward. Both Linux user services were enabled and active, and the virtual-display readiness check passed.
+
+These are short per-host functional checks, not sustained or simultaneous 4K60 benchmarks. No physical keyboard/mouse test events were injected. Helper recreation was checked, but its changed virtual-monitor serial required selecting the output again; subsequent Sunshine-only restart reused the saved selection without a prompt. Full OS reboot, logout, pre-login access, and physical monitor power-button events were not tested. The live GNOME output-disable test establishes capture independence from the active physical framebuffer. Python syntax, shell syntax, service definitions, documentation formatting, and whitespace checks passed; the controller and native player were unchanged.

@@ -8,6 +8,7 @@
 - Start new profiles at 4K, 60 FPS, and 120 Mbps per stream, with a 150 Mbps settings ceiling. Existing profiles retain their saved values.
 - Keep resolution, frame rate, and bitrate independently adjustable, with guidance for desktop text clarity and bandwidth.
 - Document true 4K host display setup, including an optional macOS HiDPI virtual-display helper and Windows display restoration after streaming.
+- Add an optional GNOME Wayland virtual-display helper, user service, Sunshine startup ordering, and Portal setup for 4K60 streaming with physical outputs inactive.
 
 ## 0.3.1 — 2026-10-17
 

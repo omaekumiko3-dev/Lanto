@@ -69,3 +69,49 @@ Before the first connection, leave the physical screen active and disconnect the
 Validate both directions: connect and confirm a real 4K capture, then disconnect and confirm that the original physical screen is active again. If the first connection times out after installing a driver, wait until Sunshine finishes initializing and reconnect; then check repeated connections. Keep the upstream driver's removal instructions available when updating GPU drivers.
 
 To roll back, disconnect, restore the original Sunshine configuration, restart Sunshine, and uninstall the virtual display through its normal installer or Device Manager. Preserve the physical GPU driver.
+
+## GNOME Wayland without a physical display
+
+Turning off a monitor can remove its HDMI/DisplayPort output from Linux entirely. KMS capture then loses its framebuffer even though Sunshine and the network remain healthy. Increasing bitrate or restarting the client cannot restore a missing display.
+
+The optional [Linux display helper](../scripts/display/linux-virtual-display.py) uses Mutter's `RecordVirtual` interface and a GStreamer PipeWire consumer to keep a 3840 × 2160, 60 Hz desktop output alive in the existing graphical session. It makes that output primary, uses 150% scaling when supported, and preserves other active outputs to its right. It does not start a separate desktop or install a kernel driver. The [Mutter ScreenCast interface](https://github.com/GNOME/mutter/blob/main/data/dbus-interfaces/org.gnome.Mutter.ScreenCast.xml) is private and requires validation after desktop upgrades.
+
+This requires GNOME Wayland, Python GObject bindings, GStreamer with `pipewiresrc`, and a Sunshine version with XDG Portal capture. Install the distribution packages `python3-gi`, `gir1.2-gstreamer-1.0`, `gstreamer1.0-pipewire` and `gstreamer1.0-tools` if missing. Back up the current Sunshine configuration and any existing helper service before installation.
+
+```sh
+mkdir -p "$HOME/.lanto/display" "$HOME/.config/systemd/user"
+cp scripts/display/linux-virtual-display.py scripts/display/wait-linux-display.sh "$HOME/.lanto/display/"
+chmod 700 "$HOME/.lanto/display/"*.py "$HOME/.lanto/display/wait-linux-display.sh"
+cp scripts/display/lanto-virtual-display.service "$HOME/.config/systemd/user/"
+systemctl --user daemon-reload
+systemctl --user enable --now lanto-virtual-display.service
+python3 "$HOME/.lanto/display/linux-virtual-display.py" --check-ready
+```
+
+The checked Ubuntu 26.04 / GNOME 50 configuration uses the official [Sunshine v2026.1017.185028 pre-release](https://github.com/LizardByte/Sunshine/releases/tag/v2026.1017.185028). The previous stable build, v2026.914.233613, stalled during Portal negotiation on live connections and on restart. Disabling its tray allowed one connection but did not resolve the restart failure. The newer build contains [Portal lifecycle fixes](https://github.com/LizardByte/Sunshine/pull/5774); verify the exact version you deploy and retain the previous package for rollback.
+
+Set these Sunshine options and remove an old physical `output_name`:
+
+```ini
+capture = portal
+system_tray = disabled
+```
+
+Restart Sunshine, select **MetaVendor** in GNOME's Remote Desktop sharing dialog, keep **Remember This Selection** enabled, enable **Allow Remote Interaction**, and share that output. This system authorization must complete before Portal capture is usable. Keep other selected displays unchecked so capture stays on the virtual screen. With the machine owner's authorization, the normal dialog can also be operated through accessibility actions over SSH; no portal permission database edits are needed.
+
+For startup ordering, add `~/.config/systemd/user/app-dev.lizardbyte.app.Sunshine.service.d/lanto-display.conf`:
+
+```ini
+[Unit]
+Requires=lanto-virtual-display.service
+After=lanto-virtual-display.service
+
+[Service]
+ExecStartPre=%h/.lanto/display/wait-linux-display.sh
+```
+
+Run `systemctl --user daemon-reload` after adding the drop-in. Both services start with the logged-in graphical session; this does not create a desktop before login. Verify the actual host PipeWire capture dimensions and a client stream with physical outputs disabled. A healthy helper alone does not confirm Sunshine capture or keyboard input.
+
+Do not stop the virtual display's screen-sharing session from GNOME's status indicator. Mutter assigns a new serial when the virtual output is recreated, which can invalidate a saved Portal selection; a new selection may therefore be required after recreating the helper or the desktop session. Restarting Sunshine alone was checked without another prompt. This setup does not guarantee unattended access across logout or reboot. The helper's runtime status is `$XDG_RUNTIME_DIR/lanto-virtual-display.json`; its `--check-ready` command verifies that the owning process and active 4K/60 mode still exist.
+
+To roll back, stop Sunshine, restore the backed-up Sunshine configuration and remove only the `lanto-display.conf` drop-in added above. Then disable and stop `lanto-virtual-display.service`, reload the user service manager, and restart Sunshine with the physical monitor connected. Keep the backup until physical capture has been checked.
