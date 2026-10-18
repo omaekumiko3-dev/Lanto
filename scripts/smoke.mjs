@@ -647,6 +647,56 @@ setInterval(() => {}, 1000);
     }, encrypted),
     true
   )
+  const smokeHostPort = hostService.port
+  const smokeHostId = paired.config.devices.find(
+    (entry) => entry.hostId === hostConfig.identity.id
+  ).id
+  await hostService.close()
+  hostService = undefined
+  await page.getByRole('button', { name: 'Check Smoke Host', exact: true }).click()
+  const smokeHostCard = page.locator('.device-card').filter({ hasText: 'Smoke Host' })
+  await smokeHostCard.getByText('Unreachable', { exact: true }).waitFor()
+  assert.doesNotMatch(await smokeHostCard.innerText(), /authorization expired/)
+  // A connection failure creates a notice; a later healthy background check must clear it.
+  await page.evaluate(async (moonlightPath) => {
+    const { config } = await window.lanto.getState()
+    await window.lanto.saveSettings({
+      ...config.settings,
+      moonlightPath,
+      localCursor: false,
+      windowsPipeline: 'auto'
+    })
+  }, fakeMedia)
+  await page.getByRole('switch', { name: 'Smoke Host connection', exact: true }).click()
+  await page.getByRole('alert').filter({ hasText: 'checking again automatically' }).waitFor()
+  hostService = await startHost({ ...hostConfig, port: smokeHostPort }, join(testData, 'host'), {
+    discovery: false
+  })
+  await page.waitForFunction(
+    async (id) => {
+      const host = (await window.lanto.getState()).trustedHosts.find((entry) => entry.id === id)
+      return Boolean(host?.status) && !host.error
+    },
+    hostConfig.identity.id,
+    { timeout: 20000 }
+  )
+  await smokeHostCard.getByText('Unreachable', { exact: true }).waitFor({ state: 'hidden' })
+  assert.equal(
+    await smokeHostCard
+      .locator('.probe-detail')
+      .filter({ hasText: 'unreachable; checking again' })
+      .count(),
+    0
+  )
+  await page
+    .getByRole('alert')
+    .filter({ hasText: 'checking again automatically' })
+    .waitFor({ state: 'hidden' })
+  assert.equal(
+    (await page.evaluate((id) => window.lanto.probe(id), smokeHostId)).reachable,
+    (await page.evaluate(() => window.lanto.getState())).trustedHosts[0].status.sunshineReachable
+  )
+  await page.evaluate((settings) => window.lanto.saveSettings(settings), mediaSettings)
   await page.getByRole('button', { name: 'Edit Smoke Host', exact: true }).click()
   assert.equal(await page.getByLabel('IP address or hostname').isEditable(), true)
   assert.equal(await page.getByLabel('Operating system').isDisabled(), true)
@@ -661,7 +711,6 @@ setInterval(() => {}, 1000);
   )
   assert.equal(updatedDevice.host, '127.0.0.2')
   assert.equal(updated.trustedHosts[0].address, '127.0.0.2')
-  assert.equal(updated.trustedHosts[0].status, undefined)
   const updatedTrust = JSON.parse(await readFile(join(testData, 'trusted-hosts.json'), 'utf8'))
   assert.deepEqual(updatedTrust.hosts[0], { ...trustOnDisk.hosts[0], address: '127.0.0.2' })
 

@@ -139,6 +139,7 @@ export class Workbench {
       enabled: this.config.settings.shareClipboard,
       files: this.config.settings.shareFiles
     })
+    this.hosts.startMonitoring(this.changed)
     this.log('Local workspace ready')
     if (!this.shortcut.registered)
       this.log(
@@ -373,7 +374,7 @@ export class Workbench {
     const host = await this.hosts.refresh(device.hostId)
     this.changed()
     return {
-      reachable: Boolean(host.status),
+      reachable: Boolean(host.status?.sunshineReachable),
       message:
         host.error ||
         (host.status?.sunshineReachable
@@ -416,6 +417,7 @@ export class Workbench {
 
   async close(): Promise<void> {
     this.closing = true
+    this.hosts.close()
     this.deployment.cancel()
     this.epoch++
     this.shortcut.close()

@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import { defaultConfig } from '../../../shared/model.ts'
 import type { AppState, DeviceInput, ProbeResult } from '../../../shared/model.ts'
 import { errorText } from '../format.ts'
+import { hostErrorMessages } from '../../../shared/host-errors.ts'
 
 export function useWorkbench() {
   const api = window.lanto
   const [state, setState] = useState<AppState | null>(null)
   const [busy, setBusy] = useState('')
   const [notice, setNotice] = useState('')
+  const [networkNoticeDevice, setNetworkNoticeDevice] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [pairOpen, setPairOpen] = useState(false)
   const [editing, setEditing] = useState<DeviceInput | null>(null)
@@ -26,14 +28,28 @@ export function useWorkbench() {
     return unsubscribe
   }, [api])
 
+  useEffect(() => {
+    if (!state || !networkNoticeDevice || notice !== hostErrorMessages.network) return
+    const device = state.config.devices.find((entry) => entry.id === networkNoticeDevice)
+    const host = state.trustedHosts.find((entry) => entry.id === device?.hostId)
+    if (host?.status && !host.error) {
+      setNotice('')
+      setNetworkNoticeDevice(null)
+    }
+  }, [state, networkNoticeDevice, notice])
+
   async function run(action: string, work: () => Promise<unknown>): Promise<boolean> {
     setBusy(action)
     setNotice('')
+    setNetworkNoticeDevice(null)
     try {
       await work()
       return true
     } catch (error) {
-      setNotice(errorText(error))
+      const message = errorText(error)
+      setNotice(message)
+      if (message === hostErrorMessages.network && action.startsWith('connection:'))
+        setNetworkNoticeDevice(action.slice('connection:'.length))
       return false
     } finally {
       setBusy('')

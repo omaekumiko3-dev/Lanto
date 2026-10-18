@@ -6,14 +6,14 @@ Deployed on 2026-10-17 on a Windows test host. Lanto contains device `WindowsDes
 
 ## Host and pinned versions
 
-| Item | Actual configuration |
-| --- | --- |
-| System | Windows 11 Pro, build 26300, x64 |
-| GPU | NVIDIA RTX 3080, driver 591.86 |
-| Current display | 2560×1440 at 60Hz, existing console session |
-| Sunshine | Official stable `2026.914.233613`, AMD64 MSI |
-| Host | Compiled Lanto `8b04e91`, Node.js `24.22.0` |
-| Controller | Lanto native Moonlight v5, D3D11VA, shared device and textures |
+| Item            | Actual configuration                                           |
+| --------------- | -------------------------------------------------------------- |
+| System          | Windows 11 Pro, build 26300, x64                               |
+| GPU             | NVIDIA RTX 3080, driver 591.86                                 |
+| Current display | 2560×1440 at 60Hz, existing console session                    |
+| Sunshine        | Official stable `2026.914.233613`, AMD64 MSI                   |
+| Host            | Compiled Lanto `8b04e91`, Node.js `24.22.0`                    |
+| Controller      | Lanto native Moonlight v5, D3D11VA, shared device and textures |
 
 Downloads came from the [official Sunshine release](https://github.com/LizardByte/Sunshine/releases/tag/v2026.914.233613) and [official Node.js checksum list](https://nodejs.org/dist/v24.22.0/SHASUMS256.txt). Both downloads passed SHA-256 verification. Authenticode status was `Valid` for the Sunshine MSI and extracted `node.exe`.
 
@@ -89,3 +89,13 @@ Get-Service SunshineService
 - Temporary interactive windows, audio tasks, and tones were removed. Controller performance statistics were disabled again, and all three devices retained their own volume settings.
 
 This run did not test full reboot, login screens, BitLocker startup unlock, game Raw Input, controllers, or long-term stability. Basic Sunshine keyboard/mouse used its existing injection path without adding a virtual HID driver requiring a paid license. Future additions should be validated separately using [Sunshine Windows input guidance](https://github.com/LizardByte/Sunshine/blob/v2026.914.233613/docs/getting_started.md#windows-1).
+
+## Intermittent Wi-Fi connection failures
+
+On 2026-10-18, repeated connection failures coincided with Windows WLAN AutoConfig event 8003 (the driver disconnected the network) and event 4003 (limited-connectivity recovery). Sunshine logged initial UDP ping timeouts, and SSH was briefly unavailable too. Existing Host authorization and Sunshine pairing still worked after the link recovered.
+
+This host uses a MediaTek MT7612 USB Wi-Fi adapter. Its driver advanced property `*SelectiveSuspend` was enabled with a five-second idle timeout even though the separate power-management view reported selective suspend disabled. The adapter properties were backed up, the driver property was set to `0` with `Set-NetAdapterAdvancedProperty -NoRestart`, and that adapter was restarted once through a temporary task that removed itself. The new setting persisted after the adapter restart. A driver-only Windows Update search found no update for this adapter; unrelated offered updates were not installed.
+
+Eight subsequent real disconnect/reconnect cycles received 2560 × 1440 video at 60 FPS with D3D11VA and the requested 120 Mbps setting. No new WLAN driver-disconnect event appeared during that run. This is a finite reconnect test, not proof that selective suspend caused every past outage or a full-motion wireless throughput benchmark.
+
+Lanto now retries transient Host transport failures, coalesces simultaneous checks, and periodically refreshes saved devices. Recovery clears stale network errors without re-pairing. Authorization and certificate failures are classified separately and do not receive transport retries. Host reachability and Sunshine availability are also reported separately. These controller changes improve detection and recovery of device status; they do not replace or reset a wireless driver, or automatically restart an interrupted video stream.

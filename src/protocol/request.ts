@@ -23,7 +23,9 @@ export function hostRequestOptions(endpoint: HostEndpoint): RequestOptions {
     checkServerIdentity: (_host, peer) =>
       peer.fingerprint256 === expected
         ? undefined
-        : new Error('Host certificate mismatch; verify the device identity again')
+        : Object.assign(new Error('Host certificate mismatch; verify the device identity again'), {
+            code: 'ERR_LANTO_HOST_IDENTITY'
+          })
   }
 }
 
@@ -92,7 +94,12 @@ export async function hostRequest(
       }
     )
     const deadline = setTimeout(
-      () => request_.destroy(new Error('Host request timed out; check the address and network')),
+      () =>
+        request_.destroy(
+          Object.assign(new Error('Host request timed out; check the address and network'), {
+            code: 'ETIMEDOUT'
+          })
+        ),
       options.timeout ?? 5000
     )
     request_.once('close', () => clearTimeout(deadline))

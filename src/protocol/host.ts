@@ -70,10 +70,12 @@ export type PairRequest = z.infer<typeof pairRequestSchema>
 export type PairResponse = z.infer<typeof pairResponseSchema>
 export type HostStatus = z.infer<typeof hostStatusSchema>
 export type DiscoveredHost = z.infer<typeof discoveredHostSchema>
+export type HostErrorKind = 'network' | 'authorization' | 'identity' | 'service'
 export interface TrustedHostView extends HostIdentity {
   address: string
   port: number
   pairedAt: string
   status?: HostStatus
   error?: string
+  errorKind?: HostErrorKind
 }

@@ -15,8 +15,14 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
         const reachable = host
           ? !host.error && host.status?.sunshineReachable
           : probes[device.id]?.reachable
-        const detail =
-          host?.error || (probes[device.id]?.reachable === false ? probes[device.id]?.message : '')
+        const detail = host
+          ? host.error ||
+            (host.status && !host.status.sunshineReachable
+              ? 'Host is connected; Sunshine is not running or its port is unreachable.'
+              : '')
+          : probes[device.id]?.reachable === false
+            ? probes[device.id]?.message
+            : ''
         return (
           <article className={`device-card ${inUse ? 'active-card' : ''}`} key={device.id}>
             <div className="device-heading">
@@ -81,7 +87,15 @@ export function DeviceCards({ model }: { model: WorkbenchView }) {
                     : reachable
                       ? 'Ready'
                       : detail
-                        ? 'Unreachable'
+                        ? host?.errorKind === 'authorization'
+                          ? 'Pair again'
+                          : host?.errorKind === 'identity'
+                            ? 'Verify device'
+                            : host?.status && !host.status.sunshineReachable
+                              ? 'Sunshine offline'
+                              : host?.errorKind === 'service'
+                                ? 'Host error'
+                                : 'Unreachable'
                         : host
                           ? 'Paired'
                           : 'Not checked'}
