@@ -400,14 +400,16 @@ setInterval(() => {}, 1000);
     throw new Error(`Expected ${count} media launches, got ${records.length}`)
   }
   async function appliedVolume(pid, expected) {
+    const observed = new Set()
     for (let attempt = 0; attempt < 100; attempt++) {
       const value = await readFile(join(testData, `volume-${pid}.json`), 'utf8')
         .then((text) => JSON.parse(text))
         .catch(() => null)
+      observed.add(value)
       if (value === expected) return
       await new Promise((resolve) => setTimeout(resolve, 30))
     }
-    throw new Error(`Audio gain did not reach ${expected}`)
+    throw new Error(`Audio gain did not reach ${expected}; observed ${JSON.stringify([...observed])}`)
   }
   const linuxSwitch = page.getByRole('switch', { name: 'Test Linux connection', exact: true })
   assert.equal(await linuxSwitch.isChecked(), false)
