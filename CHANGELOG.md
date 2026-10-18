@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Keep locked remote sessions selected when local popups take focus; protect foreground placement, block input during restoration, and release protection on explicit return. Delayed stream startup also acquires protection when its window becomes visible.
+- Release the native foreground lock before publishing an explicit switch request, so switching between remote sessions does not flash back to the local desktop. Input-state updates allow atomic file replacement and retry brief Windows sharing conflicts.
 
 - Add selectable 4K (3840 × 2160) streaming alongside 1440p and 1080p.
 - Keep up to two remote streams open and cycle Local → remote 1 → remote 2 → Local in connection order. Disconnect and volume controls apply independently.

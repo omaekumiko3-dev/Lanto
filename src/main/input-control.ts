@@ -77,7 +77,19 @@ export async function createInputControl(directory: string, settings: InputSetti
   }
   async function update(next: typeof value) {
     if (closed) throw new Error('The stream ended; reconnect before switching')
-    await writeJSON(file, next)
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await writeJSON(file, next)
+        break
+      } catch (error) {
+        // Windows readers/scanners can briefly deny atomic replacement. Preserve
+        // the previous selection and retry instead of aborting the handoff.
+        const code = (error as NodeJS.ErrnoException).code
+        if (attempt >= 5 || !['EPERM', 'EACCES', 'EBUSY'].includes(code ?? '')) throw error
+        await new Promise((resolve) => setTimeout(resolve, 10 * 2 ** attempt))
+        if (closed) throw new Error('The stream ended; reconnect before switching')
+      }
+    }
     if (closed) {
       await unlink(file).catch(() => {})
       throw new Error('The stream ended; reconnect before switching')

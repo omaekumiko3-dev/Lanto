@@ -82,6 +82,7 @@ $lantoQtVersion = & (Join-Path $lantoQtBin 'qmake.exe') -query QT_VERSION
   lockedInputProtocol = 1
   sharedSwitchProtocol = 1
   foregroundGuardProtocol = 1
+  foregroundHandoffProtocol = 1
   brand = 'lanto'
   moonlightCommit = 'de2467e433821664cdd2224aad8c89a625be1ad9'
   qtVersion = $lantoQtVersion.Trim()

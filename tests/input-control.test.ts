@@ -7,6 +7,7 @@ import { createInputControl, switchBinding } from '../src/main/input-control.ts'
 import { launchMedia } from '../src/main/moonlight.ts'
 import { defaultConfig } from '../src/shared/model.ts'
 import { removeTestDirectory } from './temp.ts'
+import koffi from 'koffi'
 
 test('native switch bindings preserve exact modifiers and reject unsupported accelerators', () => {
   assert.deepEqual(switchBinding('Control+`'), { key: 0xc0, modifiers: 2 })
@@ -50,3 +51,37 @@ test('only the owned player stdout protocol requests switching, including split 
   assert.equal((await player.closed).code, 0)
   assert.deepEqual(requests, [player.pid])
 })
+
+test(
+  'input handoff retries transient Windows file sharing and preserves state on persistent failure',
+  { skip: process.platform !== 'win32' },
+  async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'lanto-input-'))
+    const control = await createInputControl(directory, defaultConfig().settings)
+    const file = control.environment.LANTO_INPUT_FILE
+    const kernel = koffi.load('kernel32.dll')
+    const open = kernel.func(
+      'uintptr_t __stdcall CreateFileW(str16 path, uint32_t access, uint32_t share, uintptr_t security, uint32_t creation, uint32_t flags, uintptr_t templateFile)'
+    )
+    const close = kernel.func('int __stdcall CloseHandle(uintptr_t handle)')
+    let handle = 0
+    try {
+      handle = open(file, 0x80000000, 3, 0, 3, 0, 0) // Reader deliberately denies deletion.
+      assert.notEqual(handle, -1)
+      const update = control.setRemote(false)
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      assert.equal(JSON.parse(await readFile(file, 'utf8')).remote, true)
+      close(handle)
+      handle = 0
+      await update
+      assert.equal(JSON.parse(await readFile(file, 'utf8')).remote, false)
+      handle = open(file, 0x80000000, 3, 0, 3, 0, 0)
+      await assert.rejects(control.setRemote(true), /EPERM|EACCES|EBUSY/)
+      assert.equal(JSON.parse(await readFile(file, 'utf8')).remote, false)
+    } finally {
+      if (handle) close(handle)
+      await control.close()
+      await removeTestDirectory(directory, 'lanto-input-')
+    }
+  }
+)

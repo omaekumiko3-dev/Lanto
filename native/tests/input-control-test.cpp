@@ -5,17 +5,29 @@
 #include <QProcess>
 #include <cstdio>
 #include <cstdlib>
+#include <atomic>
+#include <thread>
+#include <QThread>
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
 
-static void require(bool value) { if (!value) std::abort(); }
+static void requireAt(bool value, int line) {
+    if (!value) { std::fprintf(stderr, "Input requirement failed at line %d\n", line); std::abort(); }
+}
+#define require(value) requireAt(value, __LINE__)
 static void write(const QString& path, const QByteArray& value)
 {
-    QSaveFile file(path);
-    require(file.open(QIODevice::WriteOnly));
-    require(file.write(value) == value.size());
-    require(file.commit());
+    for (int attempt = 0; ; ++attempt) {
+        QSaveFile file(path);
+        require(file.open(QIODevice::WriteOnly));
+        require(file.write(value) == value.size());
+        if (file.commit()) return;
+        // Match the controller's bounded retry for temporary Windows sharing conflicts.
+        if (attempt >= 5) std::fprintf(stderr, "Control write failed: %s\n", file.errorString().toUtf8().constData());
+        require(attempt < 5);
+        QThread::msleep(10 << attempt);
+    }
 }
 
 int main(int argc, char** argv)
@@ -48,6 +60,42 @@ int main(int argc, char** argv)
     require(!control.matches(192, 3)); // Ctrl+Shift is a different combination.
     require(!control.matches(81, 7));  // Moonlight's original quit shortcut passes through.
     require(control.requestSwitch()); // Exercises only the stdout protocol; no input injection.
+    // Exercise actual Windows replacement sharing while the live control reader polls.
+    std::atomic<bool> writing{true};
+    std::thread writer([&]() {
+        for (int count = 0; count < 500; ++count) {
+#ifdef Q_OS_WIN
+            const auto temporary = path + ".tmp";
+            HANDLE file = CreateFileW(reinterpret_cast<const wchar_t*>(temporary.utf16()), GENERIC_WRITE,
+                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            require(file != INVALID_HANDLE_VALUE);
+            const char value[] = "{\"key\":192,\"modifiers\":2,\"locked\":true,\"remote\":true}";
+            DWORD written = 0;
+            require(WriteFile(file, value, sizeof(value) - 1, &written, nullptr) && written == sizeof(value) - 1);
+            require(CloseHandle(file));
+            // Match Node's write/close/rename sequence.
+            bool renamed = false;
+            DWORD renameError = 0;
+            for (int attempt = 0; attempt < 6 && !renamed; ++attempt) {
+                renamed = MoveFileExW(reinterpret_cast<const wchar_t*>(temporary.utf16()),
+                    reinterpret_cast<const wchar_t*>(path.utf16()), MOVEFILE_REPLACE_EXISTING) != FALSE;
+                if (!renamed) renameError = GetLastError();
+                if (!renamed) QThread::msleep(10 << attempt);
+            }
+            if (!renamed) std::fprintf(stderr, "Rename failed with Windows error %lu at write %d\n", renameError, count);
+            require(renamed);
+#else
+            write(path, "{\"key\":192,\"modifiers\":2,\"locked\":true,\"remote\":true}");
+#endif
+        }
+        writing = false;
+    });
+    while (writing) {
+        control.refresh(true);
+        require(control.remote());
+        QThread::msleep(1); // Still 50 times faster than the player event loop.
+    }
+    writer.join();
     write(path, "{\"key\":121,\"modifiers\":6,\"locked\":true,\"remote\":false}");
     require(control.refresh(true));
     require(!control.remote() && !control.matches(121, 6));

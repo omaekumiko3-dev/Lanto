@@ -37,11 +37,21 @@ bool LantoInputControl::refresh(bool force)
     int key = 0;
     int modifiers = 0;
 #ifdef Q_OS_WIN
-    QFile file(m_Path);
     if (m_Controller && WaitForSingleObject(m_Controller, 0) == WAIT_TIMEOUT &&
-            (!m_SharedSwitch || (!m_SwitchFailed && m_SwitchHook.available())) &&
-            file.open(QIODevice::ReadOnly) && file.size() <= 1024) {
-        const auto doc = QJsonDocument::fromJson(file.readAll());
+            (!m_SharedSwitch || (!m_SwitchFailed && m_SwitchHook.available()))) {
+        // The controller atomically replaces this file. QFile on Windows can
+        // deny replacement while open, making a switch fail with EPERM.
+        QByteArray contents;
+        HANDLE file = CreateFileW(reinterpret_cast<const wchar_t*>(m_Path.utf16()), GENERIC_READ,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (file != INVALID_HANDLE_VALUE) {
+            char buffer[1025]; DWORD size = 0;
+            if (ReadFile(file, buffer, sizeof(buffer), &size, nullptr) && size <= 1024)
+                contents = QByteArray(buffer, static_cast<int>(size));
+            CloseHandle(file);
+        }
+        const auto doc = QJsonDocument::fromJson(contents);
         const auto value = doc.object();
         key = value.value("key").toInt();
         modifiers = value.value("modifiers").toInt();
