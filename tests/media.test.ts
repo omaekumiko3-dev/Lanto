@@ -34,6 +34,26 @@ test('Moonlight uses discrete arguments and leaves the remote app running after 
   assert.equal(free[free.indexOf('--capture-system-keys') + 1], 'never')
 })
 
+test('device resolution overrides the global stream size without changing other devices', () => {
+  const settings = defaultConfig().settings
+  const mac = deviceFixture({ platform: 'macos', resolution: '3840x2160' })
+  const windows = deviceFixture({ platform: 'windows', resolution: '2560x1440' })
+  const linux = deviceFixture()
+  const resolution = (device: typeof linux) => {
+    const args = streamArguments(device, settings)
+    return args[args.indexOf('--resolution') + 1]
+  }
+  assert.equal(resolution(mac), '3840x2160')
+  assert.equal(resolution(windows), '2560x1440')
+  assert.equal(resolution(linux), '3840x2160')
+  settings.resolution = '1920x1080'
+  assert.equal(resolution(mac), '3840x2160')
+  assert.equal(resolution(windows), '2560x1440')
+  assert.equal(resolution(linux), '1920x1080')
+  delete windows.resolution
+  assert.equal(resolution(windows), '1920x1080')
+})
+
 test('TCP probe describes reachability without claiming a paired or authenticated stream', async () => {
   const server = createServer((socket) => socket.end())
   await new Promise<void>((resolve, reject) => {

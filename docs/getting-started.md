@@ -55,7 +55,9 @@ Adjust each card's volume or mute independently. These settings change playback 
 
 In Settings, choose resolution, frame rate, bitrate, and window mode independently. New profiles start at **4K (3840 × 2160), 60 FPS, and 120 Mbps per stream**. Existing profiles keep their saved choices; select the new values and reconnect to apply them. 1440p and 1080p remain available, with 15/30/60 FPS and a manually adjustable 5–150 Mbps bitrate. Two streams at 120 Mbps need about 240 Mbps plus transport overhead, along with suitable capture and decoding hardware.
 
-For sharper desktop text, match the stream resolution to your controller display and check the target's desktop resolution. Lanto does not automatically resize the target desktop. See [host display setup](host-display.md) for a true 4K source on headless Macs and Windows hosts with lower-resolution monitors. A higher bitrate preserves more image detail but needs more network bandwidth; lower it if your connection cannot sustain it. Performance data is optional. Experimental options require compatible native components; see [native notes](../native/README.md).
+Each device's **Edit device → Stream resolution** can override the global resolution. For example, keep a Mac at 3840 × 2160 and a Windows desktop at its existing 2560 × 1440. **Use global setting** follows Settings again; changes apply on the next connection. Existing devices continue to use the global setting until an override is saved.
+
+For sharper desktop text, match the stream resolution to the target's actual desktop resolution. Lanto's selector changes video dimensions; Sunshine separately controls any host display changes. To preserve a Windows desktop, disable Sunshine display configuration and capture its physical display. See [host display setup](host-display.md). A higher bitrate preserves more image detail but needs more network bandwidth; lower it if your connection cannot sustain it. Performance data is optional. Experimental options require compatible native components; see [native notes](../native/README.md).
 
 ![Actual stream settings](images/screenshots/settings.png)
 

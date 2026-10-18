@@ -6,6 +6,12 @@ For a 4K controller, use a 3840 × 2160 host framebuffer and a 3840 × 2160 stre
 
 The controller's resolution selector configures the video stream. Host display changes remain a separate, optional setup step. The SSH setup wizard does not install virtual displays automatically.
 
+To keep different desktop sizes, set **Edit device → Stream resolution** on each device. Match the actual source size instead of enlarging a lower-resolution desktop into a 4K stream. An unset override uses the global resolution.
+
+## Keep a Windows desktop at its existing resolution
+
+Select the physical monitor's stable `device_id` as Sunshine's `output_name` and set `dd_configuration_option = disabled`. This disables Sunshine's automatic display activation, resolution, refresh-rate, and HDR changes. Remove previous manual 4K overrides after backing up the configuration, then restart Sunshine while disconnected. Keep the virtual monitor inactive and verify that connection and disconnection leave the physical desktop at the same resolution. Set that measured size in the device's stream-resolution override; this is a saved size, not automatic detection of later host changes. See the [Sunshine display settings](https://docs.lizardbyte.dev/projects/sunshine/latest/md_docs_2configuration.html#dd_configuration_option).
+
 ## Check the source first
 
 - **Windows:** Sunshine should report both `Capture size: 3840x2160` and `Desktop resolution [3840x2160]` during the actual session. A 4K decoder message alone is insufficient.

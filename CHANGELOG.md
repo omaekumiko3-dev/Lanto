@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Allow each device to override the global stream resolution, so a 4K Mac and a 1440p Windows desktop can keep independent video sizes. Document how to preserve the Windows physical display without automatic 4K switching.
+
 - Keep locked remote sessions selected when local popups take focus; protect foreground placement, block input during restoration, and release protection on explicit return. Delayed stream startup also acquires protection when its window becomes visible.
 - Complete focus handoffs through the target window's input queue for both remote streams and the local controller. Keep the input barrier without a global foreground lock, and allow an opening player to release selection before its window exists.
 - Allow atomic input-state file replacement, retry brief Windows sharing conflicts, and roll back settings on every affected client if a live update fails.

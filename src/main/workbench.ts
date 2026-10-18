@@ -399,6 +399,7 @@ export class Workbench {
         platform: host.platform,
         host: host.address,
         appName: existing?.appName || 'Desktop',
+        ...(existing?.resolution ? { resolution: existing.resolution } : {}),
         volume: existing?.volume ?? 100,
         muted: existing?.muted ?? false,
         ...(tunnel ? { tunnel } : {})

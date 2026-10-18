@@ -82,6 +82,29 @@ export function DeviceDialog({
               />
             </label>
           </div>
+          <label>
+            Stream resolution
+            <select
+              aria-label="Stream resolution"
+              aria-describedby="device-resolution-hint"
+              value={draft.resolution ?? ''}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  resolution: (event.target.value || undefined) as Device['resolution']
+                })
+              }
+            >
+              <option value="">Use global setting</option>
+              <option value="3840x2160">4K · 3840 × 2160</option>
+              <option value="2560x1440">2K · 2560 × 1440</option>
+              <option value="1920x1080">1080p · 1920 × 1080</option>
+            </select>
+            <small id="device-resolution-hint">
+              Match this device's desktop resolution. Applies on the next connection; host display
+              changes are managed separately in Sunshine.
+            </small>
+          </label>
           {draft.tunnel && (
             <label>
               Tunnel UDP port

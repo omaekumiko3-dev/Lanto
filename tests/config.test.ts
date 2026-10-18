@@ -36,6 +36,34 @@ test('configuration persists a NAS-independent local profile across restarts', a
   }
 })
 
+test('per-device resolutions survive restart and can return to the global setting', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'lanto-config-'))
+  try {
+    const store = new ConfigStore(directory)
+    const config = defaultConfig()
+    config.devices = [
+      deviceFixture({ platform: 'macos', resolution: '3840x2160' }),
+      deviceFixture({ platform: 'windows', resolution: '2560x1440' }),
+      deviceFixture()
+    ]
+    await store.save(config)
+    const restored = await new ConfigStore(directory).load()
+    assert.deepEqual(
+      restored.devices.map((device) => device.resolution),
+      ['3840x2160', '2560x1440', undefined]
+    )
+    delete restored.devices[1]!.resolution
+    await store.save(restored)
+    assert.equal((await new ConfigStore(directory).load()).devices[1]!.resolution, undefined)
+    assert.equal(
+      deviceInputSchema.safeParse({ ...config.devices[0], resolution: '--help' }).success,
+      false
+    )
+  } finally {
+    await removeTestDirectory(directory, 'lanto-config-')
+  }
+})
+
 test('corrupt configuration is preserved and never silently overwritten', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'lanto-corrupt-'))
   try {

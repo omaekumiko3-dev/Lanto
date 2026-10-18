@@ -14,7 +14,7 @@ export function streamArguments(device: Device, settings: Settings): string[] {
     device.host,
     device.appName,
     '--resolution',
-    settings.resolution,
+    device.resolution ?? settings.resolution,
     '--fps',
     String(settings.fps),
     '--bitrate',

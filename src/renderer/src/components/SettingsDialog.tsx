@@ -63,7 +63,7 @@ export function SettingsDialog({
                 <option value="1920x1080">1080p · 1920 × 1080</option>
               </select>
               <small id="resolution-hint">
-                Match your display for sharper text. The remote desktop keeps its resolution.
+                Default stream size. Override it in Edit device to match each remote desktop.
               </small>
             </label>
             <label>

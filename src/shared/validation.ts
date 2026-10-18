@@ -2,6 +2,8 @@ import { z } from 'zod'
 import { isIP } from 'node:net'
 import { tunnelEndpointSchema } from '../protocol/tunnel.ts'
 
+const resolutionSchema = z.enum(['3840x2160', '2560x1440', '1920x1080'])
+
 const cleanText = (max: number) =>
   z
     .string()
@@ -28,6 +30,7 @@ export const deviceInputSchema = z
         'Address must be an IP address or hostname without a protocol, port, or command arguments'
       ),
     platform: z.enum(['linux', 'macos', 'windows']),
+    resolution: resolutionSchema.optional(),
     appName: cleanText(120).refine(
       (value) => !value.startsWith('-'),
       'Application name cannot start with a hyphen'
@@ -49,7 +52,7 @@ export const settingsSchema = z
     returnShortcut: cleanText(80),
     lockInput: z.boolean().default(true),
     minimizeOnBlur: z.boolean().optional(),
-    resolution: z.enum(['3840x2160', '2560x1440', '1920x1080']),
+    resolution: resolutionSchema,
     fps: z.number().int().min(15).max(60),
     bitrateMbps: z.number().int().min(5).max(150),
     windowMode: z.enum(['borderless', 'windowed']),

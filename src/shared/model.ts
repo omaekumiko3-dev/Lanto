@@ -3,6 +3,7 @@ import type { ClipboardView } from '../protocol/clipboard.ts'
 import type { DeploymentView, SshConnectionInput } from '../protocol/deployment.ts'
 import type { TunnelEndpoint } from '../protocol/tunnel.ts'
 export type Platform = 'linux' | 'macos' | 'windows'
+export type Resolution = '3840x2160' | '2560x1440' | '1920x1080'
 
 export interface DeviceAudio {
   volume: number
@@ -15,6 +16,7 @@ export interface Device extends DeviceAudio {
   host: string
   platform: Platform
   appName: string
+  resolution?: Resolution
   hostId?: string
   tunnel?: TunnelEndpoint
 }
@@ -26,7 +28,7 @@ export interface Settings {
   moonlightPath: string
   returnShortcut: string
   lockInput: boolean
-  resolution: '3840x2160' | '2560x1440' | '1920x1080'
+  resolution: Resolution
   fps: number
   bitrateMbps: number
   windowMode: 'borderless' | 'windowed'

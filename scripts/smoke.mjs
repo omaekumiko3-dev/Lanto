@@ -226,9 +226,14 @@ try {
   await page.getByLabel('Device name').fill('Test Windows')
   await page.getByLabel('Operating system').selectOption('windows')
   await page.getByLabel('IP address or hostname').fill('192.0.2.10')
+  await page.getByLabel('Stream resolution', { exact: true }).selectOption('2560x1440')
   await page.getByRole('button', { name: 'Save device', exact: true }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
   assert.equal((await page.evaluate(() => window.lanto.getState())).config.devices.length, 2)
+  assert.equal(
+    (await page.evaluate(() => window.lanto.getState())).config.devices[1].resolution,
+    '2560x1440'
+  )
 
   async function savedAudio(name, volume, muted) {
     await page.waitForFunction(
@@ -298,6 +303,10 @@ try {
   )
 
   await page.getByRole('button', { name: 'Edit Test Windows', exact: true }).click()
+  assert.equal(
+    await page.getByLabel('Stream resolution', { exact: true }).inputValue(),
+    '2560x1440'
+  )
   await page.getByLabel('IP address or hostname').fill('--help')
   await page.getByRole('button', { name: 'Save device', exact: true }).click()
   await page.getByRole('alert').filter({ hasText: 'Address must be' }).waitFor()
@@ -515,6 +524,8 @@ setInterval(() => {}, 1000);
   )
   await launches(2)
   assert.equal((await launches(2))[1].initialVolume, '81')
+  const windowsArgs = (await launches(2))[1].args
+  assert.equal(windowsArgs[windowsArgs.indexOf('--resolution') + 1], '2560x1440')
   assert.equal((await page.evaluate(() => window.lanto.getState())).sessions.length, 2)
   const thirdId = await page.evaluate(async () => {
     const state = await window.lanto.saveDevice({
