@@ -4,6 +4,7 @@
 
 Requires python3-gi, GStreamer and gstreamer1.0-pipewire. Sunshine must use
 Portal capture and receive screen-sharing permission through GNOME's dialog.
+--virtual-only keeps windows and the pointer on the streamed output.
 Mutter's ScreenCast API is private; validate after desktop upgrades.
 """
 
@@ -20,6 +21,7 @@ gi.require_version("Gst", "1.0")
 from gi.repository import Gio, GLib, Gst
 
 WIDTH, HEIGHT, RATE = 3840, 2160, 60
+VIRTUAL_ONLY = "--virtual-only" in sys.argv
 READY = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "lanto-virtual-display.json"
 SC = "org.gnome.Mutter.ScreenCast"
 DC = "org.gnome.Mutter.DisplayConfig"
@@ -102,10 +104,13 @@ class VirtualDisplay:
             mode = modes[0]
             scale = min(mode[5], key=lambda value: abs(value - 1.5))
             current = next((l for l in logical if any(s[0] == self.connector for s in l[5])), None)
-            if current is None or not current[4] or abs(current[2] - scale) > 0.01:
+            other_outputs = any(s[0] != self.connector for l in logical for s in l[5])
+            if current is None or not current[4] or abs(current[2] - scale) > 0.01 or (VIRTUAL_ONLY and other_outputs):
                 arrangement = [(0, 0, scale, 0, True, [(self.connector, mode[0], {})])]
                 x = round(WIDTH / scale)
                 for old in logical:
+                    if VIRTUAL_ONLY:
+                        break
                     specs = [s for s in old[5] if s[0] != self.connector]
                     if not specs:
                         continue
@@ -140,8 +145,10 @@ class VirtualDisplay:
         path = call(screen_cast, "CreateSession", "(a{sv})", ({},))[0]
         self.session = proxy(SC, path, SC + ".Session")
         self.session.connect("g-signal", lambda _p, _s, name, _a: self.fail("ScreenCast session closed") if name == "Closed" and not self.closing else None)
+        # Hidden/metadata cursor modes inhibit the virtual view's cursor overlay,
+        # also hiding it from a separate Sunshine monitor capture.
         path = call(self.session, "RecordVirtual", "(a{sv})", ({
-            "is-platform": GLib.Variant("b", True), "cursor-mode": GLib.Variant("u", 0)
+            "is-platform": GLib.Variant("b", True), "cursor-mode": GLib.Variant("u", 1)
         },))[0]
         self.stream = proxy(SC, path, SC + ".Stream")
         self.stream.connect("g-signal", self.on_stream)

@@ -74,7 +74,9 @@ To roll back, disconnect, restore the original Sunshine configuration, restart S
 
 Turning off a monitor can remove its HDMI/DisplayPort output from Linux entirely. KMS capture then loses its framebuffer even though Sunshine and the network remain healthy. Increasing bitrate or restarting the client cannot restore a missing display.
 
-The optional [Linux display helper](../scripts/display/linux-virtual-display.py) uses Mutter's `RecordVirtual` interface and a GStreamer PipeWire consumer to keep a 3840 × 2160, 60 Hz desktop output alive in the existing graphical session. It makes that output primary, uses 150% scaling when supported, and preserves other active outputs to its right. It does not start a separate desktop or install a kernel driver. The [Mutter ScreenCast interface](https://github.com/GNOME/mutter/blob/main/data/dbus-interfaces/org.gnome.Mutter.ScreenCast.xml) is private and requires validation after desktop upgrades.
+The optional [Linux display helper](../scripts/display/linux-virtual-display.py) uses Mutter's `RecordVirtual` interface and a GStreamer PipeWire consumer to keep a 3840 × 2160, 60 Hz desktop output alive in the existing graphical session. It makes that output primary and uses 150% scaling when supported. The included service passes `--virtual-only`, keeping physical outputs inactive while the helper runs so windows and the pointer cannot remain outside the streamed desktop. Remove that argument if you deliberately want an extended desktop; other outputs are then arranged to its right. It does not start a separate desktop or install a kernel driver. The [Mutter ScreenCast interface](https://github.com/GNOME/mutter/blob/main/data/dbus-interfaces/org.gnome.Mutter.ScreenCast.xml) is private and requires validation after desktop upgrades.
+
+The helper embeds the cursor. Using hidden or metadata cursor mode inhibits Mutter's cursor overlay on the virtual view, so even a separate Sunshine monitor capture can lose the pointer.
 
 This requires GNOME Wayland, Python GObject bindings, GStreamer with `pipewiresrc`, and a Sunshine version with XDG Portal capture. Install the distribution packages `python3-gi`, `gir1.2-gstreamer-1.0`, `gstreamer1.0-pipewire` and `gstreamer1.0-tools` if missing. Back up the current Sunshine configuration and any existing helper service before installation.
 
@@ -112,6 +114,17 @@ ExecStartPre=%h/.lanto/display/wait-linux-display.sh
 
 Run `systemctl --user daemon-reload` after adding the drop-in. Both services start with the logged-in graphical session; this does not create a desktop before login. Verify the actual host PipeWire capture dimensions and a client stream with physical outputs disabled. A healthy helper alone does not confirm Sunshine capture or keyboard input.
 
+On the tested NVIDIA/GNOME host, Portal DMA-BUF capture flickered despite healthy stream statistics. The optional [Sunshine memory-capture drop-in](../scripts/display/sunshine-memory-capture.conf) selects Mesa software EGL for the Sunshine process, making capture use memory buffers while retaining NVENC encoding. It leaves GNOME and applications on their normal GPU renderer. This adds a frame copy and can cost CPU/memory bandwidth. It requires the Mesa EGL vendor file at the path in the drop-in; verify that file exists before using it. `NoNewPrivileges=yes` also prevents Sunshine from acquiring its file capabilities, so this configuration targets Portal rather than KMS capture.
+
+```sh
+test -f /usr/share/glvnd/egl_vendor.d/50_mesa.json
+cp scripts/display/sunshine-memory-capture.conf "$HOME/.config/systemd/user/app-dev.lizardbyte.app.Sunshine.service.d/lanto-memory-capture.conf"
+systemctl --user daemon-reload
+systemctl --user restart app-dev.lizardbyte.app.Sunshine.service
+```
+
+Verify that Sunshine logs `using memory buffers` and `Creating encoder [hevc_nvenc]` during the actual connection. Test moving windows and the cursor, not just receipt of video. To remove this workaround, delete only `lanto-memory-capture.conf`, reload the user service manager, and restart Sunshine.
+
 Do not stop the virtual display's screen-sharing session from GNOME's status indicator. Mutter assigns a new serial when the virtual output is recreated, which can invalidate a saved Portal selection; a new selection may therefore be required after recreating the helper or the desktop session. Restarting Sunshine alone was checked without another prompt. This setup does not guarantee unattended access across logout or reboot. The helper's runtime status is `$XDG_RUNTIME_DIR/lanto-virtual-display.json`; its `--check-ready` command verifies that the owning process and active 4K/60 mode still exist.
 
-To roll back, stop Sunshine, restore the backed-up Sunshine configuration and remove only the `lanto-display.conf` drop-in added above. Then disable and stop `lanto-virtual-display.service`, reload the user service manager, and restart Sunshine with the physical monitor connected. Keep the backup until physical capture has been checked.
+To roll back, stop Sunshine, restore the backed-up Sunshine configuration and remove only the `lanto-display.conf` and optional `lanto-memory-capture.conf` drop-ins added above. Then disable and stop `lanto-virtual-display.service`, reload the user service manager, and restart Sunshine with the physical monitor connected. Keep the backup until physical capture has been checked.

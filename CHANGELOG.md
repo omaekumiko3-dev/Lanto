@@ -9,6 +9,7 @@
 - Keep resolution, frame rate, and bitrate independently adjustable, with guidance for desktop text clarity and bandwidth.
 - Document true 4K host display setup, including an optional macOS HiDPI virtual-display helper and Windows display restoration after streaming.
 - Add an optional GNOME Wayland virtual-display helper, user service, Sunshine startup ordering, and Portal setup for 4K60 streaming with physical outputs inactive.
+- Keep the GNOME virtual screen's cursor visible and use a single virtual desktop by default; document a memory-buffer capture workaround for NVIDIA Portal flicker.
 
 ## 0.3.1 — 2026-10-17
 
