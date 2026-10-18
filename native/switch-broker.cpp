@@ -61,12 +61,9 @@ static int testEdges() {
     assert(remote.routeKey(VK_LMENU, true, popup));
     assert(remote.routeKey(VK_OEM_3, true, popup));
     assert(local.state()->sequence == 3);
-    assert(remote.yieldingForeground());
-    remote.guardForeground(true); // A control poll before handoff must not relock focus.
-    assert(remote.yieldingForeground());
+    remote.guardForeground(true);
     assert(remote.blocksLocalInput(popup)); // Input stays blocked until selection is applied.
     remote.guardForeground(false);
-    assert(!remote.yieldingForeground());
     assert(!remote.blocksLocalInput(popup));
     assert(!remote.routeKey('A', true, popup));
     assert(local.routeKey(VK_OEM_3, false, popup));
@@ -77,14 +74,14 @@ static int testEdges() {
     state = {};
     state.binding = VK_OEM_3 | (4 << 8);
     state.edge(VK_LMENU, true);
-    bool released = false;
-    struct Handoff { LantoKeyState* state; bool* released; } handoff{&state, &released};
+    bool granted = false;
+    struct Handoff { LantoKeyState* state; bool* granted; } handoff{&state, &granted};
     assert(state.edge(VK_OEM_3, true, [](void* context) {
         auto handoff = static_cast<Handoff*>(context);
-        assert(handoff->state->sequence == 0); // Protection is released before publication.
-        *handoff->released = true;
+        assert(handoff->state->sequence == 0); // Activation is granted before publication.
+        *handoff->granted = true;
     }, &handoff));
-    assert(released && state.sequence == 1);
+    assert(granted && state.sequence == 1);
     std::puts("Switch key edge tests passed");
     return 0;
 }

@@ -1,11 +1,13 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
+import { focusControllerWindow } from './media-window.ts'
 
 export function focusWindow(window: BrowserWindow | null): void {
   if (!window || window.isDestroyed()) return
   if (window.isMinimized()) window.restore()
   window.show()
   window.focus()
+  focusControllerWindow(window.getNativeWindowHandle())
 }
 
 export function createWindow(smoke: boolean, onRendererGone: () => void): BrowserWindow {

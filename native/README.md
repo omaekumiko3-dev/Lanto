@@ -6,15 +6,15 @@ Current acceptance: the H.264 SPS rewrite issue exposed during testing is fixed.
 
 ## Responsibilities
 
-| Module | Responsibility |
-| --- | --- |
+| Module                       | Responsibility                                                                                                                                |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/main/native-profile.ts` | Map settings to environment parameters for the current media child process; check the client capability manifest before enabling local cursor |
-| `moonlight/cursor-frame.*` | Validate cursor protocol, image dimensions, and hotspot; decode transparent PNG |
-| `moonlight/cursor-sync.*` | Fetch shapes on a separate thread; create, scale, and release local cursors on the SDL thread |
-| `moonlight/audio-volume.*` | Read session volume on a separate thread and apply PCM gain to all channels after decoding |
-| `sunshine/lanto_cursor.*` | Read system cursor and hotspot on the AppKit main thread and generate shape responses |
-| Moonlight/Sunshine patches | Integrate sessions, capability negotiation, and paired HTTPS; exclude the cursor from ScreenCaptureKit video |
-| Upstream PR #5817 | ScreenCaptureKit capture and native asynchronous VideoToolbox encoding |
+| `moonlight/cursor-frame.*`   | Validate cursor protocol, image dimensions, and hotspot; decode transparent PNG                                                               |
+| `moonlight/cursor-sync.*`    | Fetch shapes on a separate thread; create, scale, and release local cursors on the SDL thread                                                 |
+| `moonlight/audio-volume.*`   | Read session volume on a separate thread and apply PCM gain to all channels after decoding                                                    |
+| `sunshine/lanto_cursor.*`    | Read system cursor and hotspot on the AppKit main thread and generate shape responses                                                         |
+| Moonlight/Sunshine patches   | Integrate sessions, capability negotiation, and paired HTTPS; exclude the cursor from ScreenCaptureKit video                                  |
+| Upstream PR #5817            | ScreenCaptureKit capture and native asynchronous VideoToolbox encoding                                                                        |
 
 Mac system cursor shapes and hotspots are synchronized. Arrow, text, link, horizontal/vertical resize, and actual window-edge cursors have been verified. Cursor movement does not wait for remote video, but click results, window dragging, and text updates still use the video pipeline. The experimental Mac host permits one active media client to avoid mixing cursor modes on a shared capture source. Ordinary controllers can still connect with local cursor disabled.
 
@@ -69,7 +69,9 @@ The Windows player advertises lockedInputProtocol=1. The controller supplies LAN
 
 Build `native/tests/input-control-test.pro` with the same Qt/MSVC toolchain to check exact modifier matching, binding changes, local mode, invalid files, controller exit, and the legacy stdout notification without physical input injection. `node scripts/build-switch.mjs` builds the standalone helper and tests held modifiers, per-press edges, autorepeat, release after handoff, exact modifiers, and shared-memory continuity. It also builds an invisible media fixture for the two-process Electron smoke test; the fixture is excluded from release packages. Mouse confinement and physical desktop shortcut behavior still require interactive acceptance testing.
 
-`foregroundGuardProtocol=1` keeps locked selection independent of foreground-window changes. The controller maintains topmost placement and restores the selected stream when an ordinary local popup steals focus; blur never selects the local system. The player calls Windows `LockSetForegroundWindow` while selected and keeps its switch hook alive across SDL focus loss. Keyboard and mouse events are consumed while another process temporarily has focus, so they do not land in that local window; they are not replayed. Explicit local selection, unlocked mode, controller/broker loss, and process teardown release protection. Windows secure desktop and privileged system overlays remain OS-owned. Regression coverage includes denied focus restoration, external activation while local, explicit return, and disabling the lock; real game and screenshot overlays require interactive acceptance.
+`foregroundGuardProtocol=1` keeps locked selection independent of foreground-window changes. The controller maintains topmost placement and restores the selected stream when an ordinary local popup steals focus; blur never selects the local system. The player keeps its switch hook alive across SDL focus loss without using the global `LockSetForegroundWindow` lock. Keyboard and mouse events are consumed while another process temporarily has focus, so they do not land in that local window; they are not replayed. An explicit switch grants controller activation before publishing the request. If direct activation fails, the controller temporarily attaches both the previous foreground queue and the target queue, activates the target, and detaches in reverse order; returning to the local controller uses the same path. Explicit local selection, unlocked mode, controller/broker loss, and process teardown release input protection. Windows secure desktop and privileged system overlays remain OS-owned. Regression coverage includes denied focus restoration, external activation while local, explicit return, and disabling the lock; real game and screenshot overlays require interactive acceptance.
+
+For an opt-in Windows acceptance run, start the controller with `--remote-debugging-port=0`, connect two real streams, wait for their video, and run `node scripts/verify-live-switching.mjs --data-dir <controller-profile> --report <result.json>`. This advances 30 application switch requests through the broker, checks native visibility/focus, input ownership, selection, and unchanged process IDs, and reports activation latency. It does not inject physical keyboard/mouse events or establish video-frame latency. Avoid interacting with the controller while the test is cycling.
 
 ## Per-device stream volume
 

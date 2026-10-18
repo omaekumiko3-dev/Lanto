@@ -220,9 +220,10 @@ export class SessionManager {
       try {
         for (const entry of this.active.values()) {
           const previous = entry.input
+          // A configure call may update the player before a later window operation fails.
+          changed.push({ entry, previous })
           await entry.handle.window?.configure(settings)
           entry.input = { lockInput: settings.lockInput, returnShortcut: settings.returnShortcut }
-          changed.push({ entry, previous })
         }
       } catch (error) {
         for (const { entry, previous } of changed.reverse()) {

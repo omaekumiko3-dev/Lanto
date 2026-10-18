@@ -24,6 +24,34 @@ interface WindowAPI {
   find(pid: number): number
 }
 
+interface FocusAPI {
+  foreground(): number
+  thread(window: number): number
+  currentThread(): number
+  attach(from: number, to: number, enabled: number): number
+  activate(window: number): number
+  focus(window: number): number
+}
+
+/** Complete activation in the target's queue, then release every temporary attachment. */
+export function focusWindow(window: number, api: FocusAPI): number {
+  if (api.focus(window)) return 1
+  const current = api.currentThread()
+  const threads = new Set([api.thread(api.foreground()), api.thread(window)])
+  const attached: number[] = []
+  try {
+    for (const thread of threads) {
+      if (thread && thread !== current && api.attach(current, thread, 1)) attached.push(thread)
+    }
+    // Merely borrowing the previous foreground queue can leave a hidden player
+    // active there. Activate the selected player's queue before requesting focus.
+    api.activate(window)
+    return api.focus(window)
+  } finally {
+    for (const thread of attached.reverse()) api.attach(current, thread, 0)
+  }
+}
+
 function windowsAPI(): WindowAPI {
   const user = koffi.load('user32.dll')
   const kernel = koffi.load('kernel32.dll')
@@ -57,6 +85,7 @@ function windowsAPI(): WindowAPI {
     'int __stdcall SetWindowPos(uintptr_t window, intptr_t after, int x, int y, int width, int height, uint32_t flags)'
   )
   const currentThread = kernel.func('uint32_t __stdcall GetCurrentThreadId()')
+  const activate = user.func('uintptr_t __stdcall SetActiveWindow(uintptr_t window)')
   const attachInput = user.func(
     'int __stdcall AttachThreadInput(uint32_t from, uint32_t to, int attach)'
   )
@@ -68,22 +97,14 @@ function windowsAPI(): WindowAPI {
     topmost: (window: number, enabled: boolean) =>
       position(window, enabled ? -1 : -2, 0, 0, 0, 0, 0x4013), // async, no move/size/activation
     focus(window: number): number {
-      if (setForeground(window)) return 1
-      // A consumed switch key need not generate WM_HOTKEY. Borrow the foreground queue
-      // for the explicitly selected remote system, then detach immediately.
-      const foregroundThread = processId(api.foreground(), [0])
-      const thread = currentThread()
-      if (
-        !foregroundThread ||
-        foregroundThread === thread ||
-        !attachInput(thread, foregroundThread, 1)
-      )
-        return 0
-      try {
-        return setForeground(window)
-      } finally {
-        attachInput(thread, foregroundThread, 0)
-      }
+      return focusWindow(window, {
+        foreground: api.foreground,
+        thread: (target) => processId(target, [0]),
+        currentThread,
+        attach: attachInput,
+        activate,
+        focus: setForeground
+      })
     },
     open: kernel.func(
       'uintptr_t __stdcall OpenProcess(uint32_t access, int inherit, uint32_t pid)'
@@ -121,6 +142,13 @@ function windowsAPI(): WindowAPI {
 
 let native: ReturnType<typeof windowsAPI> | undefined
 
+export function focusControllerWindow(handle: Buffer): void {
+  if (process.platform !== 'win32') return
+  const window = handle.length >= 8 ? Number(handle.readBigUInt64LE()) : handle.readUInt32LE()
+  const api = (native ??= windowsAPI())
+  if (window && api.owner(window) === process.pid) api.focus(window)
+}
+
 export interface WindowInputControl {
   setRemote(remote: boolean): Promise<void>
   configure(settings: InputSettings): Promise<void>
@@ -149,23 +177,26 @@ export function createMediaWindow(
   function alive(): boolean {
     return !closed && api.wait(processHandle, 0) === 258
   }
-  function ownedWindow(): number {
+  function ownedWindow(required = true): number {
     if (!alive()) throw new Error('The remote window has closed')
     const front = api.foreground()
     if (front && api.owner(front) === pid) window = front
     const found = api.find(pid)
     if (found) window = found
     if (window && api.owner(window) !== pid) window = 0
-    if (!window) throw new Error('The remote window is still opening; try again in a moment')
+    if (!window && required)
+      throw new Error('The remote window is still opening; try again in a moment')
     return window
   }
   async function local() {
-    const target = ownedWindow()
+    const target = ownedWindow(false)
     await input?.setRemote(false)
     mode = 'local'
     seenRemote = false
-    api.show(target, settings.lockInput ? 0 : 6) // SW_HIDE / SW_MINIMIZE
-    api.topmost(target, false)
+    if (target) {
+      api.show(target, settings.lockInput ? 0 : 6) // SW_HIDE / SW_MINIMIZE
+      api.topmost(target, false)
+    }
   }
   async function show() {
     const target = ownedWindow()
@@ -207,6 +238,7 @@ export function createMediaWindow(
       if (front && api.owner(front) === pid) window = front
       if (mode === 'local' && settings.lockInput) {
         // A click, task switcher, or external activation cannot change the selected system.
+        if (!window) window = api.find(pid)
         if (window && api.owner(window) === pid && api.visible(window)) api.show(window, 0)
       } else if (mode === 'remote') {
         // A slow host handshake can outlive Windows' initial activation grant.
@@ -257,7 +289,10 @@ export function createMediaWindow(
           throw new Error('Reconnect with the latest Lanto player to lock input')
         await input?.configure(value)
         settings = value
-        if (mode === 'local' && settings.lockInput) api.show(ownedWindow(), 0)
+        if (mode === 'local' && settings.lockInput) {
+          const target = ownedWindow(false)
+          if (target) api.show(target, 0)
+        }
         if (window && api.owner(window) === pid)
           api.topmost(window, mode === 'remote' && settings.lockInput)
       }),

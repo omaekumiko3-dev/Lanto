@@ -23,6 +23,8 @@ function fixture() {
       failHide: false,
       failShow: false,
       failConfigure: false,
+      failAfterConfigure: false,
+      inputLocked: true,
       audio: [] as number[],
       closed: new Promise<MediaExit>((done) => {
         resolve = done
@@ -60,6 +62,9 @@ function fixture() {
         async configure(input: { lockInput: boolean }) {
           if (value.failConfigure) throw new Error('configure failed')
           events.push(`configure:${pid}:${input.lockInput}`)
+          value.inputLocked = input.lockInput
+          if (value.failAfterConfigure && !input.lockInput)
+            throw new Error('partial configure failed')
         },
         close() {}
       }
@@ -259,6 +264,22 @@ test('a failed input-settings update rolls back the other connected client', asy
   assert.deepEqual(
     events.filter((entry) => entry.startsWith('configure')),
     ['configure:100:false', 'configure:100:true']
+  )
+  await manager.disconnect()
+})
+
+test('input-settings rollback includes a client that failed after applying the setting', async () => {
+  const { manager, handles } = fixture()
+  await manager.connect(first, settings)
+  await manager.connect(second, settings)
+  handles[1]!.failAfterConfigure = true
+  await assert.rejects(
+    manager.configureWindow({ ...settings, lockInput: false }),
+    /partial configure/
+  )
+  assert.deepEqual(
+    handles.map((handle) => handle.inputLocked),
+    [true, true]
   )
   await manager.disconnect()
 })

@@ -1,17 +1,18 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { launchMedia } from '../src/main/moonlight.ts'
-import { createMediaWindow } from '../src/main/media-window.ts'
+import { createMediaWindow, focusWindow } from '../src/main/media-window.ts'
 import { defaultConfig } from '../src/shared/model.ts'
 
 test(
-  'Windows control rejects a player without a window and never owns the player lifetime',
+  'Windows control releases an opening player without owning its lifetime',
   { skip: process.platform !== 'win32' },
   async () => {
     const player = await launchMedia(process.execPath, ['-e', 'setInterval(() => {}, 1000)'])
     const window = createMediaWindow(player.pid, defaultConfig().settings)
     try {
-      await assert.rejects(window.toggle(), /still opening/)
+      assert.equal(await window.toggle(), 'local')
+      await assert.rejects(window.show(), /still opening/)
       await window.configure({ ...defaultConfig().settings, lockInput: false })
       window.close()
       window.close()
@@ -23,6 +24,84 @@ test(
     }
   }
 )
+
+test('activation includes the selected target queue and always detaches both queues', () => {
+  const attached = new Set<number>()
+  const released: number[] = []
+  let active = false
+  let fail = false
+  const api = {
+    foreground: () => 10,
+    thread: (window: number) => (window === 10 ? 2 : 3),
+    currentThread: () => 1,
+    attach: (_from: number, to: number, enabled: number) => {
+      if (enabled) attached.add(to)
+      else {
+        attached.delete(to)
+        released.push(to)
+      }
+      return 1
+    },
+    activate: () => {
+      assert.deepEqual([...attached], [2, 3])
+      if (fail) throw new Error('activation failed')
+      active = true
+      return 1
+    },
+    focus: () => Number(active && attached.has(3))
+  }
+  assert.equal(focusWindow(20, api), 1)
+  assert.deepEqual(released, [3, 2])
+  assert.equal(attached.size, 0)
+  active = false
+  fail = true
+  assert.throws(() => focusWindow(20, api), /activation failed/)
+  assert.equal(attached.size, 0)
+})
+
+test('a hidden opening player stays local when its window appears later', async () => {
+  let window = 0
+  let visible = true
+  let remote = true
+  const api = {
+    foreground: () => 0,
+    owner: (target: number) => (target === 10 ? 42 : 0),
+    find: () => window,
+    visible: () => Number(visible),
+    minimized: () => 0,
+    show: (_target: number, command: number) => {
+      visible = command !== 0
+      return 1
+    },
+    focus: () => 0,
+    topmost: () => 1,
+    open: () => 1,
+    wait: () => 258,
+    close: () => 1
+  }
+  const control = createMediaWindow(
+    42,
+    defaultConfig().settings,
+    {
+      async setRemote(value) {
+        remote = value
+      },
+      async configure() {}
+    },
+    api
+  )
+  try {
+    await control.hide()
+    await control.configure(defaultConfig().settings)
+    assert.equal(remote, false)
+    window = 10
+    await new Promise((resolve) => setTimeout(resolve, 80))
+    assert.equal(visible, false)
+    assert.equal(control.mode, 'local')
+  } finally {
+    control.close()
+  }
+})
 
 test(
   'Windows control stops using its original process handle after the player exits',

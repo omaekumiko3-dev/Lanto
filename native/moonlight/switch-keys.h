@@ -29,7 +29,7 @@ struct LantoKeyState {
         const LONG shortcut = InterlockedCompareExchange(&binding, 0, 0);
         if (pressed && !repeat && key == static_cast<DWORD>(shortcut & 255) && modifiers() == (shortcut >> 8)) {
             swallowed[key] = true;
-            // Release foreground protection before the broker can observe the request.
+            // Grant activation before the broker can observe the request.
             if (beforeSwitch) beforeSwitch(context);
             InterlockedIncrement(&sequence);
             return true;
@@ -73,7 +73,6 @@ public:
     bool blocksLocalInput(DWORD foreground) const {
         return m_Guard && available() && foreground != GetCurrentProcessId();
     }
-    bool yieldingForeground() const { return m_Yielding; }
     bool routeKey(DWORD key, bool down, DWORD foreground) {
         if (!available()) return false;
         const bool owns = m_Local ? !m_State->owner || foreground != static_cast<DWORD>(m_State->owner)
@@ -81,8 +80,6 @@ public:
         if (!owns) return false;
         const bool consumed = m_State->edge(key, down, [](void* context) {
             auto self = static_cast<LantoSwitchHook*>(context);
-            self->m_Yielding = true;
-            self->releaseForeground();
             AllowSetForegroundWindow(self->m_State->controller);
         }, this);
         // Preserve physical modifiers across handoffs, including temporary blur.
@@ -90,19 +87,9 @@ public:
         return consumed || blocksLocalInput(foreground);
     }
     void guardForeground(bool enabled) {
+        // Keep input guarded across blur without locking out the controller's
+        // explicit activation of another player. The controller restores focus.
         m_Guard = enabled && !m_Local;
-        if (!m_Guard) m_Yielding = false;
-        if (m_Guard && !m_Yielding) {
-            DWORD foreground = 0;
-            GetWindowThreadProcessId(GetForegroundWindow(), &foreground);
-            if (foreground == GetCurrentProcessId()) {
-                m_ForegroundLocked = LockSetForegroundWindow(LSFW_LOCK) != FALSE;
-            } else if (m_ForegroundLocked) {
-                // Let the controller restore this window if an OS activation
-                // bypassed the lock. Input remains guarded until focus returns.
-                releaseForeground();
-            }
-        } else releaseForeground();
     }
     bool activate(bool active) {
         if (m_MouseHook) { UnhookWindowsHookEx(m_MouseHook); m_MouseHook = nullptr; }
@@ -126,9 +113,6 @@ public:
         return m_Hook != nullptr;
     }
 private:
-    void releaseForeground() {
-        if (m_ForegroundLocked && LockSetForegroundWindow(LSFW_UNLOCK)) m_ForegroundLocked = false;
-    }
     static LantoSwitchHook*& instance() { static LantoSwitchHook* hook = nullptr; return hook; }
     static LRESULT CALLBACK callback(int code, WPARAM message, LPARAM data) {
         auto self = instance();
@@ -162,8 +146,6 @@ private:
     LantoKeyState* m_State = nullptr;
     bool m_Local = false;
     bool m_Guard = false;
-    bool m_ForegroundLocked = false;
-    bool m_Yielding = false;
     void (*m_ModifiersCallback)(int) = nullptr;
 };
 #endif
