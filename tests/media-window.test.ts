@@ -42,10 +42,11 @@ test(
   }
 )
 
-test('locked mode ignores external activation, hides again, and keeps native return idempotent', async () => {
+test('locked selection survives local popups and releases protection only on explicit return', async () => {
   let foreground = 10
   let visible = true
   let focused = true
+  let topmost = false
   const modes: boolean[] = []
   const api = {
     foreground: () => foreground,
@@ -61,6 +62,10 @@ test('locked mode ignores external activation, hides again, and keeps native ret
     focus: () => {
       if (focused) foreground = 10
       return focused ? 1 : 0
+    },
+    topmost: (_window: number, enabled: boolean) => {
+      topmost = enabled
+      return 1
     },
     open: () => 1,
     wait: () => 258,
@@ -80,6 +85,7 @@ test('locked mode ignores external activation, hides again, and keeps native ret
   try {
     assert.equal(await control.toggle(), 'local')
     assert.equal(visible, false)
+    assert.equal(topmost, false)
     // Simulate an external activation instead of sending physical mouse or keyboard input.
     visible = true
     foreground = 10
@@ -87,13 +93,32 @@ test('locked mode ignores external activation, hides again, and keeps native ret
     assert.equal(visible, false)
     assert.equal(await control.toggle(), 'remote')
     assert.equal(visible, true)
+    assert.equal(topmost, true)
     foreground = 20
     await new Promise((resolve) => setTimeout(resolve, 80))
-    assert.equal(visible, false)
-    // The native message can arrive after the focus watcher already hid the window.
+    assert.equal(foreground, 10)
+    assert.equal(visible, true)
+    assert.equal(control.mode, 'remote')
+    assert.equal(modes.at(-1), true)
+    // Even if Windows temporarily denies activation, it must not select local mode.
+    focused = false
+    foreground = 20
+    visible = false
+    await new Promise((resolve) => setTimeout(resolve, 80))
+    assert.equal(visible, true)
+    assert.equal(control.mode, 'remote')
+    assert.equal(modes.at(-1), true)
     await control.hide()
     assert.equal(visible, false)
+    assert.equal(topmost, false)
+    focused = true
     assert.equal(await control.toggle(), 'remote')
+    await control.configure({ ...defaultConfig().settings, lockInput: false })
+    assert.equal(topmost, false)
+    foreground = 20
+    await new Promise((resolve) => setTimeout(resolve, 80))
+    assert.equal(foreground, 20)
+    await control.configure(defaultConfig().settings)
     await control.hide()
     focused = false
     await assert.rejects(control.toggle(), /switch shortcut to retry/)

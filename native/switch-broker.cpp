@@ -49,6 +49,26 @@ static int testEdges() {
     remote.state()->edge(VK_OEM_3, false);
     remote.state()->edge(VK_LMENU, false);
     assert(local.state()->modifiers() == 0);
+    // Simulate a popup taking focus mid-chord without sending physical input.
+    const DWORD popup = GetCurrentProcessId() + 1;
+    remote.guardForeground(true);
+    assert(!remote.routeKey('A', true, GetCurrentProcessId())); // SDL owns foreground input.
+    assert(remote.routeKey('A', false, popup));
+    assert(remote.blocksLocalInput(popup)); // Mouse events use the same ownership barrier.
+    assert(!remote.blocksLocalInput(GetCurrentProcessId()));
+    assert(remote.routeKey(VK_SNAPSHOT, true, popup));
+    assert(remote.routeKey(VK_SNAPSHOT, false, popup));
+    assert(remote.routeKey(VK_LMENU, true, popup));
+    assert(remote.routeKey(VK_OEM_3, true, popup));
+    assert(local.state()->sequence == 3);
+    remote.guardForeground(false);
+    assert(!remote.blocksLocalInput(popup));
+    assert(!remote.routeKey('A', true, popup));
+    assert(local.routeKey(VK_OEM_3, false, popup));
+    assert(local.routeKey(VK_OEM_3, true, popup));
+    assert(local.state()->sequence == 4); // Alt is still held after returning local.
+    local.routeKey(VK_OEM_3, false, popup);
+    local.routeKey(VK_LMENU, false, popup);
     std::puts("Switch key edge tests passed");
     return 0;
 }

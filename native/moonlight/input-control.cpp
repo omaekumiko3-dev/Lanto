@@ -57,6 +57,11 @@ bool LantoInputControl::refresh(bool force)
     m_Remote = remote;
     m_Key = key;
     m_Modifiers = modifiers;
+    if (!locked || !remote) m_HasCaptured = false;
+#ifdef Q_OS_WIN
+    // Only the selected, live managed player may hold foreground protection.
+    m_SwitchHook.guardForeground(m_HasCaptured && managed() && locked && remote && m_SharedSwitch);
+#endif
     return changed;
 }
 
@@ -71,8 +76,14 @@ bool LantoInputControl::matches(int key, int modifiers) const
 void LantoInputControl::setSwitchCapture(bool active, void (*modifiersChanged)(int))
 {
 #ifdef Q_OS_WIN
+    // Do not intercept local input while a new stream is still opening.
+    if (active) m_HasCaptured = true;
+    const bool guard = m_HasCaptured && managed() && locked() && remote() && m_SharedSwitch;
+    m_SwitchHook.guardForeground(guard);
     m_SwitchHook.setModifiersCallback(modifiersChanged);
-    if (m_SharedSwitch && !m_SwitchHook.activate(active)) m_SwitchFailed = true;
+    // SDL releases capture on blur. Keep our reserved key and input barrier alive
+    // until an explicit selection change, even while another app has focus.
+    if (m_SharedSwitch && !m_SwitchHook.activate(active || guard)) m_SwitchFailed = true;
 #else
     Q_UNUSED(active);
     Q_UNUSED(modifiersChanged);

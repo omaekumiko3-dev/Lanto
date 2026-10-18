@@ -16,6 +16,7 @@ interface WindowAPI {
   minimized(window: number): number
   show(window: number, command: number): number
   focus(window: number): number
+  topmost(window: number, enabled: boolean): number
   open(access: number, inherit: number, pid: number): number
   wait(handle: number, timeout: number): number
   close(handle: number): number
@@ -52,6 +53,9 @@ function windowsAPI(): WindowAPI {
     'uint32_t __stdcall GetWindowThreadProcessId(uintptr_t window, _Out_ uint32_t *pid)'
   )
   const setForeground = user.func('int __stdcall SetForegroundWindow(uintptr_t window)')
+  const position = user.func(
+    'int __stdcall SetWindowPos(uintptr_t window, intptr_t after, int x, int y, int width, int height, uint32_t flags)'
+  )
   const currentThread = kernel.func('uint32_t __stdcall GetCurrentThreadId()')
   const attachInput = user.func(
     'int __stdcall AttachThreadInput(uint32_t from, uint32_t to, int attach)'
@@ -61,10 +65,12 @@ function windowsAPI(): WindowAPI {
     foreground: user.func('uintptr_t __stdcall GetForegroundWindow()'),
     minimized: user.func('int __stdcall IsIconic(uintptr_t window)'),
     show: user.func('int __stdcall ShowWindowAsync(uintptr_t window, int command)'),
+    topmost: (window: number, enabled: boolean) =>
+      position(window, enabled ? -1 : -2, 0, 0, 0, 0, 0x4013), // async, no move/size/activation
     focus(window: number): number {
       if (setForeground(window)) return 1
       // A consumed switch key need not generate WM_HOTKEY. Borrow the foreground queue
-      // only for this explicit user-requested activation, then detach immediately.
+      // for the explicitly selected remote system, then detach immediately.
       const foregroundThread = processId(api.foreground(), [0])
       const thread = currentThread()
       if (
@@ -159,6 +165,7 @@ export function createMediaWindow(
     mode = 'local'
     seenRemote = false
     api.show(target, settings.lockInput ? 0 : 6) // SW_HIDE / SW_MINIMIZE
+    api.topmost(target, false)
   }
   async function show() {
     const target = ownedWindow()
@@ -166,6 +173,7 @@ export function createMediaWindow(
     mode = 'remote'
     seenRemote = false
     api.show(target, api.minimized(target) ? 9 : 5) // SW_RESTORE / SW_SHOW
+    api.topmost(target, settings.lockInput)
     api.focus(target)
     for (let attempt = 0; attempt < 30; attempt++) {
       if (!alive()) throw new Error('The remote window has closed')
@@ -181,6 +189,7 @@ export function createMediaWindow(
   }
   function close() {
     if (closed) return
+    if (alive() && window && api.owner(window) === pid) api.topmost(window, false)
     closed = true
     clearInterval(timer)
     api.close(processHandle)
@@ -201,7 +210,13 @@ export function createMediaWindow(
         if (window && api.owner(window) === pid && api.visible(window)) api.show(window, 0)
       } else if (mode === 'remote') {
         if (front && api.owner(front) === pid) seenRemote = true
-        else if (front && seenRemote && settings.lockInput) await local()
+        if (seenRemote && settings.lockInput && window && api.owner(window) === pid) {
+          // Focus loss is not a switch request. Games and screen-capture tools may
+          // activate themselves; keep the selected stream above ordinary popups.
+          api.topmost(window, true)
+          if (!api.visible(window) || api.minimized(window)) api.show(window, 9)
+          if (front && api.owner(front) !== pid) api.focus(window)
+        }
       }
     })
       .catch(() => {})
@@ -233,6 +248,8 @@ export function createMediaWindow(
         await input?.configure(value)
         settings = value
         if (mode === 'local' && settings.lockInput) api.show(ownedWindow(), 0)
+        if (window && api.owner(window) === pid)
+          api.topmost(window, mode === 'remote' && settings.lockInput)
       }),
     close
   }

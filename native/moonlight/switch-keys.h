@@ -37,11 +37,13 @@ struct LantoKeyState {
 };
 
 // Installed after SDL's keyboard grab, so it sees physical modifier edges before SDL consumes them.
-// Only the foreground player mutates the shared state. The broker handles all local windows.
+// The selected locked player retains ownership across blur; otherwise the foreground
+// player handles remote input and the broker handles local windows.
 class LantoSwitchHook {
 public:
     LantoSwitchHook() = default;
     ~LantoSwitchHook() {
+        guardForeground(false);
         activate(false);
         if (m_State) UnmapViewOfFile(m_State);
         if (m_Map) CloseHandle(m_Map);
@@ -66,7 +68,35 @@ public:
     bool available() const { return m_State && (m_Local || (m_Broker && WaitForSingleObject(m_Broker, 0) == WAIT_TIMEOUT)); }
     LantoKeyState* state() { return m_State; }
     void setModifiersCallback(void (*callback)(int)) { m_ModifiersCallback = callback; }
+    bool blocksLocalInput(DWORD foreground) const {
+        return m_Guard && available() && foreground != GetCurrentProcessId();
+    }
+    bool routeKey(DWORD key, bool down, DWORD foreground) {
+        if (!available()) return false;
+        const bool owns = m_Local ? !m_State->owner || foreground != static_cast<DWORD>(m_State->owner)
+                                 : m_Guard || foreground == GetCurrentProcessId();
+        if (!owns) return false;
+        const LONG before = m_State->sequence;
+        const bool consumed = m_State->edge(key, down);
+        // Preserve physical modifiers across handoffs, including temporary blur.
+        if (m_ModifiersCallback) m_ModifiersCallback(m_State->modifiers());
+        if (before != m_State->sequence) AllowSetForegroundWindow(m_State->controller);
+        return consumed || blocksLocalInput(foreground);
+    }
+    void guardForeground(bool enabled) {
+        m_Guard = enabled && !m_Local;
+        if (m_Guard) {
+            DWORD foreground = 0;
+            GetWindowThreadProcessId(GetForegroundWindow(), &foreground);
+            if (foreground == GetCurrentProcessId())
+                m_ForegroundLocked = LockSetForegroundWindow(LSFW_LOCK) != FALSE;
+        } else if (m_ForegroundLocked) {
+            LockSetForegroundWindow(LSFW_UNLOCK);
+            m_ForegroundLocked = false;
+        }
+    }
     bool activate(bool active) {
+        if (m_MouseHook) { UnhookWindowsHookEx(m_MouseHook); m_MouseHook = nullptr; }
         if (m_Hook) {
             UnhookWindowsHookEx(m_Hook);
             m_Hook = nullptr;
@@ -76,6 +106,12 @@ public:
         if (!available()) return false;
         instance() = this;
         m_Hook = SetWindowsHookExW(WH_KEYBOARD_LL, callback, GetModuleHandleW(nullptr), 0);
+        if (m_Hook && m_Guard)
+            m_MouseHook = SetWindowsHookExW(WH_MOUSE_LL, mouseCallback, GetModuleHandleW(nullptr), 0);
+        if (m_Guard && !m_MouseHook) {
+            if (m_Hook) UnhookWindowsHookEx(m_Hook);
+            m_Hook = nullptr;
+        }
         if (m_Hook && !m_Local) InterlockedExchange(&m_State->owner, GetCurrentProcessId());
         if (m_Hook && m_ModifiersCallback) m_ModifiersCallback(m_State->modifiers());
         return m_Hook != nullptr;
@@ -88,27 +124,33 @@ private:
             auto event = reinterpret_cast<const KBDLLHOOKSTRUCT*>(data);
             DWORD foreground = 0;
             GetWindowThreadProcessId(GetForegroundWindow(), &foreground);
-            bool owns = self->m_Local ? !self->m_State->owner || foreground != static_cast<DWORD>(self->m_State->owner) : foreground == GetCurrentProcessId();
-            if (owns && event->scanCode != 0x21d) {
+            if (event->scanCode != 0x21d) {
                 const bool down = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
-                const LONG before = self->m_State->sequence;
-                const bool consumed = self->m_State->edge(event->vkCode, down);
-                // Seed SDL on handoff and keep its modifier state aligned with physical edges,
-                // even when a modifier was already down before this window gained focus.
-                if (self->m_ModifiersCallback) self->m_ModifiersCallback(self->m_State->modifiers());
-                if (consumed) {
-                    if (before != self->m_State->sequence) AllowSetForegroundWindow(self->m_State->controller);
-                    return 1;
-                }
+                // While focus is being restored, never type into the local popup.
+                if (self->routeKey(event->vkCode, down, foreground)) return 1;
             }
+            // SDL's synthetic AltGr Ctrl edge must also stay out of a local popup.
+            if (self->blocksLocalInput(foreground)) return 1;
+        }
+        return CallNextHookEx(nullptr, code, message, data);
+    }
+    static LRESULT CALLBACK mouseCallback(int code, WPARAM message, LPARAM data) {
+        auto self = instance();
+        if (code == HC_ACTION && self) {
+            DWORD foreground = 0;
+            GetWindowThreadProcessId(GetForegroundWindow(), &foreground);
+            if (self->blocksLocalInput(foreground)) return 1;
         }
         return CallNextHookEx(nullptr, code, message, data);
     }
     HANDLE m_Map = nullptr;
     HANDLE m_Broker = nullptr;
     HHOOK m_Hook = nullptr;
+    HHOOK m_MouseHook = nullptr;
     LantoKeyState* m_State = nullptr;
     bool m_Local = false;
+    bool m_Guard = false;
+    bool m_ForegroundLocked = false;
     void (*m_ModifiersCallback)(int) = nullptr;
 };
 #endif

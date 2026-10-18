@@ -26,6 +26,7 @@ private:
     int m_Modifiers = 0;
     bool m_Locked = true;
     bool m_Remote = false;
+    bool m_HasCaptured = false;
 #ifdef Q_OS_WIN
     LantoSwitchHook m_SwitchHook;
     bool m_SharedSwitch = false;
