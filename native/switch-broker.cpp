@@ -71,6 +71,31 @@ static int testEdges() {
     assert(local.state()->sequence == 4); // Alt is still held after returning local.
     local.routeKey(VK_OEM_3, false, popup);
     local.routeKey(VK_LMENU, false, popup);
+    // A modifier pressed locally before grabbing a stream must be released to
+    // Windows even if focus returns before the player's guard is disabled.
+    // SDL remembers these pre-grab downs and forwards their matching keyups.
+    const DWORD modifiers[] = {VK_LSHIFT, VK_RSHIFT, VK_LCONTROL, VK_RCONTROL,
+                               VK_LMENU, VK_RMENU, VK_LWIN, VK_RWIN};
+    for (int cycle = 0; cycle < 100; cycle++) {
+        for (DWORD modifier : modifiers) {
+            remote.guardForeground(false);
+            assert(!local.routeKey(modifier, true, popup));
+            remote.guardForeground(true);
+            assert(!remote.routeKey(modifier, false, popup));
+            assert(local.state()->modifiers() == 0);
+            // Releasing a modifier must not remove the input protection.
+            assert(remote.routeKey('A', true, popup));
+            assert(remote.routeKey('A', false, popup));
+            assert(remote.routeKey(modifier, true, popup));
+            assert(!remote.routeKey(modifier, false, popup));
+            assert(remote.blocksLocalInput(popup));
+        }
+    }
+    for (DWORD modifier : {VK_SHIFT, VK_CONTROL, VK_MENU}) {
+        assert(remote.blocksLocalKey(modifier, true, popup));
+        assert(!remote.blocksLocalKey(modifier, false, popup));
+    }
+    remote.guardForeground(false);
     state = {};
     state.binding = VK_OEM_3 | (4 << 8);
     state.edge(VK_LMENU, true);

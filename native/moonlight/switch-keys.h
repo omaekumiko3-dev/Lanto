@@ -73,6 +73,14 @@ public:
     bool blocksLocalInput(DWORD foreground) const {
         return m_Guard && available() && foreground != GetCurrentProcessId();
     }
+    bool blocksLocalKey(DWORD key, bool down, DWORD foreground) const {
+        // SDL forwards keyups for modifiers that Windows saw before its grab.
+        // Swallowing one during focus handoff leaves that modifier held locally.
+        // Releases cannot type into the local window; keep blocking all presses.
+        const bool modifier = key == VK_SHIFT || key == VK_CONTROL || key == VK_MENU ||
+            (key >= VK_LSHIFT && key <= VK_RMENU) || key == VK_LWIN || key == VK_RWIN;
+        return blocksLocalInput(foreground) && (down || !modifier);
+    }
     bool routeKey(DWORD key, bool down, DWORD foreground) {
         if (!available()) return false;
         const bool owns = m_Local ? !m_State->owner || foreground != static_cast<DWORD>(m_State->owner)
@@ -84,7 +92,7 @@ public:
         }, this);
         // Preserve physical modifiers across handoffs, including temporary blur.
         if (m_ModifiersCallback) m_ModifiersCallback(m_State->modifiers());
-        return consumed || blocksLocalInput(foreground);
+        return consumed || blocksLocalKey(key, down, foreground);
     }
     void guardForeground(bool enabled) {
         // Keep input guarded across blur without locking out the controller's
@@ -120,13 +128,13 @@ private:
             auto event = reinterpret_cast<const KBDLLHOOKSTRUCT*>(data);
             DWORD foreground = 0;
             GetWindowThreadProcessId(GetForegroundWindow(), &foreground);
+            const bool down = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
             if (event->scanCode != 0x21d) {
-                const bool down = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
                 // While focus is being restored, never type into the local popup.
                 if (self->routeKey(event->vkCode, down, foreground)) return 1;
-            }
-            // SDL's synthetic AltGr Ctrl edge must also stay out of a local popup.
-            if (self->blocksLocalInput(foreground)) return 1;
+            } else if (self->blocksLocalKey(event->vkCode, down, foreground)) return 1;
+            // The synthetic AltGr Ctrl follows the same release rule, without
+            // changing physical modifier state or re-blocking a forwarded keyup.
         }
         return CallNextHookEx(nullptr, code, message, data);
     }

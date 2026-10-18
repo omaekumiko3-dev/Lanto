@@ -5,7 +5,7 @@ import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { chromium } from 'playwright'
 import koffi from 'koffi'
-// Opt-in acceptance with two real streams. Only the app's switch sequence is
+// Opt-in acceptance with one or two real streams. Only the app's switch sequence is
 // advanced; no physical keyboard/mouse events or key-state bytes are injected.
 const { values } = parseArgs({
   options: {
@@ -25,7 +25,7 @@ const page = browser.contexts()[0].pages()[0]
 const before = await page.evaluate(() => window.lanto.getState())
 assert.equal(resolve(before.runtime.configDirectory).toLowerCase(), data.toLowerCase())
 assert.equal(before.config.settings.lockInput, true, 'Enable input locking before this check')
-assert.equal(before.sessions.length, 2)
+assert.ok(before.sessions.length >= 1 && before.sessions.length <= 2)
 const command = execFileSync(
   'powershell.exe',
   [
@@ -73,7 +73,7 @@ enumerate((window) => {
     windows.push({ window, pid: pid[0], id: session.deviceId })
   return 1
 }, 0)
-assert.equal(windows.length, 2)
+assert.equal(windows.length, before.sessions.length)
 const cycle = [null, ...before.sessions.map((s) => s.deviceId)]
 let selected = before.controlDeviceId
 const rows = []

@@ -9,12 +9,12 @@ $lantoCommand = Join-Path $lantoOutput 'build-switch.cmd'
 @"
 @echo off
 call "$lantoVs\VC\Auxiliary\Build\vcvarsall.bat" x64
-if errorlevel 1 exit /b 1
+if not "%errorlevel%"=="0" exit /b %errorlevel%
 cd /d "$lantoOutput"
 cl /nologo /std:c++17 /EHsc /W4 /O2 /MT "$PSScriptRoot\switch-broker.cpp" /Fe:LantoSwitch.exe /link user32.lib
-if errorlevel 1 exit /b 1
+if not "%errorlevel%"=="0" exit /b %errorlevel%
 LantoSwitch.exe --test
-if errorlevel 1 exit /b 1
+if not "%errorlevel%"=="0" exit /b %errorlevel%
 cl /nologo /std:c++17 /EHsc /W4 /O2 /MT "$PSScriptRoot\tests\fake-media.cpp" /Fe:LantoTestMedia.exe /link user32.lib
 exit /b %errorlevel%
 "@ | Set-Content -LiteralPath $lantoCommand -Encoding ascii

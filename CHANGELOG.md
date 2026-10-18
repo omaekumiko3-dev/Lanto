@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Forward modifier-key releases during Windows focus handoffs so returning to the local desktop cannot leave Alt, Ctrl, Shift, or Windows logically held by the input guard.
+
 - Preserve the GNOME virtual output through transient compositor timeouts, reduce steady-state layout polling, and bound cleanup after internal failures so a blocked PipeWire teardown cannot prevent service recovery.
 
 - Retry brief Host network failures, refresh paired-device availability in the background, and clear recovered network notices. Distinguish network loss, rejected authorization, changed identity, and an offline Sunshine service instead of reporting all failures as expired pairing.
