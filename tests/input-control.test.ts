@@ -24,10 +24,22 @@ test('session input control updates mode and binding atomically and cannot be re
   const file = control.environment.LANTO_INPUT_FILE
   const read = async () => JSON.parse(await readFile(file, 'utf8'))
   try {
-    assert.deepEqual(await read(), { key: 192, modifiers: 2, locked: true, remote: true })
+    assert.deepEqual(await read(), {
+      key: 192,
+      modifiers: 2,
+      locked: true,
+      remote: true,
+      emergency: 0
+    })
     await control.setRemote(false)
     await control.configure({ ...settings, returnShortcut: 'Control+Alt+F10' })
-    assert.deepEqual(await read(), { key: 121, modifiers: 6, locked: true, remote: false })
+    assert.deepEqual(await read(), {
+      key: 121,
+      modifiers: 6,
+      locked: true,
+      remote: false,
+      emergency: 0
+    })
     await control.setRemote(true)
     assert.equal((await read()).remote, true)
     await control.close()
@@ -50,6 +62,26 @@ test('only the owned player stdout protocol requests switching, including split 
   )
   assert.equal((await player.closed).code, 0)
   assert.deepEqual(requests, [player.pid])
+})
+
+test('only an explicit input selection acknowledges a new native emergency', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'lanto-input-'))
+  let sequence = 0
+  const control = await createInputControl(directory, defaultConfig().settings, () => sequence)
+  const read = async () => JSON.parse(await readFile(control.environment.LANTO_INPUT_FILE, 'utf8'))
+  try {
+    sequence = 1
+    await control.configure(defaultConfig().settings)
+    assert.equal((await read()).emergency, 0)
+    await control.setRemote(false)
+    assert.equal((await read()).emergency, 1)
+    assert.equal((await read()).remote, false)
+    await control.setRemote(true)
+    assert.equal((await read()).emergency, 1)
+  } finally {
+    await control.close()
+    await removeTestDirectory(directory, 'lanto-input-')
+  }
 })
 
 test(

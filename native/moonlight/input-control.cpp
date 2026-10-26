@@ -36,6 +36,7 @@ bool LantoInputControl::refresh(bool force)
     bool remote = false;
     int key = 0;
     int modifiers = 0;
+    long emergency = 0;
 #ifdef Q_OS_WIN
     if (m_Controller && WaitForSingleObject(m_Controller, 0) == WAIT_TIMEOUT &&
             (!m_SharedSwitch || (!m_SwitchFailed && m_SwitchHook.available()))) {
@@ -59,10 +60,21 @@ bool LantoInputControl::refresh(bool force)
                 value.value("locked").isBool() && value.value("remote").isBool()) {
             locked = value.value("locked").toBool();
             remote = value.value("remote").toBool();
+            if (m_SharedSwitch) {
+                emergency = m_SwitchHook.emergency();
+                // An old controller write must never re-arm capture after an emergency.
+                const auto acknowledged = value.value("emergency").toInt(0);
+                if (acknowledged != emergency) remote = false;
+                else {
+                    m_SwitchHook.acknowledgeEmergency(emergency);
+                    if (remote) InterlockedExchange(&m_SwitchHook.state()->resumed, emergency);
+                }
+            }
         }
     }
 #endif
-    bool changed = m_Locked != locked || m_Remote != remote || m_Key != key || m_Modifiers != modifiers;
+    bool changed = m_Locked != locked || m_Remote != remote || m_Key != key || m_Modifiers != modifiers || m_Emergency != emergency;
+    m_Emergency = emergency;
     m_Locked = locked;
     m_Remote = remote;
     m_Key = key;
@@ -75,6 +87,37 @@ bool LantoInputControl::refresh(bool force)
     return changed;
 }
 
+bool LantoInputControl::keyboardFocus() const
+{
+#ifdef Q_OS_WIN
+    DWORD owner = 0;
+    GetWindowThreadProcessId(GetForegroundWindow(), &owner);
+    return owner == GetCurrentProcessId();
+#else
+    return true;
+#endif
+}
+
+std::uint64_t LantoInputControl::physicalKeyHold(std::uint32_t key) const
+{
+#ifdef Q_OS_WIN
+    return managed() && m_SharedSwitch ? m_SwitchHook.physicalHold(key) : 0;
+#else
+    Q_UNUSED(key);
+    return 0;
+#endif
+}
+
+bool LantoInputControl::physicalKeyReleased(std::uint64_t hold) const
+{
+#ifdef Q_OS_WIN
+    return managed() && m_SharedSwitch && m_SwitchHook.physicalReleased(hold);
+#else
+    Q_UNUSED(hold);
+    return false;
+#endif
+}
+
 bool LantoInputControl::matches(int key, int modifiers) const
 {
 #ifdef Q_OS_WIN
@@ -83,20 +126,18 @@ bool LantoInputControl::matches(int key, int modifiers) const
     return managed() && locked() && remote() && key == m_Key && (modifiers & 15) == m_Modifiers;
 }
 
-void LantoInputControl::setSwitchCapture(bool active, void (*modifiersChanged)(int))
+void LantoInputControl::setSwitchCapture(bool active)
 {
 #ifdef Q_OS_WIN
     // Do not intercept local input while a new stream is still opening.
     if (active) m_HasCaptured = true;
     const bool guard = m_HasCaptured && managed() && locked() && remote() && m_SharedSwitch;
     m_SwitchHook.guardForeground(guard);
-    m_SwitchHook.setModifiersCallback(modifiersChanged);
     // SDL releases capture on blur. Keep our reserved key and input barrier alive
     // until an explicit selection change, even while another app has focus.
     if (m_SharedSwitch && !m_SwitchHook.activate(active || guard)) m_SwitchFailed = true;
 #else
     Q_UNUSED(active);
-    Q_UNUSED(modifiersChanged);
 #endif
 }
 

@@ -5,16 +5,27 @@ export class ReturnShortcut {
   private current = ''
   private readonly callback: () => void
   private readonly broker?: SwitchBroker
-  constructor(callback: () => void, executable?: string, failed: () => void = () => {}) {
+  constructor(
+    callback: () => void,
+    executable?: string,
+    failed: () => void = () => {},
+    emergency: () => void = () => {}
+  ) {
     this.callback = callback
     if (process.platform === 'win32' && executable)
-      this.broker = new SwitchBroker(executable, callback, failed)
+      this.broker = new SwitchBroker(executable, callback, failed, emergency)
   }
   get registered(): boolean {
     return this.broker ? this.broker.registered : Boolean(this.current)
   }
   get environment(): Record<string, string> {
-    return { LANTO_SWITCH_MAP: this.broker?.map ?? '' }
+    return {
+      LANTO_SWITCH_MAP: this.broker?.map ?? '',
+      LANTO_EMERGENCY_SEQUENCE: String(this.broker?.emergencySequence ?? 0)
+    }
+  }
+  focus(pid: number, window: number): void {
+    this.broker?.focus(pid, window)
   }
 
   private register(value: string): boolean {

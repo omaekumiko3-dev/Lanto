@@ -36,6 +36,7 @@ export async function hasMediaFeature(
     | 'automatedPairProtocol'
     | 'lockedInputProtocol'
     | 'sharedSwitchProtocol'
+    | 'emergencyReturnProtocol'
 ): Promise<boolean> {
   try {
     const path = join(dirname(executable), 'lanto-media.json')

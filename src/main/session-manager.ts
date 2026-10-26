@@ -36,6 +36,7 @@ export class SessionManager {
   private selected: string | null = null
   private active = new Map<string, Active>()
   private pending: Promise<unknown> = Promise.resolve()
+  private inputEpoch = 0
   private readonly adapter: MediaAdapter
   private readonly onState: (state: SessionState) => void
   private readonly onActivity: (message: string, error?: boolean) => void
@@ -77,7 +78,9 @@ export class SessionManager {
   }
 
   connect(device: Device, settings: Settings): Promise<void> {
+    const epoch = this.inputEpoch
     return this.enqueue(async () => {
+      if (epoch !== this.inputEpoch) return
       if (!device.host) throw new Error('Enter the IP address or hostname of this device first')
       if (this.active.has(device.id)) return
       if (this.active.size >= 2)
@@ -85,7 +88,7 @@ export class SessionManager {
           'Two devices are already connected; disconnect one before connecting another'
         )
       // Release the previous owner before a new player can acquire focus or capture input.
-      await this.select(null)
+      await this.select(null, epoch)
       this.set({ ...idle(), phase: 'launching', deviceId: device.id })
       try {
         const handle = await this.adapter.start(device, settings)
@@ -104,7 +107,11 @@ export class SessionManager {
           input: { lockInput: settings.lockInput, returnShortcut: settings.returnShortcut }
         }
         this.active.set(device.id, active)
-        this.selected = device.id
+        if (epoch !== this.inputEpoch) {
+          if (handle.window?.emergency) await handle.window.emergency()
+          else await handle.window?.hide()
+          this.selected = null
+        } else this.selected = device.id
         this.set(state)
         this.onActivity(
           `${device.name} Moonlight client started; see its window for streaming status`
@@ -174,11 +181,13 @@ export class SessionManager {
     })
   }
 
-  private async select(id: string | null): Promise<void> {
+  private async select(id: string | null, epoch = this.inputEpoch): Promise<void> {
+    if (epoch !== this.inputEpoch) return
     for (const entry of this.active.values()) {
       if (entry.device.id !== id) await entry.handle.window?.hide()
     }
     this.selected = null
+    if (epoch !== this.inputEpoch) return
     if (id) {
       const active = this.active.get(id)
       if (!active || active.stopping) {
@@ -188,6 +197,10 @@ export class SessionManager {
       if (!active.handle.window) throw new Error('Window switching requires the Windows controller')
       try {
         await active.handle.window.show()
+        if (epoch !== this.inputEpoch) {
+          await active.handle.window.hide()
+          return
+        }
         this.selected = id
       } finally {
         this.onState(this.state)
@@ -196,7 +209,9 @@ export class SessionManager {
   }
 
   toggleWindow(): Promise<'local' | 'remote'> {
+    const epoch = this.inputEpoch
     return this.enqueue(async () => {
+      if (epoch !== this.inputEpoch) return 'local'
       const cycle: Array<string | null> = [
         null,
         ...[...this.active.values()]
@@ -204,7 +219,7 @@ export class SessionManager {
           .map((entry) => entry.device.id)
       ]
       const next = cycle[(Math.max(0, cycle.indexOf(this.controlDeviceId)) + 1) % cycle.length]!
-      await this.select(next)
+      await this.select(next, epoch)
       return this.controlDeviceId ? 'remote' : 'local'
     })
   }
@@ -212,7 +227,19 @@ export class SessionManager {
     return this.enqueue(() => this.select(null))
   }
   showWindow(id?: string): Promise<void> {
-    return this.enqueue(() => this.select(id ?? this.active.keys().next().value ?? null))
+    const epoch = this.inputEpoch
+    return this.enqueue(() => this.select(id ?? this.active.keys().next().value ?? null, epoch))
+  }
+  async emergencyReturn(): Promise<void> {
+    ++this.inputEpoch
+    this.selected = null
+    this.onState(this.state)
+    await Promise.all(
+      [...this.active.values()].map((entry) => {
+        const window = entry.handle.window
+        return window?.emergency ? window.emergency() : window?.hide()
+      })
+    )
   }
   configureWindow(settings: InputSettings): Promise<void> {
     return this.enqueue(async () => {

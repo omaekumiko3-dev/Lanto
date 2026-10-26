@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <cstdio>
 #include <fstream>
 #include <string>
 
@@ -20,6 +21,25 @@ int main(int argc, char** argv) {
     const auto window = CreateWindowW(type.lpszClassName, L"Lanto isolated media test", WS_OVERLAPPEDWINDOW,
         0, 0, 640, 480, nullptr, nullptr, type.hInstance, nullptr);
     if (!window) return 2;
+    if (argc == 2 && std::string(argv[1]) == "--window-recovery") {
+        // Both windows stay invisible. Exercise real EnumWindows discovery,
+        // including the SDL -> Qt transition after a failed stream.
+        type.lpszClassName = L"Qt5152QWindowOwnDCIcon";
+        if (!RegisterClassW(&type)) return 3;
+        auto dialog = CreateWindowW(type.lpszClassName, L"Lanto isolated connection error", WS_OVERLAPPEDWINDOW,
+            0, 0, 640, 480, nullptr, nullptr, type.hInstance, nullptr);
+        if (!dialog) return 4;
+        std::printf("%llu %llu\n", reinterpret_cast<unsigned long long>(window),
+            reinterpret_cast<unsigned long long>(dialog));
+        std::fflush(stdout);
+        if (std::getchar() != EOF) {
+            DestroyWindow(window);
+            std::puts("SDL_CLOSED"); std::fflush(stdout);
+            std::getchar();
+        }
+        DestroyWindow(dialog);
+        return 0;
+    }
     // The test window is never shown, activated, or given keyboard/mouse input.
     char gain[64]{};
     GetEnvironmentVariableA("LANTO_VOLUME", gain, sizeof(gain));

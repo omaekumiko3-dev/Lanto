@@ -21,8 +21,11 @@ if (-not $lantoHttpSource.Contains('LantoPreserveH264Sps') -or -not $lantoDecode
   throw 'Apply moonlight-h264-sps.patch before building'
 }
 $lantoVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
-$lantoVs = & $lantoVswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-if (-not $lantoVs) { throw 'Visual Studio C++ build tools are required' }
+$lantoVs = $null
+if (-not ($env:INCLUDE -and (Get-Command cl.exe -ErrorAction SilentlyContinue))) {
+  $lantoVs = & $lantoVswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+  if (-not $lantoVs) { throw 'Visual Studio C++ build tools are required' }
+}
 $lantoBuild = Join-Path $lantoSource 'build-lanto'
 if (-not $lantoHttpSource.Contains('lantocursor')) { throw 'Apply moonlight-cursor-shape.patch before building' }
 $lantoAudioSource = Get-Content -LiteralPath (Join-Path $lantoSource 'app/streaming/audio/audio.cpp') -Raw
@@ -31,6 +34,9 @@ $lantoPairSource = Get-Content -LiteralPath (Join-Path $lantoSource 'app/cli/pai
 if (-not $lantoPairSource.Contains('LANTO_AUTOMATED_PAIR')) { throw 'Apply moonlight-auto-pair.patch before building' }
 if (-not $lantoInputSource.Contains('pollLantoControl')) { throw 'Apply moonlight-locked-input.patch before building' }
 if (-not $lantoInputSource.Contains('setSwitchCapture')) { throw 'Apply moonlight-shared-switch.patch before building' }
+if (-not $lantoInputSource.Contains('retryLantoKeyReleases')) { throw 'Apply moonlight-key-release.patch before building' }
+$lantoKeyboardSource = Get-Content -LiteralPath (Join-Path $lantoSource 'app/streaming/input/keyboard.cpp') -Raw
+if (-not $lantoKeyboardSource.Contains('physicalKeyHold')) { throw 'Apply the current moonlight-key-release.patch with native release recovery before building' }
 $lantoCursorSource = Join-Path $lantoSource 'app/streaming/lanto'
 New-Item -ItemType Directory -Path $lantoCursorSource -Force | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'moonlight') -File | Copy-Item -Destination $lantoCursorSource
@@ -45,9 +51,10 @@ if (Test-Path -LiteralPath $lantoResource) {
   (Get-Item -LiteralPath $lantoResource).LastWriteTimeUtc = [DateTime]::UtcNow
 }
 $lantoCommand = Join-Path $lantoBuild 'build-lanto.cmd'
+$lantoSetup = if ($env:INCLUDE -and (Get-Command cl.exe -ErrorAction SilentlyContinue)) { 'rem Using initialized native toolchain' } else { "call `"$lantoVs\VC\Auxiliary\Build\vcvarsall.bat`" x64" }
 @"
 @echo off
-call "$lantoVs\VC\Auxiliary\Build\vcvarsall.bat" x64
+$lantoSetup
 if errorlevel 1 exit /b 1
 set "PATH=$lantoQtBin;%PATH%"
 cd /d "$lantoBuild"
@@ -81,6 +88,8 @@ $lantoQtVersion = & (Join-Path $lantoQtBin 'qmake.exe') -query QT_VERSION
   automatedPairProtocol = 1
   lockedInputProtocol = 1
   sharedSwitchProtocol = 1
+  physicalReleaseProtocol = 1
+  emergencyReturnProtocol = 1
   foregroundGuardProtocol = 1
   foregroundHandoffProtocol = 1
   brand = 'lanto'

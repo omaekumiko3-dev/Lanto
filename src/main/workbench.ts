@@ -96,7 +96,8 @@ export class Workbench {
         if (this.session.owns(pid) && !this.closing)
           void this.toggleRemote().catch((error: unknown) => this.log(readableError(error), true))
       },
-      () => this.shortcut.environment
+      () => this.shortcut.environment,
+      (pid, window) => this.shortcut.focus(pid, window)
     )
     this.session = new SessionManager(this.adapter, this.changed, (message, error) =>
       this.log(message, error)
@@ -109,6 +110,14 @@ export class Workbench {
       () => {
         void this.session.hideWindow().catch(() => {})
         this.log('The keyboard switch helper stopped. Restart Lanto to restore switching.', true)
+      },
+      () => {
+        this.focusLocal()
+        void this.session
+          .emergencyReturn()
+          .then(() => this.focusLocal())
+          .catch((error: unknown) => this.log(readableError(error), true))
+        this.log('Emergency return: input released (Esc three times within one second).')
       }
     )
   }

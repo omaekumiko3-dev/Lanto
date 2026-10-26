@@ -9,6 +9,42 @@ const first = deviceFixture()
 const second = deviceFixture({ name: 'Test Mac', host: 'mac.local', platform: 'macos' })
 const third = deviceFixture({ name: 'Third', host: 'third.local' })
 
+test('emergency return cancels queued and in-flight selection without disconnecting streams', async () => {
+  const { manager, handles, owners } = fixture()
+  await manager.connect(first, settings)
+  await manager.hideWindow()
+  const handle = handles[0]!
+  let release!: () => void
+  let entered!: () => void
+  const ready = new Promise<void>((resolve) => {
+    entered = resolve
+  })
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let shows = 0
+  handle.window.show = async () => {
+    ++shows
+    entered()
+    await gate
+    owners.add(handle.pid)
+  }
+  const selecting = manager.toggleWindow()
+  await ready
+  const backlog = [manager.toggleWindow(), manager.toggleWindow(), manager.showWindow()]
+  await manager.emergencyReturn()
+  assert.equal(manager.controlDeviceId, null)
+  release()
+  await selecting
+  await Promise.all(backlog)
+  assert.equal(shows, 1)
+  assert.equal(manager.controlDeviceId, null)
+  assert.equal(owners.size, 0)
+  assert.equal(handle.stops, 0)
+  assert.equal(manager.sessions.length, 1)
+  await manager.disconnect()
+})
+
 function fixture() {
   const owners = new Set<number>()
   const handles: ReturnType<typeof handle>[] = []

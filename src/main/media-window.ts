@@ -6,6 +6,7 @@ export interface MediaWindow {
   toggle(): Promise<'local' | 'remote'>
   show(): Promise<void>
   hide(): Promise<void>
+  emergency?(): Promise<void>
   configure(settings: InputSettings): Promise<void>
   close(): void
 }
@@ -52,7 +53,8 @@ export function focusWindow(window: number, api: FocusAPI): number {
   }
 }
 
-function windowsAPI(): WindowAPI {
+export function windowsAPI(): WindowAPI {
+  if (native) return native
   const user = koffi.load('user32.dll')
   const kernel = koffi.load('kernel32.dll')
   const rect = koffi.struct({
@@ -123,11 +125,17 @@ function windowsAPI(): WindowAPI {
         if (api.owner(window) !== pid || parent(window, 4)) return 1
         const name = Buffer.alloc(512)
         const length = className(window, name, 256)
-        const stream = name.subarray(0, length * 2).toString('utf16le') === 'SDL_app'
-        if (!stream && !visible(window)) return 1
+        const type = name.subarray(0, length * 2).toString('utf16le')
+        const stream = type === 'SDL_app'
+        // Moonlight replaces its SDL window with a Qt startup/error window.
+        // Local mode may already have hidden that window. It must remain
+        // discoverable so the next shortcut can reveal the connection error.
+        const dialog = /^Qt\d+QWindow(?:OwnDC)?Icon$/.test(type)
+        if (!stream && !dialog && !visible(window)) return 1
         const box = { left: 0, top: 0, right: 0, bottom: 0 }
         if (!bounds(window, box)) return 1
-        const size = (stream ? 1e12 : 0) + (box.right - box.left) * (box.bottom - box.top)
+        const size =
+          (stream ? 1e12 : dialog ? 1e11 : 0) + (box.right - box.left) * (box.bottom - box.top)
         if (!best || size > area) {
           best = window
           area = size
@@ -137,7 +145,7 @@ function windowsAPI(): WindowAPI {
       return best
     }
   }
-  return api
+  return (native = api)
 }
 
 let native: ReturnType<typeof windowsAPI> | undefined
@@ -159,7 +167,8 @@ export function createMediaWindow(
   pid: number,
   settings: InputSettings,
   input?: WindowInputControl,
-  api = (native ??= windowsAPI())
+  api = (native ??= windowsAPI()),
+  privilegedFocus: (pid: number, window: number) => void = () => {}
 ): MediaWindow {
   const processHandle = api.open(0x100000, 0, pid)
   if (!processHandle) throw new Error('Cannot access the remote window process')
@@ -169,6 +178,7 @@ export function createMediaWindow(
   let seenRemote = false
   let pending: Promise<unknown> = Promise.resolve()
   let polling = false
+  let epoch = 0
   const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
     const result = pending.then(task)
     pending = result.catch(() => {})
@@ -198,20 +208,27 @@ export function createMediaWindow(
       api.topmost(target, false)
     }
   }
-  async function show() {
+  async function show(expected = epoch) {
+    if (expected !== epoch) return
     const target = ownedWindow()
     await input?.setRemote(true)
+    if (expected !== epoch) {
+      await input?.setRemote(false)
+      return
+    }
     mode = 'remote'
     seenRemote = false
     api.show(target, api.minimized(target) ? 9 : 5) // SW_RESTORE / SW_SHOW
     api.topmost(target, settings.lockInput)
     api.focus(target)
     for (let attempt = 0; attempt < 30; attempt++) {
+      if (expected !== epoch) return
       if (!alive()) throw new Error('The remote window has closed')
       if (api.owner(api.foreground()) === pid) {
         seenRemote = true
         return
       }
+      if (attempt === 0 || attempt === 10) privilegedFocus(pid, target)
       if (api.visible(target)) api.focus(target)
       await new Promise<void>((resolve) => setTimeout(resolve, 10))
     }
@@ -238,7 +255,7 @@ export function createMediaWindow(
       if (front && api.owner(front) === pid) window = front
       if (mode === 'local' && settings.lockInput) {
         // A click, task switcher, or external activation cannot change the selected system.
-        if (!window) window = api.find(pid)
+        if (!window || api.owner(window) !== pid) window = api.find(pid)
         if (window && api.owner(window) === pid && api.visible(window)) api.show(window, 0)
       } else if (mode === 'remote') {
         // A slow host handshake can outlive Windows' initial activation grant.
@@ -257,7 +274,10 @@ export function createMediaWindow(
           // activate themselves; keep the selected stream above ordinary popups.
           api.topmost(window, true)
           if (!api.visible(window) || api.minimized(window)) api.show(window, 9)
-          if (front && api.owner(front) !== pid) api.focus(window)
+          if (front && api.owner(front) !== pid) {
+            api.focus(window)
+            privilegedFocus(pid, window)
+          }
         }
       }
     })
@@ -271,18 +291,35 @@ export function createMediaWindow(
     get mode() {
       return mode
     },
-    toggle: () =>
-      enqueue(async () => {
+    toggle: () => {
+      const expected = epoch
+      return enqueue(async () => {
+        if (expected !== epoch) return 'local'
         // Free window mode follows focus; locked mode only follows explicit transitions.
         if (settings.lockInput ? mode === 'remote' : api.owner(api.foreground()) === pid) {
           await local()
           return 'local'
         }
-        await show()
+        await show(expected)
         return 'remote'
-      }),
-    show: () => enqueue(show),
+      })
+    },
+    show: () => {
+      const expected = epoch
+      return enqueue(() => show(expected))
+    },
     hide: () => enqueue(local),
+    emergency: async () => {
+      ++epoch
+      mode = 'local'
+      seenRemote = false
+      const target = ownedWindow(false)
+      if (target) {
+        api.show(target, 0)
+        api.topmost(target, false)
+      }
+      await input?.setRemote(false)
+    },
     configure: (value) =>
       enqueue(async () => {
         if (value.lockInput && !input)

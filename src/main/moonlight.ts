@@ -88,15 +88,18 @@ export class MoonlightAdapter implements MediaAdapter {
   private readonly logDirectory: string
   private readonly onSwitch: (pid: number) => void
   private readonly switchEnvironment: () => Record<string, string>
+  private readonly focus: (pid: number, window: number) => void
 
   constructor(
     logDirectory: string,
     onSwitch: (pid: number) => void = () => {},
-    switchEnvironment: () => Record<string, string> = () => ({})
+    switchEnvironment: () => Record<string, string> = () => ({}),
+    focus: (pid: number, window: number) => void = () => {}
   ) {
     this.logDirectory = logDirectory
     this.onSwitch = onSwitch
     this.switchEnvironment = switchEnvironment
+    this.focus = focus
   }
 
   async start(device: Device, settings: Settings): Promise<MediaHandle> {
@@ -117,6 +120,14 @@ export class MoonlightAdapter implements MediaAdapter {
     const switchEnvironment = this.switchEnvironment()
     if (
       process.platform === 'win32' &&
+      switchEnvironment.LANTO_SWITCH_MAP &&
+      !(await hasMediaFeature(executable, 'emergencyReturnProtocol'))
+    )
+      throw new Error(
+        'Emergency return requires the updated bundled Lanto player; select it in settings'
+      )
+    if (
+      process.platform === 'win32' &&
       settings.lockInput &&
       switchEnvironment.LANTO_SWITCH_MAP &&
       !(await hasMediaFeature(executable, 'sharedSwitchProtocol'))
@@ -135,7 +146,11 @@ export class MoonlightAdapter implements MediaAdapter {
     let input: Awaited<ReturnType<typeof createInputControl>> | undefined
     try {
       if (inputSupported)
-        input = await createInputControl(join(this.logDirectory, '..', 'media-controls'), settings)
+        input = await createInputControl(
+          join(this.logDirectory, '..', 'media-controls'),
+          settings,
+          () => Number(this.switchEnvironment().LANTO_EMERGENCY_SEQUENCE || 0)
+        )
       const handle = await launchMedia(
         executable,
         streamArguments(device, settings),
@@ -160,7 +175,7 @@ export class MoonlightAdapter implements MediaAdapter {
       }
       if (process.platform === 'win32') {
         try {
-          const window = createMediaWindow(handle.pid, settings, input)
+          const window = createMediaWindow(handle.pid, settings, input, undefined, this.focus)
           handle.window = window
           void handle.closed.then(() => window.close())
         } catch (error) {

@@ -1,0 +1,189 @@
+diff --git a/app/streaming/input/input.h b/app/streaming/input/input.h
+--- a/app/streaming/input/input.h
++++ b/app/streaming/input/input.h
+@@ -3,10 +3,11 @@
+ #include "settings/streamingpreferences.h"
+ #include "backend/computermanager.h"
+ 
+ #include "SDL_compat.h"
+ #include "streaming/lanto/input-control.h"
++#include "streaming/lanto/key-releases.h"
+ 
+ struct GamepadState {
+     SDL_GameController* controller;
+     SDL_JoystickID jsId;
+     short index;
+@@ -89,10 +90,11 @@ public:
+ 
+     ~SdlInputHandler();
+ 
+     void setWindow(SDL_Window* window);
+     void pollLantoControl();
++    void retryLantoKeyReleases();
+ 
+     void handleKeyEvent(SDL_KeyboardEvent* event);
+ 
+     void handleMouseButtonEvent(SDL_MouseButtonEvent* event);
+ 
+@@ -206,10 +208,12 @@ private:
+     Uint32 dragTimerCallback(Uint32 interval, void* param);
+ 
+     SDL_Window* m_Window = nullptr;
+     LantoInputControl m_LantoInput;
+     bool m_LantoSwitchPending = false;
++    bool m_LantoKeyboardFocused = false;
++    QElapsedTimer m_LantoKeyRetryTimer;
+     bool m_MultiController;
+     bool m_GamepadMouse;
+     bool m_SwapMouseButtons;
+     bool m_ReverseScrollDirection;
+     bool m_SwapFaceButtons;
+@@ -220,11 +224,11 @@ private:
+     bool m_PointerRegionLockActive;
+     bool m_PointerRegionLockToggledByUser;
+ 
+     int m_GamepadMask;
+     GamepadState m_GamepadState[MAX_GAMEPADS];
+-    QSet<uint32_t> m_KeysDown;
++    LantoKeyReleases m_KeysDown;
+     bool m_FakeMouseCaptureActive;
+     bool m_KeyboardCaptureActive;
+     QString m_OldIgnoreDevices;
+     QString m_OldIgnoreDevicesExcept;
+     QStringList m_IgnoreDeviceGuids;
+diff --git a/app/streaming/input/input.cpp b/app/streaming/input/input.cpp
+--- a/app/streaming/input/input.cpp
++++ b/app/streaming/input/input.cpp
+@@ -267,15 +267,24 @@ SdlInputHandler::~SdlInputHandler()
+ }
+ 
+ void SdlInputHandler::setWindow(SDL_Window *window)
+ {
+     m_Window = window;
++    m_LantoKeyboardFocused = (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) != 0;
+     pollLantoControl();
+ }
+ 
+ void SdlInputHandler::pollLantoControl()
+ {
++    // A rejected keyup remains owed to the host even after focus/selection changes.
++    if (!m_LantoKeyRetryTimer.isValid() || m_LantoKeyRetryTimer.elapsed() >= 50) {
++        m_LantoKeyRetryTimer.restart();
++        retryLantoKeyReleases();
++        // Native focus can change before SDL observes the corresponding event.
++        if (m_LantoInput.managed() && m_LantoInput.locked() && !m_LantoInput.keyboardFocus())
++            raiseAllKeys();
++    }
+     if (!m_LantoInput.managed() || !m_LantoInput.refresh() || !m_Window) return;
+     m_PointerRegionLockActive = m_LantoInput.locked();
+     m_PointerRegionLockToggledByUser = m_LantoInput.locked();
+     m_CaptureSystemKeysMode = m_LantoInput.locked() ? StreamingPreferences::CSK_ALWAYS : StreamingPreferences::CSK_OFF;
+     if (!m_LantoInput.remote()) {
+@@ -287,10 +296,11 @@ void SdlInputHandler::pollLantoControl()
+     }
+ }
+ 
+ void SdlInputHandler::notifyFocusLost()
+ {
++    m_LantoKeyboardFocused = false;
+     if (m_LantoInput.managed()) {
+         setCaptureActive(false);
+         for (int button = BUTTON_LEFT; button <= BUTTON_X2; button++)
+             LiSendMouseButtonEvent(BUTTON_ACTION_RELEASE, button);
+     }
+@@ -308,10 +318,13 @@ void SdlInputHandler::notifyFocusLost()
+ }
+ 
+ void SdlInputHandler::notifyFocusGained()
+ {
+     if (m_LantoInput.managed()) {
++        // Clear any outstanding state before admitting this focus interval's presses.
++        raiseAllKeys();
++        m_LantoKeyboardFocused = true;
+         m_LantoInput.refresh(true);
+         m_LantoSwitchPending = false;
+         setCaptureActive(true);
+     }
+ }
+diff --git a/app/streaming/input/keyboard.cpp b/app/streaming/input/keyboard.cpp
+--- a/app/streaming/input/keyboard.cpp
++++ b/app/streaming/input/keyboard.cpp
+@@ -187,11 +187,16 @@ void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)
+     short keyCode;
+     char modifiers;
+     char flags;
+     bool shouldNotConvertToScanCodeOnServer = false;
+ 
+-    if (m_LantoInput.managed() && m_LantoInput.locked() && (!m_LantoInput.remote() || m_LantoSwitchPending)) return;
++    // Discard late presses after blur, but always allow a release to settle a
++    // key that was already forwarded before the focus or selection transition.
++    if (event->state == SDL_PRESSED && !LantoKeyReleases::allowPress(
++            m_LantoInput.managed(), m_LantoInput.locked(), m_LantoInput.remote(),
++            m_LantoSwitchPending, m_LantoInput.keyboardFocus() && m_LantoKeyboardFocused && m_Window &&
++            (SDL_GetWindowFlags(m_Window) & SDL_WINDOW_INPUT_FOCUS))) return;
+ 
+     if (event->repeat) {
+         // Ignore repeat key down events
+         SDL_assert(event->state == SDL_PRESSED);
+         return;
+@@ -518,39 +523,38 @@ void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)
+     }
+ 
+     keyCode |= 0x8000;
+     flags = shouldNotConvertToScanCodeOnServer ? SS_KBE_FLAG_NON_NORMALIZED : 0;
+ 
+-    // Track the key state so we always know which keys are down
+-    if (event->state == SDL_PRESSED) {
+-        m_KeysDown.insert(MAKE_KEYPRESS_STATE(keyCode, modifiers, flags));
+-    }
+-    else {
+-        m_KeysDown.remove(MAKE_KEYPRESS_STATE(keyCode, modifiers, flags));
+-    }
++    const auto keyState = MAKE_KEYPRESS_STATE(keyCode, modifiers, flags);
++    const auto physicalHold = event->state == SDL_PRESSED ? m_LantoInput.physicalKeyHold(keyState) : 0;
++    m_KeysDown.send(keyState, event->state == SDL_PRESSED, [&] {
++        return LiSendKeyboardEvent2(keyCode,
++                                   event->state == SDL_PRESSED ? KEY_ACTION_DOWN : KEY_ACTION_UP,
++                                   modifiers, flags);
++    }, physicalHold);
++}
+ 
+-    LiSendKeyboardEvent2(keyCode,
+-                         event->state == SDL_PRESSED ?
+-                             KEY_ACTION_DOWN : KEY_ACTION_UP,
+-                         modifiers,
+-                         flags);
++void SdlInputHandler::retryLantoKeyReleases()
++{
++    // Recover a native release even if SDL never delivered its matching keyup.
++    m_KeysDown.reconcile([&](uint64_t hold) { return m_LantoInput.physicalKeyReleased(hold); }, [](uint32_t keyDown) {
++        return LiSendKeyboardEvent2(GET_KEYPRESS_CODE(keyDown), KEY_ACTION_UP,
++                                   GET_KEYPRESS_EXTENDED_MODIFIER(keyDown), GET_KEYPRESS_FLAGS(keyDown));
++    });
+ }
+ 
+ void SdlInputHandler::raiseAllKeys()
+ {
+-    if (m_KeysDown.isEmpty()) {
++    if (m_KeysDown.empty()) {
+         return;
+     }
+ 
+     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                 "Raising %d keys",
+-                (int)m_KeysDown.count());
+-
+-    for (auto keyDown : std::as_const(m_KeysDown)) {
+-        LiSendKeyboardEvent2(GET_KEYPRESS_CODE(keyDown),
+-                             KEY_ACTION_UP,
+-                             GET_KEYPRESS_EXTENDED_MODIFIER(keyDown),
+-                             GET_KEYPRESS_FLAGS(keyDown));
+-    }
++                (int)m_KeysDown.size());
+ 
+-    m_KeysDown.clear();
++    m_KeysDown.releaseAll([](uint32_t keyDown) {
++        return LiSendKeyboardEvent2(GET_KEYPRESS_CODE(keyDown), KEY_ACTION_UP,
++                                   GET_KEYPRESS_EXTENDED_MODIFIER(keyDown), GET_KEYPRESS_FLAGS(keyDown));
++    });
+ }

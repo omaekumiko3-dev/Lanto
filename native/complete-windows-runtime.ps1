@@ -6,7 +6,10 @@ $ErrorActionPreference = 'Stop'
 $lantoMedia = (Resolve-Path -LiteralPath $Media).Path
 $lantoQtBin = (Resolve-Path -LiteralPath $QtBin).Path
 $lantoVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
-$lantoVs = & $lantoVswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+$lantoVs = $env:VSINSTALLDIR
+if (-not $lantoVs -or -not (Test-Path -LiteralPath (Join-Path $lantoVs 'VC/Tools/MSVC'))) {
+  $lantoVs = & $lantoVswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+}
 if (-not $lantoVs) { throw 'Visual Studio C++ tools are required to verify runtime dependencies' }
 $lantoDumpbin = Get-ChildItem (Join-Path $lantoVs 'VC/Tools/MSVC/*/bin/Hostx64/x64/dumpbin.exe') | Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
 $lantoRedist = Get-ChildItem (Join-Path $lantoVs 'VC/Redist/MSVC/*/x64/Microsoft.VC143.CRT') | Where-Object PSIsContainer | Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName

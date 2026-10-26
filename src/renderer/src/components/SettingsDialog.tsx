@@ -156,8 +156,9 @@ export function SettingsDialog({
               spellCheck={false}
             />
             <small>
-              Ctrl + ` uses the key above Tab. Press again to return to the connected desktop. The
-              connection stays active. Display settings apply on the next connection.
+              While controlling a remote desktop, press Esc three times within one second for an
+              emergency return. Holding Esc does not count. Connections stay active. Display
+              settings apply on the next connection.
             </small>
           </label>
           <label>

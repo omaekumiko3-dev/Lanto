@@ -132,6 +132,12 @@ int main(int argc, char** argv)
     LantoInputControl brokerOwned;
     require(brokerOwned.remote());
     require(!brokerOwned.matches(192, 2)); // Shared hook owns matching; no duplicate stdout path.
+    InterlockedIncrement(&shared.state()->emergency);
+    require(brokerOwned.refresh(true) && !brokerOwned.remote());
+    // A stale remote=true file cannot undo an emergency.
+    brokerOwned.refresh(true); require(!brokerOwned.remote());
+    write(path, "{\"key\":192,\"modifiers\":2,\"locked\":true,\"remote\":true,\"emergency\":1}");
+    require(brokerOwned.refresh(true) && brokerOwned.remote());
     controller.kill(); require(controller.waitForFinished());
     brokerOwned.refresh(true);
     require(!brokerOwned.remote());

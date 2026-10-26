@@ -67,13 +67,18 @@ export function switchBinding(accelerator: string): { key: number; modifiers: nu
   return { key, modifiers }
 }
 
-export async function createInputControl(directory: string, settings: InputSettings) {
+export async function createInputControl(
+  directory: string,
+  settings: InputSettings,
+  emergency: () => number = () => 0
+) {
   const file = join(directory, `${randomUUID()}.input`)
   let closed = false
   let value = {
     ...switchBinding(settings.returnShortcut),
     locked: settings.lockInput,
-    remote: true
+    remote: true,
+    emergency: emergency()
   }
   async function update(next: typeof value) {
     if (closed) throw new Error('The stream ended; reconnect before switching')
@@ -99,7 +104,7 @@ export async function createInputControl(directory: string, settings: InputSetti
   await update(value)
   return {
     environment: { LANTO_INPUT_FILE: file, LANTO_CONTROLLER_PID: String(process.pid) },
-    setRemote: (remote: boolean) => update({ ...value, remote }),
+    setRemote: (remote: boolean) => update({ ...value, remote, emergency: emergency() }),
     configure: (settings: InputSettings) =>
       update({ ...value, ...switchBinding(settings.returnShortcut), locked: settings.lockInput }),
     async close() {
